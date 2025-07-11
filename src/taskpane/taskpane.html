@@ -1,6 +1,4 @@
 <!-- Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT License. -->
-<!-- This file shows how to design a first-run page that provides a welcome screen to the user about the features of the add-in. -->
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -8,7 +6,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Maths Equation Editor</title>
+    <title>Equation Editor</title>
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
@@ -19,9 +17,6 @@
     <!-- Template styles -->
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
 
-    <!-- MathLive for the WYSIWYG editor -->
-    <script src="https://unpkg.com/mathlive/dist/mathlive.min.js"></script>
-
     <!-- MathJax configuration and loading -->
     <script>
         window.MathJax = {
@@ -30,7 +25,7 @@
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
             },
             svg: {
-                fontCache: 'local',  // This embeds fonts in the SVG
+                fontCache: 'local',
                 scale: 1,
                 minScale: 0.5,
                 matchFontHeight: false,
@@ -42,7 +37,6 @@
             },
             startup: {
                 ready: () => {
-                    // Override the default ready function to ensure proper initialization
                     MathJax.startup.defaultReady();
                     MathJax.startup.document.updateDocument();
                 }
@@ -52,26 +46,40 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 
-<body class="ms-font-m ms-welcome ms-Fabric">
+<body class="ms-font-m">
     <div id="app-container">
-        <h1 class="ms-fontSize-xl ms-fontWeight-bold">WYSIWYG Maths Editor</h1>
-        <p class="ms-fontSize-m ms-fontWeight-regular">Create your equation below. It will be inserted as a high-quality image.</p>
+        <h1 class="ms-fontSize-xl ms-fontWeight-bold">Equation Editor</h1>
+        <p class="ms-fontSize-m ms-fontWeight-regular">Build your equation using the visual editor below.</p>
         
-        <!-- The MathLive editor element -->
-        <math-field id="math-editor"></math-field>
+        <!-- Equation Builder Display -->
+        <div class="equation-display" id="equationDisplay">
+            <span class="empty-state">Click here and start typing your equation</span>
+        </div>
+        <input type="text" class="equation-input" id="hiddenInput" />
 
-        <!-- Container for the action button and status messages -->
+        <!-- Button Panel -->
+        <div class="button-panel">
+            <button class="builder-btn fraction-btn">□/□</button>
+            <button class="builder-btn operator-btn" data-operator="×">×</button>
+            <button class="builder-btn operator-btn" data-operator="÷">÷</button>
+        </div>
+
+        <!-- Container for the action buttons and status messages -->
         <div class="footer">
-             <button id="insert-equation-button" class="ms-Button ms-Button--primary" disabled>
-                <span class="ms-Button-label">Insert Equation</span>
-             </button>
-             <div id="status"></div>
+            <div class="footer-controls">
+                <button id="clear-equation-button" class="ms-Button ms-Button--secondary">
+                    <span class="ms-Button-label">Clear</span>
+                </button>
+                <button id="insert-equation-button" class="ms-Button ms-Button--primary">
+                    <span class="ms-Button-label">Insert Equation</span>
+                </button>
+            </div>
+            <div id="status"></div>
         </div>
         
-        <!-- Hidden container for MathJax rendering. This is not displayed to the user. -->
+        <!-- Hidden container for MathJax rendering -->
         <div id="mathjax-renderer"></div>
     </div>
-    
 </body>
 
 </html>
