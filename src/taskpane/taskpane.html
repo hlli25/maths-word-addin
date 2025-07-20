@@ -21,6 +21,7 @@
     <script>
         window.MathJax = {
             tex: {
+                packages: {'[+]': ['textmacros']},
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
             },
@@ -29,10 +30,8 @@
                 scale: 1,
                 minScale: 0.5,
                 matchFontHeight: false,
-                displayAlign: 'center',
                 displayIndent: '0',
-                mtextInheritFont: false,
-                merrorInheritFont: false,
+                mtextInheritFont: true, // Allow text elements to inherit the surrounding font
                 unknownFamily: 'serif'
             },
             startup: {
@@ -52,16 +51,27 @@
         <p class="ms-fontSize-m ms-fontWeight-regular">Build your equation using the visual editor below.</p>
         
         <!-- Equation Builder Display -->
-        <div class="equation-display" id="equationDisplay">
+        <div class="equation-display equation-container" id="equationDisplay">
             <span class="empty-state">Click here and start typing your equation</span>
         </div>
         <input type="text" class="equation-input" id="hiddenInput" />
 
-        <!-- Button Panel -->
-        <div class="button-panel">
-            <button class="builder-btn fraction-btn">□/□</button>
-            <button class="builder-btn operator-btn" data-operator="×">×</button>
-            <button class="builder-btn operator-btn" data-operator="÷">÷</button>
+
+        <!-- Button Panel with Tabs -->
+        <div class="tab-panel">
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="structures">Structures</button>
+                <button class="tab-btn" data-tab="operations">Operations</button>
+            </div>
+            <div class="tab-content">
+                <div id="structures" class="tab-pane active">
+                    <button class="builder-btn fraction-btn">□/□</button>
+                </div>
+                <div id="operations" class="tab-pane">
+                    <button class="builder-btn operator-btn" data-operator="×">×</button>
+                    <button class="builder-btn operator-btn" data-operator="÷">÷</button>
+                </div>
+            </div>
         </div>
 
         <!-- Container for the action buttons and status messages -->

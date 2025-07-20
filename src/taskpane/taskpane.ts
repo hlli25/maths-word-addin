@@ -3,6 +3,10 @@
  * See LICENSE in the project root for license information.
  */
 
+/// <reference types="office-js" />
+
+/* eslint-disable no-undef */
+
 // Global declarations
 declare const MathJax: any;
 
@@ -11,24 +15,26 @@ interface EquationElement {
   id: string;
   type: "text" | "fraction";
   value?: string;
-  numerator?: string;
-  denominator?: string;
+  numerator?: EquationElement[];
+  denominator?: EquationElement[];
   scaleFactor?: number;
 }
 
 // Global variables for equation builder state
 let equation: EquationElement[] = [];
+let activeContextPath: string | null = null;
 let cursorPosition = 0;
-let isEditing = false;
 let elementIdCounter = 0;
 
 Office.onReady((info) => {
   if (info.host === Office.HostType.Word) {
     // Wait for MathJax to be ready before running the main logic
-    if (typeof MathJax !== 'undefined' && MathJax.startup) {
-      MathJax.startup.promise.then(() => {
+    if (typeof MathJax !== "undefined" && MathJax.startup) {
+      MathJax.startup.promise
+        .then(() => {
           run();
-        }).catch((error: any) => {
+        })
+        .catch((error: any) => {
           console.error("MathJax failed to load:", error);
           const statusDiv = document.getElementById("status") as HTMLDivElement;
           if (statusDiv) {
@@ -53,10 +59,13 @@ function run(): void {
   const statusDiv = document.getElementById("status") as HTMLDivElement;
   const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
   const equationDisplay = document.getElementById("equationDisplay") as HTMLDivElement;
-  const buttonPanel = document.querySelector(".button-panel") as HTMLDivElement;
+  const tabNav = document.querySelector(".tab-nav") as HTMLDivElement;
+  const tabContent = document.querySelector(".tab-content") as HTMLDivElement;
 
   // Check: ensure all critical elements are present
-  if (!insertButton || !clearButton || !statusDiv || !hiddenInput || !equationDisplay || !buttonPanel) {
+  if (
+    !insertButton || !clearButton || !statusDiv || !hiddenInput || !equationDisplay || !tabNav || !tabContent
+  ) {
     console.error("One or more critical elements are missing from the DOM.");
     return;
   }
@@ -69,10 +78,11 @@ function run(): void {
   hiddenInput.addEventListener("keydown", handleKeyPress);
   hiddenInput.addEventListener("input", handleInput);
 
-  // Use event delegation for builder buttons
-  buttonPanel.addEventListener("click", (e) => {
+
+  // Use event delegation for builder buttons within the tab content
+  tabContent.addEventListener("click", (e) => {
     const target = e.target as HTMLElement;
-    const button = target.closest("button");
+    const button = target.closest("button.builder-btn");
     if (!button) return;
 
     if (button.classList.contains("fraction-btn")) {
@@ -82,14 +92,29 @@ function run(): void {
     }
   });
 
+  // Set up event listener for tab navigation
+  tabNav.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest(".tab-btn");
+    if (!button) return;
+
+    const tabId = button.dataset.tab;
+    if (!tabId) return;
+
+    // Deactivate all tabs and panes
+    tabNav.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach((pane) => pane.classList.remove("active"));
+
+    // Activate the clicked tab and its corresponding pane
+    button.classList.add("active");
+    const activePane = document.getElementById(tabId);
+    if (activePane) {
+      activePane.classList.add("active");
+    }
+  });
+
   // Handle clicks on the equation display to enter editing mode
   equationDisplay.addEventListener("click", handleDisplayClick);
-
-  // Use event delegation for dynamic fraction inputs
-  equationDisplay.addEventListener("input", handleFractionEvent);
-  equationDisplay.addEventListener("keydown", handleFractionEvent);
-  equationDisplay.addEventListener("focusin", handleFractionEvent);
-  equationDisplay.addEventListener("focusout", handleFractionEvent);
 
   // Set up a click handler on the document to exit editing mode
   setupDocumentClickHandler();
@@ -102,13 +127,12 @@ function run(): void {
 function setupDocumentClickHandler(): void {
   document.addEventListener("click", (event) => {
     const display = document.getElementById("equationDisplay");
-    const buttonPanel = document.querySelector(".button-panel");
+    const tabPanel = document.querySelector(".tab-panel");
     const target = event.target as HTMLElement;
 
-    // If we are editing and the click is outside the display and the button panel, exit editing mode.
-    if (isEditing && display && !display.contains(target) && buttonPanel && !buttonPanel.contains(target)) {
-      isEditing = false;
-      display.classList.remove("active");
+    // If we are editing and the click is outside the display and the button panel, exit editing mode
+    if (activeContextPath && display && !display.contains(target) && tabPanel && !tabPanel.contains(target)) {
+      activeContextPath = null;
       const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
       if (hiddenInput) {
         hiddenInput.blur();
@@ -120,26 +144,54 @@ function setupDocumentClickHandler(): void {
 
 // Handles clicks on the equation display area to enable editing.
 function handleDisplayClick(e: MouseEvent): void {
+  e.stopPropagation();
   const target = e.target as HTMLElement;
-  // Don't re-trigger if clicking on a fraction input.
-  if (target.matches(".fraction-input")) {
-    return;
+  const equationContainer = target.closest(".equation-container") as HTMLElement;
+
+  if (equationContainer) {
+    const path = equationContainer.dataset.contextPath;
+    if (path) {
+      activeContextPath = path;
+      const context = getContext(activeContextPath);
+      if (context) {
+        // A simple way to set cursor position: place it at the end of the clicked container.
+        // A more complex implementation could calculate the index based on click coordinates.
+        cursorPosition = context.array.length;
+      }
+    } else {
+      // Clicked on the main display which doesn't have a path, so activate the root context.
+      activeContextPath = "root";
+      cursorPosition = equation.length;
+    }
+  } else {
+    // Clicked on something else inside the display, default to root context
+    activeContextPath = "root";
+    cursorPosition = equation.length;
   }
 
-  if (!isEditing) {
-    isEditing = true;
-    const display = document.getElementById("equationDisplay");
-    const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
-
-    if (display) {
-      display.classList.add("active");
-      updateDisplay(); // Show the cursor
-    }
-
-    if (hiddenInput) {
-      hiddenInput.focus();
-    }
+  const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
+  if (hiddenInput) {
+    hiddenInput.focus();
   }
+  updateDisplay();
+}
+
+// Finds the context (the array of elements) based on a path string.
+function getContext(path: string): { array: EquationElement[]; parent: EquationElement | null } | null {
+  if (path === "root") {
+    return { array: equation, parent: null };
+  }
+  const parts = path.split("/");
+  let currentArray: EquationElement[] = equation;
+  for (let i = 1; i < parts.length - 1; i++) {
+    const element = currentArray.find((el) => el.id === parts[i]);
+    if (!element || element.type !== "fraction") return null;
+    currentArray = element[parts[i + 1] as "numerator" | "denominator"];
+    i++;
+  }
+  const parentId = parts[parts.length - 2];
+  const parent = equation.flatMap((el) => (el.type === "fraction" ? [el, ...el.numerator, ...el.denominator] : [el])).find((el) => el.id === parentId) || null;
+  return { array: currentArray, parent };
 }
 
 // Handles keyboard events for the main hidden input.
@@ -158,6 +210,12 @@ function handleKeyPress(e: KeyboardEvent): void {
   } else if (key === "ArrowRight") {
     e.preventDefault();
     moveCursor(1);
+  } else if (key === "ArrowUp" || key === "ArrowDown") {
+    e.preventDefault();
+    navigateUpDown(key);
+  } else if (key === "Tab") {
+    e.preventDefault();
+    navigateUpDown(e.shiftKey ? "ArrowUp" : "ArrowDown");
   }
 }
 
@@ -167,7 +225,7 @@ function handleInput(e: Event): void {
   const char = input.value.slice(-1);
   input.value = ""; // Clear the input
 
-  if (char && /[0-9a-zA-Z+\-=().,]/.test(char)) {
+  if (activeContextPath && char && /[0-9a-zA-Z+\-=().,]/.test(char)) {
     insertTextAtCursor(char);
     updateDisplay();
   }
@@ -175,22 +233,27 @@ function handleInput(e: Event): void {
 
 // Inserts a text or symbol element at the current cursor position.
 function insertTextAtCursor(text: string): void {
+  if (!activeContextPath) return;
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
   const element: EquationElement = {
     id: `element-${elementIdCounter++}`,
     type: "text",
     value: text,
   };
 
-  equation.splice(cursorPosition, 0, element);
+  context.array.splice(cursorPosition, 0, element);
   cursorPosition++;
 
-  updateParenthesesScaling();
+  updateAllParenthesesScaling();
 }
 
 // Inserts a mathematical operator into the equation.
 function insertOperator(operator: string): void {
-  if (!isEditing) {
-    handleDisplayClick(new MouseEvent("click"));
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
   }
 
   insertTextAtCursor(operator);
@@ -204,103 +267,119 @@ function insertOperator(operator: string): void {
 
 // Inserts a fraction element into the equation.
 function insertFraction(): void {
-  if (!isEditing) {
-    handleDisplayClick(new MouseEvent("click"));
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
   }
+  const context = getContext(activeContextPath);
+  if (!context) return;
 
   const fraction: EquationElement = {
     id: `element-${elementIdCounter++}`,
     type: "fraction",
-    numerator: "",
-    denominator: "",
+    numerator: [],
+    denominator: [],
   };
 
-  equation.splice(cursorPosition, 0, fraction);
+  context.array.splice(cursorPosition, 0, fraction);
   cursorPosition++;
 
-  updateDisplay();
-  updateParenthesesScaling();
+  // Move context into the new fraction's numerator
+  activeContextPath = `${activeContextPath}/${fraction.id}/numerator`;
+  cursorPosition = 0;
 
-  // Focus on the numerator input after it's rendered.
-  setTimeout(() => {
-    const fractionEl = document.querySelector(`#${fraction.id} .numerator`) as HTMLInputElement;
-    if (fractionEl) {
-      fractionEl.focus();
-    }
-  }, 50);
+  updateDisplay();
+  updateAllParenthesesScaling();
 }
 
 // Dynamically scales parentheses if they contain a fraction.
-function updateParenthesesScaling(): void {
-  const parenStack: Array<{ element: EquationElement; index: number }> = [];
-  const parenPairs: Array<{
-    open: { element: EquationElement; index: number };
-    close: { element: EquationElement; index: number };
-    content: EquationElement[];
-  }> = [];
+function updateAllParenthesesScaling(): void {
+  function recurse(elements: EquationElement[]) {
+    const parenStack: Array<{ element: EquationElement; index: number }> = [];
+    const parenPairs: Array<{
+      open: { element: EquationElement; index: number };
+      close: { element: EquationElement; index: number };
+      content: EquationElement[];
+    }> = [];
 
-  // Reset all scale factors
-  equation.forEach((el) => {
-    if (el.type === "text" && /[()]/.test(el.value || "")) {
-      el.scaleFactor = 1;
-    }
-  });
-
-  equation.forEach((element, index) => {
-    if (element.type === "text" && element.value === "(") {
-      parenStack.push({ element, index });
-    } else if (element.type === "text" && element.value === ")") {
-      if (parenStack.length > 0) {
-        const opening = parenStack.pop()!;
-        parenPairs.push({
-          open: opening,
-          close: { element, index },
-          content: equation.slice(opening.index + 1, index),
-        });
+    elements.forEach((el) => {
+      if (el.type === "text" && /[()]/.test(el.value || "")) {
+        el.scaleFactor = 1;
+      } else if (el.type === "fraction") {
+        recurse(el.numerator);
+        recurse(el.denominator);
       }
-    }
-  });
+    });
 
-  parenPairs.forEach((pair) => {
-    const hasFraction = pair.content.some((el) => el.type === "fraction");
-    const scaleFactor = hasFraction ? 1.5 : 1;
+    elements.forEach((element, index) => {
+      if (element.type === "text" && element.value === "(") {
+        parenStack.push({ element, index });
+      } else if (element.type === "text" && element.value === ")") {
+        if (parenStack.length > 0) {
+          const opening = parenStack.pop()!;
+          parenPairs.push({
+            open: opening,
+            close: { element, index },
+            content: elements.slice(opening.index + 1, index),
+          });
+        }
+      }
+    });
 
-    pair.open.element.scaleFactor = scaleFactor;
-    pair.close.element.scaleFactor = scaleFactor;
-  });
+    parenPairs.forEach((pair) => {
+      const hasFraction = pair.content.some((el) => el.type === "fraction");
+      const scaleFactor = hasFraction ? 1.5 : 1;
+      pair.open.element.scaleFactor = scaleFactor;
+      pair.close.element.scaleFactor = scaleFactor;
+    });
+  }
+  recurse(equation);
 }
 
 // Handles the 'Backspace' key press.
 function handleBackspace(): void {
+  if (!activeContextPath) return;
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
   if (cursorPosition > 0) {
-    equation.splice(cursorPosition - 1, 1);
+    context.array.splice(cursorPosition - 1, 1);
     cursorPosition--;
     updateDisplay();
-    updateParenthesesScaling();
+    updateAllParenthesesScaling();
+  } else if (activeContextPath !== "root") {
+    // At the start of a sub-context, navigate out
+    navigateOutOfContext("backward");
   }
 }
 
 // Handles the 'Delete' key press.
 function handleDelete(): void {
-  if (cursorPosition < equation.length) {
-    equation.splice(cursorPosition, 1);
+  if (!activeContextPath) return;
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  if (cursorPosition < context.array.length) {
+    context.array.splice(cursorPosition, 1);
     updateDisplay();
-    updateParenthesesScaling();
+    updateAllParenthesesScaling();
   }
 }
 
 // Moves the main cursor left or right.
 function moveCursor(direction: number): void {
-  cursorPosition = Math.max(0, Math.min(equation.length, cursorPosition + direction));
-  updateDisplay();
-}
+  if (!activeContextPath) return;
+  const context = getContext(activeContextPath);
+  if (!context) return;
 
-// Determines the CSS size class for a fraction input based on its content length.
-function getSizeClass(value: string): string {
-  const length = value.toString().trim().length;
-  if (length <= 2) return "size-small";
-  if (length <= 4) return "size-medium";
-  return "";
+  const newPosition = cursorPosition + direction;
+  if (newPosition >= 0 && newPosition <= context.array.length) {
+    cursorPosition = newPosition;
+    updateDisplay();
+  } else if (activeContextPath !== "root") {
+    // At the start/end of a sub-context, navigate out
+    navigateOutOfContext(direction === 1 ? "forward" : "backward");
+  }
 }
 
 // Renders the current equation state to the display div.
@@ -308,18 +387,33 @@ function updateDisplay(): void {
   const display = document.getElementById("equationDisplay");
   if (!display) return;
 
-  if (!isEditing && equation.length === 0) {
+  if (activeContextPath === null && equation.length === 0) {
     display.innerHTML = '<span class="empty-state">Click here and start typing your equation</span>';
+    display.classList.remove("active");
     return;
   }
 
-  let html = "";
+  display.classList.toggle("active", activeContextPath !== null);
+  display.innerHTML = buildEquationHtml(equation, "root");
 
-  equation.forEach((element, index) => {
-    if (isEditing && index === cursorPosition) {
+  // After rendering, ensure all fraction bars are correctly sized
+  setTimeout(() => updateAllFractionBars(), 0);
+  // Also ensure the hidden input is focused if we are in an active context
+  if (activeContextPath) {
+    (document.getElementById("hiddenInput") as HTMLInputElement)?.focus();
+  }
+}
+
+// Recursively builds the HTML for the equation.
+function buildEquationHtml(elements: EquationElement[], contextPath: string): string {
+  let html = "";
+  const isActive = contextPath === activeContextPath;
+
+  elements.forEach((element, index) => {
+    if (isActive && index === cursorPosition) {
       html += '<span class="cursor"></span>';
     }
-
+    
     if (element.type === "text") {
       const isOperator = /[+\-×÷=]/.test(element.value || "");
       const isParenthesis = /[()]/.test(element.value || "");
@@ -335,164 +429,91 @@ function updateDisplay(): void {
         html += `<span class="equation-element text-element">${element.value}</span>`;
       }
     } else if (element.type === "fraction") {
+      const numeratorPath = `${contextPath}/${element.id}/numerator`;
+      const denominatorPath = `${contextPath}/${element.id}/denominator`;
       html += `<span class="equation-element">
-        <div class="fraction" id="${element.id}" data-element-id="${element.id}">
-          <input type="text" 
-                 class="fraction-input numerator ${getSizeClass(element.numerator || "")}" 
-                 value="${element.numerator || ""}"
-                 placeholder="□"
-                 data-part="numerator">
+        <div class="fraction" id="${element.id}">
+          <div class="equation-container numerator-container ${
+            activeContextPath === numeratorPath ? "active-context" : ""
+          }" data-context-path="${numeratorPath}">
+            ${buildEquationHtml(element.numerator, numeratorPath)}
+          </div>
           <div class="fraction-bar"></div>
-          <input type="text" 
-                 class="fraction-input denominator ${getSizeClass(element.denominator || "")}" 
-                 value="${element.denominator || ""}"
-                 placeholder="□"
-                 data-part="denominator">
+          <div class="equation-container denominator-container ${
+            activeContextPath === denominatorPath ? "active-context" : ""
+          }" data-context-path="${denominatorPath}">
+            ${buildEquationHtml(element.denominator, denominatorPath)}
+          </div>
         </div>
       </span>`;
     }
   });
 
-  if (isEditing && cursorPosition === equation.length) {
+  if (isActive && cursorPosition === elements.length) {
     html += '<span class="cursor"></span>';
   }
 
-  display.innerHTML = html || "";
-
-  // Update all fraction bars to match content width
-  setTimeout(() => updateAllFractionBars(), 0);
-}
-
-// Event handler for all events on fraction inputs, using event delegation.
-function handleFractionEvent(e: Event): void {
-  const target = e.target as HTMLInputElement;
-  if (!target.matches(".fraction-input")) return;
-
-  const fractionDiv = target.closest(".fraction") as HTMLElement;
-  const id = fractionDiv.dataset.elementId;
-  const part = target.dataset.part as "numerator" | "denominator";
-
-  if (!id || !part) return;
-
-  switch (e.type) {
-    case "input":
-      updateFractionValue(id, part, target);
-      break;
-    case "keydown":
-      handleFractionKeyPress(e as KeyboardEvent, id, part);
-      break;
-    case "focusin":
-      pauseMainInput();
-      break;
-    case "focusout":
-      resumeMainInput();
-      break;
+  // If the container is empty and active, show a placeholder cursor
+  if (isActive && elements.length === 0 && html.indexOf("cursor") === -1) {
+    html += '<span class="cursor"></span>';
   }
+
+  return html;
 }
 
-// Updates the value of a fraction's numerator or denominator in the equation state.
-function updateFractionValue(id: string, part: "numerator" | "denominator", input: HTMLInputElement): void {
-  const fraction = equation.find((el) => el.id === id);
-  if (fraction && fraction.type === "fraction") {
-    fraction[part] = input.value;
+// Navigates between numerator and denominator, or out of the fraction.
+function navigateUpDown(key: "ArrowUp" | "ArrowDown") {
+  if (!activeContextPath || activeContextPath === "root") return;
 
-    // Update size class for dynamic padding/font-size
-    input.className = `fraction-input  ${getSizeClass(input.value)}`;
+  const parts = activeContextPath.split("/");
+  const currentPart = parts.pop();
+  const elementId = parts.pop();
+  const parentPath = parts.join("/");
 
-    // Update fraction bar width
-    updateAllFractionBars();
+  if (key === "ArrowDown" && currentPart === "numerator") {
+    activeContextPath = `${parentPath}/${elementId}/denominator`;
+    cursorPosition = 0;
+  } else if (key === "ArrowUp" && currentPart === "denominator") {
+    activeContextPath = `${parentPath}/${elementId}/numerator`;
+    cursorPosition = 0;
+  } else {
+    // Navigate out of the fraction entirely
+    navigateOutOfContext(key === "ArrowDown" ? "forward" : "backward");
   }
+  updateDisplay();
 }
 
-// Handles key presses within fraction inputs, e.g., for Tab navigation.
-function handleFractionKeyPress(event: KeyboardEvent, id: string, part: "numerator" | "denominator"): void {
-  const input = event.target as HTMLInputElement;
-  const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
-  const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
-  const isEmpty = input.value.length === 0;
+// Moves the cursor from a sub-context (like a numerator) to the parent context.
+function navigateOutOfContext(direction: "forward" | "backward") {
+  if (!activeContextPath || activeContextPath === "root") return;
 
-  const fractionElement = document.getElementById(id);
-  if (!fractionElement) return;
+  const parts = activeContextPath.split("/");
+  parts.pop(); // remove part name (numerator/denominator)
+  const elementId = parts.pop();
+  const parentPath = parts.join("/");
 
-  const index = equation.findIndex((el) => el.id === id);
-  if (index === -1) return;
+  const parentContext = getContext(parentPath);
+  if (!parentContext || !elementId) return;
 
-  const focusMainInput = (newCursorPosition: number) => {
-    cursorPosition = newCursorPosition;
-    const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
-    if (hiddenInput) {
-      hiddenInput.focus();
-    }
-    updateDisplay();
-  };
+  const elementIndex = parentContext.array.findIndex((el) => el.id === elementId);
+  if (elementIndex === -1) return;
 
-  switch (event.key) {
-    case "Tab":
-      event.preventDefault();
-      if (part === "numerator" && !event.shiftKey) {
-        (fractionElement.querySelector(".denominator") as HTMLInputElement)?.focus();
-      } else if (part === "denominator" && event.shiftKey) {
-        (fractionElement.querySelector(".numerator") as HTMLInputElement)?.focus();
-      } else if (part === "denominator" && !event.shiftKey) {
-        focusMainInput(index + 1);
-      }
-      break;
-
-    case "ArrowLeft":
-      if (atStart) {
-        event.preventDefault();
-        focusMainInput(index);
-      }
-      break;
-
-    case "ArrowRight":
-      if (atEnd) {
-        event.preventDefault();
-        focusMainInput(index + 1);
-      }
-      break;
-
-    case "Backspace":
-      if (isEmpty && part === "numerator") {
-        event.preventDefault();
-        equation.splice(index, 1);
-        focusMainInput(index);
-        updateParenthesesScaling();
-      }
-      break;
-  }
-}
-
-// Temporarily blurs the main hidden input when a fraction input is focused.
-function pauseMainInput(): void {
-  const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
-  if (hiddenInput) {
-    hiddenInput.blur();
-  }
-}
-
-// Resumes focus on the main hidden input when a fraction input is blurred.
-function resumeMainInput(): void {
-  setTimeout(() => {
-    if (isEditing && !document.activeElement?.classList.contains("fraction-input")) {
-      const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
-      if (hiddenInput) {
-        hiddenInput.focus();
-      }
-    }
-  }, 100);
+  activeContextPath = parentPath;
+  cursorPosition = direction === "forward" ? elementIndex + 1 : elementIndex;
+  updateDisplay();
 }
 
 // Adjusts the width of all fraction bars to match the wider of the numerator/denominator.
 function updateAllFractionBars(): void {
   document.querySelectorAll(".fraction").forEach((fractionElement) => {
-    const numerator = fractionElement.querySelector(".numerator") as HTMLElement;
-    const denominator = fractionElement.querySelector(".denominator") as HTMLElement;
+    const numerator = fractionElement.querySelector(".numerator-container") as HTMLElement;
+    const denominator = fractionElement.querySelector(".denominator-container") as HTMLElement;
     const bar = fractionElement.querySelector(".fraction-bar") as HTMLElement;
 
     if (numerator && denominator && bar) {
-      const numWidth = numerator.offsetWidth;
-      const denWidth = denominator.offsetWidth;
+      // scrollWidth is more reliable for content width than offsetWidth
+      const numWidth = numerator.scrollWidth;
+      const denWidth = denominator.scrollWidth;
       const maxWidth = Math.max(numWidth, denWidth, 20); // 20px minimum width
 
       bar.style.width = maxWidth + "px";
@@ -504,44 +525,42 @@ function updateAllFractionBars(): void {
 function clearEquation(): void {
   equation = [];
   cursorPosition = 0;
-  isEditing = false;
-  const display = document.getElementById("equationDisplay");
-  if (display) {
-    display.classList.remove("active");
-  }
+  activeContextPath = null;
   updateDisplay();
 }
 
 // Converts the internal equation representation to a LaTeX string.
 function equationToLatex(): string {
-  let latex = "";
+  function toLatexRecursive(elements: EquationElement[]): string {
+    let latex = "";
+    elements.forEach((element) => {
+      if (element.type === "text") {
+        let value = element.value || "";
+        if (value === "×") value = "\\times";
+        if (value === "÷") value = "\\div";
 
-  equation.forEach((element) => {
-    if (element.type === "text") {
-      // Convert special operators to LaTeX commands
-      let value = element.value || "";
-      if (/[a-zA-Z]/.test(value)) {
-        // Variables in math mode
-        latex += value;
-      } else if (/[+\-×÷=]/.test(value)) {
-        // Operators with spacing
-        latex += ` ${value} `;
-      } else {
-        latex += value;
+        if (/[a-zA-Z]/.test(value)) {
+          latex += value;
+        } else if (/[+\-=\\times\\div]/.test(value)) {
+          latex += ` ${value} `;
+        } else {
+          latex += value;
+        }
+      } else if (element.type === "fraction") {
+        const num = toLatexRecursive(element.numerator);
+        const den = toLatexRecursive(element.denominator);
+        latex += `\\frac{${num || " "}}{${den || " "}}`;
       }
-    } else if (element.type === "fraction") {
-      const num = element.numerator || " "; // Use a space if empty for better rendering
-      const den = element.denominator || " "; // Use a space if empty
-      latex += `\\frac{${num}}{${den}}`;
-    }
-  });
-
-  return latex.trim();
+    });
+    return latex;
+  }
+  return toLatexRecursive(equation).trim();
 }
 
 // The main function to render, prepare, and insert the equation into the Word document.
 async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
   const insertButton = document.getElementById("insert-equation-button") as HTMLButtonElement;
+  const fontSize = 12; // Default font size in points (pt)
 
   if (equation.length === 0) {
     statusDiv.textContent = "Please create an equation first.";
@@ -567,7 +586,7 @@ async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
 
     // Prepare the SVG for insertion into Office
     statusDiv.textContent = "Preparing for Word...";
-    const svgString = prepareSvgForOffice(svgElement);
+    const svgString = prepareSvgForOffice(svgElement, fontSize);
 
     // Insert the prepared SVG into the Word document
     statusDiv.textContent = "Inserting into Word...";
@@ -618,6 +637,7 @@ async function renderLatexToSvg(latex: string): Promise<SVGElement> {
       throw new Error("MathJax renderer element not found.");
     }
 
+
     // Set the LaTeX content for MathJax to process
     tempDiv.innerHTML = `\\[${latex}\\]`;
 
@@ -647,7 +667,7 @@ async function renderLatexToSvg(latex: string): Promise<SVGElement> {
 }
 
 // Cleans and modifies a MathJax-generated SVG to ensure compatibility with Word.
-function prepareSvgForOffice(svg: SVGElement): string {
+function prepareSvgForOffice(svg: SVGElement, targetPtSize: number): string {
   // Clone to avoid modifying the original
   const svgClone = svg.cloneNode(true) as SVGElement;
 
@@ -668,24 +688,15 @@ function prepareSvgForOffice(svg: SVGElement): string {
 
   const [minX, minY, vbWidth, vbHeight] = viewBox.split(" ").map(parseFloat);
 
-  // Calculate width and height
-  const scaleFactor = 0.015;
-  let width = Math.round(vbWidth * scaleFactor);
-  let height = Math.round(vbHeight * scaleFactor);
+  // Scale the SVG so that 1em in MathJax's internal units maps to the target font size in pixels.
+  // 1pt = 1/72 inch; 1 inch = 96 pixels (for screens).
+  const targetPxSize = targetPtSize * (96 / 72);
+  // MathJax's internal coordinate system is typically based on 1000 units per em.
+  const internalUnitsPerEm = 1000;
+  const scale = targetPxSize / internalUnitsPerEm;
 
-  // Ensure minimum dimensions
-  if (width < 30) {
-    const scale = 30 / width;
-    width = 30;
-    height = Math.round(height * scale);
-  }
-
-  // Ensure maximum dimensions
-  if (width > 100) {
-    const scale = 100 / width;
-    width = 100;
-    height = Math.round(height * scale);
-  }
+  const width = Math.round(vbWidth * scale);
+  const height = Math.round(vbHeight * scale);
 
   // Set proper dimensions
   svgClone.setAttribute("width", String(width));
@@ -698,7 +709,7 @@ function prepareSvgForOffice(svg: SVGElement): string {
     const rectY = parseFloat(rect.getAttribute("y") || "0");
 
     if (rectHeight < vbHeight * 0.01 && rectHeight > 0) {
-      const minVisibleHeight = vbHeight * 0.012;  // 1.2% of viewBox height
+      const minVisibleHeight = vbHeight * 0.012; // 1.2% of viewBox height
       const newHeight = Math.max(rectHeight, minVisibleHeight);
 
       const heightDiff = newHeight - rectHeight;

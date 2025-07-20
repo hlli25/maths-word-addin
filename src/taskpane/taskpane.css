@@ -55,6 +55,25 @@ body {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
+.equation-container {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px; /* Base height for an empty line */
+  min-width: 15px; /* To make empty containers clickable */
+  padding: 2px 4px;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+}
+
+#equationDisplay.equation-container {
+  display: flex;
+  border: 1px solid #c8c8c8;
+  padding: 12px;
+  min-height: 100px;
+}
+
 .equation-display.active {
   border-color: #0078d4;
   box-shadow: 0 0 0 1px #0078d4;
@@ -63,6 +82,10 @@ body {
 .equation-display .empty-state {
   color: #a0a0a0;
   font-style: italic;
+}
+
+.equation-container.active-context {
+  border-color: #0078d4;
 }
 
 /* Hidden input to capture keyboard events */
@@ -129,35 +152,60 @@ body {
   vertical-align: middle;
 }
 
-.fraction-input {
-  border: 1px solid #d1d5db;
-  border-radius: 2px;
-  background-color: #f9fafb;
-  text-align: center;
-  padding: 2px 4px;
-  font-size: 16px;
-  min-width: 20px;
-  box-sizing: border-box;
-  outline: none;
-}
-
-.fraction-input:focus {
-  border-color: #0078d4;
-  box-shadow: 0 0 0 1px #0078d4;
-}
-
 .fraction-bar {
   height: 1.5px;
   background-color: #333;
   margin: 2px 0;
   border-radius: 1px;
+  align-self: stretch;
 }
 
-/* Button Panel */
-.button-panel {
-  display: flex;
-  gap: 8px;
+
+/* Tab Panel Styling */
+.tab-panel {
   margin: 16px 0;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  font-size: 14px;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* Aligns with the nav's bottom border */
+}
+
+.tab-btn:hover {
+  background-color: #f3f2f1;
+}
+
+.tab-btn.active {
+  color: #0078d4;
+  font-weight: 600;
+  border-bottom-color: #0078d4;
+}
+
+.tab-content {
+  padding: 12px;
+}
+
+.tab-pane {
+  display: none; /* Hide inactive panes */
+  gap: 8px;
+}
+
+.tab-pane.active {
+  display: flex;
 }
 
 .builder-btn {
