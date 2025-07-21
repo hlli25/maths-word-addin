@@ -160,6 +160,123 @@ body {
   align-self: stretch;
 }
 
+.numerator-container,
+.denominator-container {
+  min-height: 1.5em;
+  min-width: 30px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 2px 4px;
+}
+
+.numerator-container:empty::before,
+.denominator-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+/* Square Root Styling */
+.sqrt {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.sqrt-symbol {
+  font-size: 2.2em; /* Larger symbol */
+  line-height: 1;
+  margin-right: 2px;
+  margin-top: 0.2em; /* Align with baseline */
+}
+
+.sqrt-radicand {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 4px;
+  border-top: 1.5px solid #333; /* The overline */
+}
+
+.sqrt-radicand .equation-container {
+  min-height: 1.5em;
+  min-width: 30px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+}
+
+.sqrt-radicand .equation-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+/* Script (Superscript/Subscript) Styling */
+.script-container {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  vertical-align: middle;
+  margin: 0 1px;
+}
+
+.base-container {
+  display: inline-flex;
+  align-items: center;
+  min-width: 20px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+}
+
+.script-subsup {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75em; /* Smaller font for scripts */
+  line-height: 1;
+  margin-left: 1px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.superscript-container {
+  min-height: 1em;
+  min-width: 20px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  vertical-align: top;
+  transform: translateY(-0.3em);
+}
+
+.subscript-container {
+  min-height: 1em;
+  min-width: 20px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  vertical-align: bottom;
+  transform: translateY(0.2em);
+}
+
+.superscript-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+  font-size: 0.8em;
+}
+
+.subscript-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+  font-size: 0.8em;
+}
+
+.base-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
 
 /* Tab Panel Styling */
 .tab-panel {
@@ -229,6 +346,18 @@ body {
   width: 40px;
   height: 40px;
   padding: 0;
+}
+
+.sup-btn sup {
+  font-size: 0.8em;
+  vertical-align: super;
+  position: relative;
+}
+
+.sub-btn sub {
+  font-size: 0.8em;
+  vertical-align: sub;
+  position: relative;
 }
 
 /* Footer Styling */

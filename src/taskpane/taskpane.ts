@@ -3,20 +3,23 @@
  * See LICENSE in the project root for license information.
  */
 
-/// <reference types="office-js" />
-
-/* eslint-disable no-undef */
-
 // Global declarations
 declare const MathJax: any;
 
 // Equation element types
 interface EquationElement {
   id: string;
-  type: "text" | "fraction";
+  type: "text" | "fraction" | "sqrt" | "script";
   value?: string;
+  // for fraction
   numerator?: EquationElement[];
   denominator?: EquationElement[];
+  // for sqrt
+  radicand?: EquationElement[];
+  // for script
+  base?: EquationElement[];
+  superscript?: EquationElement[];
+  subscript?: EquationElement[];
   scaleFactor?: number;
 }
 
@@ -89,6 +92,12 @@ function run(): void {
       insertFraction();
     } else if (button.classList.contains("operator-btn")) {
       insertOperator(button.dataset.operator || "");
+    } else if (button.classList.contains("sqrt-btn")) {
+      insertSquareRoot();
+    } else if (button.classList.contains("sup-btn")) {
+      insertScript("superscript");
+    } else if (button.classList.contains("sub-btn")) {
+      insertScript("subscript");
     }
   });
 
@@ -176,22 +185,43 @@ function handleDisplayClick(e: MouseEvent): void {
   updateDisplay();
 }
 
+// Recursively finds an element by its ID within a nested structure.
+function findElementById(elements: EquationElement[], id: string): EquationElement | null {
+  for (const el of elements) {
+    if (el.id === id) return el;
+    if (el.type === "fraction") {
+      const found = findElementById(el.numerator!, id) || findElementById(el.denominator!, id);
+      if (found) return found;
+    }
+    if (el.type === "sqrt") {
+      const found = findElementById(el.radicand!, id);
+      if (found) return found;
+    }
+    if (el.type === "script") {
+      const found =
+        findElementById(el.base || [], id) ||
+        findElementById(el.superscript || [], id) ||
+        findElementById(el.subscript || [], id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // Finds the context (the array of elements) based on a path string.
 function getContext(path: string): { array: EquationElement[]; parent: EquationElement | null } | null {
   if (path === "root") {
     return { array: equation, parent: null };
   }
-  const parts = path.split("/");
-  let currentArray: EquationElement[] = equation;
-  for (let i = 1; i < parts.length - 1; i++) {
-    const element = currentArray.find((el) => el.id === parts[i]);
-    if (!element || element.type !== "fraction") return null;
-    currentArray = element[parts[i + 1] as "numerator" | "denominator"];
-    i++;
-  }
-  const parentId = parts[parts.length - 2];
-  const parent = equation.flatMap((el) => (el.type === "fraction" ? [el, ...el.numerator, ...el.denominator] : [el])).find((el) => el.id === parentId) || null;
-  return { array: currentArray, parent };
+  const parts = path.split("/"); // e.g., ["root", "el1", "numerator"]
+  const containerName = parts.pop()!;
+  const elementId = parts.pop()!;
+
+  const element = findElementById(equation, elementId);
+  if (!element) return null;
+
+  const array = element[containerName as keyof EquationElement] as EquationElement[] | undefined;
+  return array ? { array, parent: element } : null;
 }
 
 // Handles keyboard events for the main hidden input.
@@ -292,6 +322,77 @@ function insertFraction(): void {
   updateAllParenthesesScaling();
 }
 
+// Inserts a square root element into the equation.
+function insertSquareRoot(): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  const sqrtElement: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "sqrt",
+    radicand: [],
+  };
+
+  context.array.splice(cursorPosition, 0, sqrtElement);
+
+  // Move context into the new sqrt's radicand
+  activeContextPath = `${activeContextPath}/${sqrtElement.id}/radicand`;
+  cursorPosition = 0;
+
+  updateDisplay();
+}
+
+// Inserts a script element (superscript or subscript) into the equation.
+function insertScript(type: "superscript" | "subscript"): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+    // Check if we're adjacent to an existing script element to extend it
+  const adjacentElement = context.array[cursorPosition - 1];
+  if (adjacentElement && adjacentElement.type === "script") {
+    // Extend the existing script element
+    if (type === "superscript" && !adjacentElement.superscript) {
+      adjacentElement.superscript = [];
+      activeContextPath = `${activeContextPath}/${adjacentElement.id}/superscript`;
+      cursorPosition = 0;
+      updateDisplay();
+      return;
+    }
+    if (type === "subscript" && !adjacentElement.subscript) {
+      adjacentElement.subscript = [];
+      activeContextPath = `${activeContextPath}/${adjacentElement.id}/subscript`;
+      cursorPosition = 0;
+      updateDisplay();
+      return;
+    }
+  }
+
+  // Create a new script element
+  const scriptElement: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "script",
+    base: [],
+    superscript: type === "superscript" ? [] : undefined,
+    subscript: type === "subscript" ? [] : undefined,
+  };
+
+  context.array.splice(cursorPosition, 0, scriptElement);
+
+  // Move context into the new script's base first, so user can see both blocks
+  activeContextPath = `${activeContextPath}/${scriptElement.id}/base`;
+  cursorPosition = 0;
+
+  updateDisplay();
+}
+
 // Dynamically scales parentheses if they contain a fraction.
 function updateAllParenthesesScaling(): void {
   function recurse(elements: EquationElement[]) {
@@ -308,6 +409,12 @@ function updateAllParenthesesScaling(): void {
       } else if (el.type === "fraction") {
         recurse(el.numerator);
         recurse(el.denominator);
+      } else if (el.type === "sqrt") {
+        recurse(el.radicand!);
+      } else if (el.type === "script") {
+        recurse(el.base!);
+        if (el.superscript) recurse(el.superscript);
+        if (el.subscript) recurse(el.subscript);
       }
     });
 
@@ -446,6 +553,32 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
           </div>
         </div>
       </span>`;
+    } else if (element.type === "sqrt") {
+      const radicandPath = `${contextPath}/${element.id}/radicand`;
+      html += `<span class="equation-element">
+        <div class="sqrt" id="${element.id}">
+          <span class="sqrt-symbol">√</span>
+          <div class="sqrt-radicand">
+            <div class="equation-container ${
+              activeContextPath === radicandPath ? "active-context" : ""
+            }" data-context-path="${radicandPath}">
+              ${buildEquationHtml(element.radicand!, radicandPath)}
+            </div>
+          </div>
+        </div>
+      </span>`;
+    } else if (element.type === "script") {
+      const basePath = `${contextPath}/${element.id}/base`;
+      const supPath = `${contextPath}/${element.id}/superscript`;
+      const subPath = `${contextPath}/${element.id}/subscript`;
+      html += `<span class="equation-element">
+        <div class="script-container" id="${element.id}">
+          <div class="equation-container base-container ${activeContextPath === basePath ? "active-context" : ""}" data-context-path="${basePath}">${buildEquationHtml(element.base!, basePath)}</div>
+          <div class="script-subsup">
+            ${element.superscript !== undefined ? `<div class="equation-container superscript-container ${activeContextPath === supPath ? "active-context" : ""}" data-context-path="${supPath}">${buildEquationHtml(element.superscript, supPath)}</div>` : ""}
+            ${element.subscript !== undefined ? `<div class="equation-container subscript-container ${activeContextPath === subPath ? "active-context" : ""}" data-context-path="${subPath}">${buildEquationHtml(element.subscript, subPath)}</div>` : ""}
+          </div>
+        </div></span>`;
     }
   });
 
@@ -465,19 +598,49 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
 function navigateUpDown(key: "ArrowUp" | "ArrowDown") {
   if (!activeContextPath || activeContextPath === "root") return;
 
-  const parts = activeContextPath.split("/");
-  const currentPart = parts.pop();
-  const elementId = parts.pop();
-  const parentPath = parts.join("/");
+  const parts = activeContextPath.split("/"); // e.g., ["root", "el1", "numerator"]
+  const currentPart = parts.pop()!;
+  const elementId = parts[parts.length - 1];
+  const parentPath = parts.slice(0, -1).join("/");
 
-  if (key === "ArrowDown" && currentPart === "numerator") {
-    activeContextPath = `${parentPath}/${elementId}/denominator`;
-    cursorPosition = 0;
-  } else if (key === "ArrowUp" && currentPart === "denominator") {
-    activeContextPath = `${parentPath}/${elementId}/numerator`;
-    cursorPosition = 0;
+  const context = getContext(activeContextPath);
+  if (!context || !context.parent) return;
+  const parentElement = context.parent;
+
+  if (parentElement.type === "fraction") {
+    if (key === "ArrowDown" && currentPart === "numerator") {
+      activeContextPath = `${parentPath}/${elementId}/denominator`;
+      cursorPosition = 0;
+    } else if (key === "ArrowUp" && currentPart === "denominator") {
+      activeContextPath = `${parentPath}/${elementId}/numerator`;
+      cursorPosition = 0;
+    } else {
+      navigateOutOfContext(key === "ArrowDown" ? "forward" : "backward");
+    }
+  } else if (parentElement.type === "script") {
+    if (key === "ArrowDown") {
+      if (currentPart === "base" && parentElement.superscript) {
+        activeContextPath = `${parentPath}/${elementId}/superscript`;
+        cursorPosition = 0;
+      } else if (currentPart === "superscript" && parentElement.subscript) {
+        activeContextPath = `${parentPath}/${elementId}/subscript`;
+        cursorPosition = 0;
+      } else {
+        navigateOutOfContext("forward");
+      }
+    } else if (key === "ArrowUp") {
+      if (currentPart === "subscript" && parentElement.superscript) {
+        activeContextPath = `${parentPath}/${elementId}/superscript`;
+        cursorPosition = 0;
+      } else if (currentPart === "superscript" && parentElement.base) {
+        activeContextPath = `${parentPath}/${elementId}/base`;
+        cursorPosition = parentElement.base.length;
+      } else {
+        navigateOutOfContext("backward");
+      }
+    }
   } else {
-    // Navigate out of the fraction entirely
+    // For sqrt and other simple containers, just navigate out
     navigateOutOfContext(key === "ArrowDown" ? "forward" : "backward");
   }
   updateDisplay();
@@ -550,6 +713,20 @@ function equationToLatex(): string {
         const num = toLatexRecursive(element.numerator);
         const den = toLatexRecursive(element.denominator);
         latex += `\\frac{${num || " "}}{${den || " "}}`;
+      } else if (element.type === "sqrt") {
+        const radicand = toLatexRecursive(element.radicand!);
+        latex += `\\sqrt{${radicand || " "}}`;
+      } else if (element.type === "script") {
+        const base = toLatexRecursive(element.base!);
+        latex += `{${base || " "}}`;
+        if (element.superscript && element.subscript) {
+          // Handle both superscript and subscript
+          latex += `^{${toLatexRecursive(element.superscript) || " "}}_{${toLatexRecursive(element.subscript) || " "}}`;
+        } else if (element.superscript) {
+          latex += `^{${toLatexRecursive(element.superscript) || " "}}`;
+        } else if (element.subscript) {
+          latex += `_{${toLatexRecursive(element.subscript) || " "}}`;
+        }
       }
     });
     return latex;
@@ -602,7 +779,6 @@ async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
 
       // Insert as an inline picture
       selection.insertInlinePictureFromBase64(base64Svg, Word.InsertLocation.replace);
-
       await context.sync();
     });
 
