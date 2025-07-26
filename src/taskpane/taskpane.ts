@@ -67,7 +67,13 @@ function run(): void {
 
   // Check: ensure all critical elements are present
   if (
-    !insertButton || !clearButton || !statusDiv || !hiddenInput || !equationDisplay || !tabNav || !tabContent
+    !insertButton ||
+    !clearButton ||
+    !statusDiv ||
+    !hiddenInput ||
+    !equationDisplay ||
+    !tabNav ||
+    !tabContent
   ) {
     console.error("One or more critical elements are missing from the DOM.");
     return;
@@ -80,7 +86,6 @@ function run(): void {
   // Set up hidden input for keyboard handling
   hiddenInput.addEventListener("keydown", handleKeyPress);
   hiddenInput.addEventListener("input", handleInput);
-
 
   // Use event delegation for builder buttons within the tab content
   tabContent.addEventListener("click", (e) => {
@@ -140,7 +145,13 @@ function setupDocumentClickHandler(): void {
     const target = event.target as HTMLElement;
 
     // If we are editing and the click is outside the display and the button panel, exit editing mode
-    if (activeContextPath && display && !display.contains(target) && tabPanel && !tabPanel.contains(target)) {
+    if (
+      activeContextPath &&
+      display &&
+      !display.contains(target) &&
+      tabPanel &&
+      !tabPanel.contains(target)
+    ) {
       activeContextPath = null;
       const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
       if (hiddenInput) {
@@ -209,7 +220,9 @@ function findElementById(elements: EquationElement[], id: string): EquationEleme
 }
 
 // Finds the context (the array of elements) based on a path string.
-function getContext(path: string): { array: EquationElement[]; parent: EquationElement | null } | null {
+function getContext(
+  path: string
+): { array: EquationElement[]; parent: EquationElement | null } | null {
   if (path === "root") {
     return { array: equation, parent: null };
   }
@@ -355,7 +368,7 @@ function insertScript(type: "superscript" | "subscript"): void {
   const context = getContext(activeContextPath);
   if (!context) return;
 
-    // Check if we're adjacent to an existing script element to extend it
+  // Check if we're adjacent to an existing script element to extend it
   const adjacentElement = context.array[cursorPosition - 1];
   if (adjacentElement && adjacentElement.type === "script") {
     // Extend the existing script element
@@ -495,7 +508,8 @@ function updateDisplay(): void {
   if (!display) return;
 
   if (activeContextPath === null && equation.length === 0) {
-    display.innerHTML = '<span class="empty-state">Click here and start typing your equation</span>';
+    display.innerHTML =
+      '<span class="empty-state">Click here and start typing your equation</span>';
     display.classList.remove("active");
     return;
   }
@@ -520,7 +534,7 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
     if (isActive && index === cursorPosition) {
       html += '<span class="cursor"></span>';
     }
-    
+
     if (element.type === "text") {
       const isOperator = /[+\-×÷=]/.test(element.value || "");
       const isParenthesis = /[()]/.test(element.value || "");
@@ -761,28 +775,40 @@ async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
     statusDiv.textContent = "Rendering equation...";
     const svgElement = await renderLatexToSvg(latex);
 
+    // Extract positioning information before processing
+    const positionInfo = extractSvgPositionInfo(svgElement);
+    console.log("SVG Position Info:", positionInfo);
+
     // Prepare the SVG for insertion into Office
     statusDiv.textContent = "Preparing for Word...";
-    const svgString = prepareSvgForOffice(svgElement, fontSize);
+    const { svgString, width, height, baselineOffsetPt } = prepareSvgForOffice(svgElement, fontSize, positionInfo);
+    
+    // Debug: Show positioning information
+    console.log("Calculated baseline offset:", baselineOffsetPt, "pt");
+    console.log("Has main fraction bar:", !!positionInfo.mainFractionBar);
+    if (positionInfo.mainFractionBar) {
+      console.log("Main fraction bar Y:", positionInfo.mainFractionBar.y);
+    }
 
     // Insert the prepared SVG into the Word document
     statusDiv.textContent = "Inserting into Word...";
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
 
-      // Convert SVG string to base64. Using a robust method that handles UTF-8.
+      // Convert SVG string to base64
       const base64Svg = btoa(
         encodeURIComponent(svgString).replace(/%([0-9A-F]{2})/g, (match, p1) =>
           String.fromCharCode(parseInt(p1, 16))
         )
       );
 
-      // Insert as an inline picture
-      selection.insertInlinePictureFromBase64(base64Svg, Word.InsertLocation.replace);
+      // Insert the image with positioning using OOXML
+      const ooxml = createInlineImageWithPositionOoxml(base64Svg, width, height, baselineOffsetPt);
+      selection.insertOoxml(ooxml, Word.InsertLocation.replace);
       await context.sync();
     });
 
-    statusDiv.textContent = "Equation inserted successfully!";
+    statusDiv.textContent = `Equation inserted! Baseline offset: ${baselineOffsetPt.toFixed(2)}pt`;
 
     // Clear the equation after successful insertion
     clearEquation();
@@ -813,7 +839,6 @@ async function renderLatexToSvg(latex: string): Promise<SVGElement> {
       throw new Error("MathJax renderer element not found.");
     }
 
-
     // Set the LaTeX content for MathJax to process
     tempDiv.innerHTML = `\\[${latex}\\]`;
 
@@ -843,14 +868,33 @@ async function renderLatexToSvg(latex: string): Promise<SVGElement> {
 }
 
 // Cleans and modifies a MathJax-generated SVG to ensure compatibility with Word.
-function prepareSvgForOffice(svg: SVGElement, targetPtSize: number): string {
+function prepareSvgForOffice(
+  svg: SVGElement,
+  targetPtSize: number,
+  positionInfo?: {
+    baseline: number;
+    fractionBars: Array<{ y: number; width: number; height: number; x: number; isMain: boolean }>;
+    mainFractionBar: { y: number; width: number; height: number; x: number } | null;
+    totalHeight: number;
+    totalWidth: number;
+  }
+): { svgString: string; width: number; height: number; baselineOffsetPt: number } {
   // Clone to avoid modifying the original
   const svgClone = svg.cloneNode(true) as SVGElement;
 
   // Add the standard SVG namespace
   svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
-  // Remove MathJax-specific attributes
+  // Extract baseline information from MathJax before removing style
+  const originalStyle = svgClone.getAttribute("style") || "";
+  let baselineOffset = 0;
+
+  // Parse vertical-align from MathJax style (typically in ex units)
+  const verticalAlignMatch = originalStyle.match(/vertical-align:\s*([-\d.]+)ex/);
+  if (verticalAlignMatch) {
+    baselineOffset = parseFloat(verticalAlignMatch[1]);
+  }
+
   svgClone.removeAttribute("focusable");
   svgClone.removeAttribute("aria-hidden");
   svgClone.removeAttribute("role");
@@ -863,16 +907,52 @@ function prepareSvgForOffice(svg: SVGElement, targetPtSize: number): string {
   }
 
   const [minX, minY, vbWidth, vbHeight] = viewBox.split(" ").map(parseFloat);
+  
+  // Adjust the viewBox to account for baseline positioning
+  let adjustedMinY = minY;
+  let adjustedHeight = vbHeight;
 
-  // Scale the SVG so that 1em in MathJax's internal units maps to the target font size in pixels.
-  // 1pt = 1/72 inch; 1 inch = 96 pixels (for screens).
+  // Scale the SVG so that 1em in MathJax's internal units maps to the target font size in pixels
+  // 1pt = 1/72 inch; 1 inch = 96 pixels (96 DPI)
   const targetPxSize = targetPtSize * (96 / 72);
-  // MathJax's internal coordinate system is typically based on 1000 units per em.
+  // MathJax's internal coordinate system is based on 1000 units per em
   const internalUnitsPerEm = 1000;
   const scale = targetPxSize / internalUnitsPerEm;
 
   const width = Math.round(vbWidth * scale);
   const height = Math.round(vbHeight * scale);
+
+  // Calculate baseline adjustment for proper text alignment
+  let baselineOffsetPt = 0;
+  
+  if (positionInfo) {
+    // Convert MathJax's ex units to pixels, then to points
+    // 1ex = 0.5em, 1em = targetPtSize points
+    const baselineOffsetPx = positionInfo.baseline * 0.5 * targetPtSize * (96 / 72); // Convert pt to px
+    
+    if (positionInfo.mainFractionBar) {    
+      // Use MathJax's baseline
+      baselineOffsetPt = baselineOffsetPx * (72 / 96);
+      
+      // Debug information
+      console.log("Fraction positioning (MathJax baseline method):");
+      console.log("  Font size:", targetPtSize + "pt");
+      console.log("  MathJax baseline (ex):", positionInfo.baseline);
+      console.log("  MathJax baseline (pt):", baselineOffsetPt.toFixed(2));
+      console.log("  Position half-points:", Math.round(baselineOffsetPt * 2));
+      
+      // Additional fraction bar info for reference
+      const svgCenterY = minY + vbHeight / 2;
+      const mainBarY = positionInfo.mainFractionBar.y;
+      const fractionBarOffsetFromCenter = mainBarY + (positionInfo.mainFractionBar.height / 2) - svgCenterY;
+      console.log("  [Reference] Fraction bar center Y:", mainBarY + (positionInfo.mainFractionBar.height / 2));
+      console.log("  [Reference] SVG center Y:", svgCenterY);
+      console.log("  [Reference] Bar offset from center (SVG units):", fractionBarOffsetFromCenter.toFixed(1));
+    } else {
+      // For simple equations: use MathJax's baseline
+      baselineOffsetPt = baselineOffsetPx * (72 / 96); // Convert px to pt
+    }
+  }
 
   // Set proper dimensions
   svgClone.setAttribute("width", String(width));
@@ -941,5 +1021,191 @@ function prepareSvgForOffice(svg: SVGElement, targetPtSize: number): string {
   const svgString = new XMLSerializer().serializeToString(svgClone);
 
   // Add XML declaration for a standalone SVG file
-  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>${svgString}`;
+  const finalSvgString = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>${svgString}`;
+
+  return { svgString: finalSvgString, width, height, baselineOffsetPt };
 }
+
+// Extracts positioning information from a MathJax-generated SVG
+function extractSvgPositionInfo(svg: SVGElement): {
+  baseline: number;
+  fractionBars: Array<{ y: number; width: number; height: number; x: number; isMain: boolean }>;
+  mainFractionBar: { y: number; width: number; height: number; x: number } | null;
+  totalHeight: number;
+  totalWidth: number;
+} {
+  const viewBox = svg.getAttribute("viewBox");
+  if (!viewBox) {
+    throw new Error("SVG missing viewBox attribute.");
+  }
+  
+  const [minX, minY, vbWidth, vbHeight] = viewBox.split(" ").map(parseFloat);
+  
+  // Extract baseline from MathJax style
+  const originalStyle = svg.getAttribute("style") || "";
+  let baseline = 0;
+  const verticalAlignMatch = originalStyle.match(/vertical-align:\s*([-\d.]+)ex/);
+  if (verticalAlignMatch) {
+    baseline = parseFloat(verticalAlignMatch[1]);
+  }
+  
+  // Find all fraction bars (thin horizontal rectangles)
+  const fractionBars: Array<{ y: number; width: number; height: number; x: number; isMain: boolean }> = [];
+  const rects = svg.querySelectorAll("rect");
+  
+  rects.forEach((rect) => {
+    const rectHeight = parseFloat(rect.getAttribute("height") || "0");
+    const rectWidth = parseFloat(rect.getAttribute("width") || "0");
+    const rectY = parseFloat(rect.getAttribute("y") || "0");
+    const rectX = parseFloat(rect.getAttribute("x") || "0");
+    
+    // Identify fraction bars as thin horizontal rectangles
+    // Fraction bars typically have very small height relative to the viewBox
+    if (rectHeight < vbHeight * 0.05 && rectWidth > vbWidth * 0.1) {
+      fractionBars.push({
+        y: rectY,
+        width: rectWidth,
+        height: rectHeight,
+        x: rectX,
+        isMain: false // Will be determined later
+      });
+    }
+  });
+  
+  // Identify the main fraction bar
+  let mainFractionBar: { y: number; width: number; height: number; x: number } | null = null;
+  
+  if (fractionBars.length > 0) {
+    // The main fraction bar is typically:
+    // 1. The widest one (covers the most horizontal space)
+    // 2. Positioned closest to the center vertically
+    
+    const centerY = minY + vbHeight / 2;
+    
+    // Sort by width (descending) and then by distance from center
+    const sortedBars = [...fractionBars].sort((a, b) => {
+      const widthDiff = b.width - a.width;
+      if (Math.abs(widthDiff) > vbWidth * 0.1) { // Significant width difference
+        return widthDiff;
+      }
+      // If widths are similar, prefer the one closer to center
+      const aDistFromCenter = Math.abs(a.y - centerY);
+      const bDistFromCenter = Math.abs(b.y - centerY);
+      return aDistFromCenter - bDistFromCenter;
+    });
+    
+    mainFractionBar = sortedBars[0];
+    
+    // Mark the main fraction bar
+    const mainIndex = fractionBars.findIndex(bar => 
+      bar.y === mainFractionBar!.y && 
+      bar.width === mainFractionBar!.width && 
+      bar.x === mainFractionBar!.x
+    );
+    if (mainIndex !== -1) {
+      fractionBars[mainIndex].isMain = true;
+    }
+  }
+  
+  return {
+    baseline,
+    fractionBars,
+    mainFractionBar,
+    totalHeight: vbHeight,
+    totalWidth: vbWidth
+  };
+}
+
+// Creates OOXML for an inline image with position formatting applied from the start
+function createInlineImageWithPositionOoxml(
+  base64Svg: string,
+  width: number, // in pixels
+  height: number, // in pixels
+  baselineOffsetPt: number = 0 // vertical offset in points for baseline alignment
+): string {
+  // 1 inch = 914400 EMUs
+  // 1 inch = 96 pixels (96 DPI)
+  // 1 pixel = 914400 / 96 = 9525 EMUs
+  const widthInEmus = Math.round(width * 9525);
+  const heightInEmus = Math.round(height * 9525);
+
+  const imageId = "rId" + Math.random().toString(36).substring(2, 12);
+  const documentRelsId = "rId1";
+  const uniqueId = Math.floor(Math.random() * 1000000) + 1;
+
+  // Convert points to half-points for Word's position property
+  const positionHalfPt = Math.round(baselineOffsetPt * 2);
+
+  // Create OOXML with inline image and position formatting
+  const ooxml = `
+<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">
+  <pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">
+    <pkg:xmlData>
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+        <Relationship Id="${documentRelsId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+      </Relationships>
+    </pkg:xmlData>
+  </pkg:part>
+  <pkg:part pkg:name="/word/_rels/document.xml.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">
+    <pkg:xmlData>
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+        <Relationship Id="${imageId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.svg"/>
+      </Relationships>
+    </pkg:xmlData>
+  </pkg:part>
+  <pkg:part pkg:name="/word/media/image1.svg" pkg:contentType="image/svg+xml">
+    <pkg:binaryData>${base64Svg}</pkg:binaryData>
+  </pkg:part>
+  <pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">
+    <pkg:xmlData>
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+        <w:body>
+          <w:p>
+            <w:r>
+              ${positionHalfPt !== 0 ? `<w:rPr>
+                <w:position w:val="${positionHalfPt}"/>
+              </w:rPr>` : ''}
+              <w:drawing>
+                <wp:inline distT="0" distB="0" distL="0" distR="0">
+                  <wp:extent cx="${widthInEmus}" cy="${heightInEmus}"/>
+                  <wp:effectExtent l="0" t="0" r="0" b="0"/>
+                  <wp:docPr id="${uniqueId}" name="Math Equation"/>
+                  <wp:cNvGraphicFramePr/>
+                  <a:graphic>
+                    <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                      <pic:pic>
+                        <pic:nvPicPr>
+                          <pic:cNvPr id="${uniqueId}" name="Math Equation"/>
+                          <pic:cNvPicPr/>
+                        </pic:nvPicPr>
+                        <pic:blipFill>
+                          <a:blip r:embed="${imageId}"/>
+                          <a:stretch>
+                            <a:fillRect/>
+                          </a:stretch>
+                        </pic:blipFill>
+                        <pic:spPr>
+                          <a:xfrm>
+                            <a:off x="0" y="0"/>
+                            <a:ext cx="${widthInEmus}" cy="${heightInEmus}"/>
+                          </a:xfrm>
+                          <a:prstGeom prst="rect">
+                            <a:avLst/>
+                          </a:prstGeom>
+                        </pic:spPr>
+                      </pic:pic>
+                    </a:graphicData>
+                  </a:graphic>
+                </wp:inline>
+              </w:drawing>
+            </w:r>
+          </w:p>
+        </w:body>
+      </w:document>
+    </pkg:xmlData>
+  </pkg:part>
+</pkg:package>`.trim();
+
+  return ooxml;
+}
+
