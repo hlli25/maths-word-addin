@@ -29,6 +29,9 @@ let activeContextPath: string | null = null;
 let cursorPosition = 0;
 let elementIdCounter = 0;
 
+// Selection tracking for equation loading
+let lastSelectedImageId: string | null = null;
+
 Office.onReady((info) => {
   if (info.host === Office.HostType.Word) {
     // Wait for MathJax to be ready before running the main logic
@@ -133,6 +136,9 @@ function run(): void {
   // Set up a click handler on the document to exit editing mode
   setupDocumentClickHandler();
 
+  // Set up selection handler for equation images in Word
+  setupEquationImageHandler();
+
   // Initialize display
   updateDisplay();
 }
@@ -160,6 +166,241 @@ function setupDocumentClickHandler(): void {
       updateDisplay();
     }
   });
+}
+
+// Sets up event handler for detecting selection of equation images in Word
+function setupEquationImageHandler(): void {
+  // Set up event handler to detect selection changes in Word
+  Office.context.document.addHandlerAsync(
+    Office.EventType.DocumentSelectionChanged,
+    handleSelectionChange
+  );
+}
+
+// Handles selection changes to automatically load equation images for editing
+async function handleSelectionChange(): Promise<void> {
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("inlinePictures");
+      await context.sync();
+
+      // Check if selection contains an inline picture (equation image)
+      if (selection.inlinePictures.items.length > 0) {
+        const picture = selection.inlinePictures.items[0];
+        picture.load("altTextDescription");
+        await context.sync();
+
+        const altText = picture.altTextDescription;
+        
+        if (altText && altText.trim()) {
+          // Check if this is a LaTeX equation (basic validation)
+          if (isValidLatex(altText)) {
+            // Create a unique identifier for this image (using alt text as proxy)
+            const imageId = altText;
+            
+            // Only load if this is a different equation than the last one
+            if (lastSelectedImageId !== imageId) {
+              const statusDiv = document.getElementById("status") as HTMLDivElement;
+              if (statusDiv) {
+                statusDiv.textContent = "Equation selected. Loading for editing...";
+              }
+              
+              await loadEquationFromLatex(altText);
+              lastSelectedImageId = imageId;
+            }
+          }
+        }
+      } else {
+        // No image selected, reset tracking
+        lastSelectedImageId = null;
+      }
+    });
+  } catch (error) {
+    console.log("Selection change handler error:", error);
+  }
+}
+
+// Basic validation to check if the alt text looks like LaTeX
+function isValidLatex(text: string): boolean {
+  // Check for common LaTeX patterns
+  return text.includes("\\") || text.includes("{") || text.includes("}");
+}
+
+// Converts LaTeX back to internal equation structure and loads it for editing
+async function loadEquationFromLatex(latex: string): Promise<void> {
+  try {
+    const parsedEquation = parseLatexToEquation(latex);
+    if (parsedEquation) {
+      equation = parsedEquation;
+      activeContextPath = "root";
+      cursorPosition = equation.length;
+      updateDisplay();
+      
+      // Focus the hidden input for editing
+      const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
+      if (hiddenInput) {
+        hiddenInput.focus();
+      }
+
+      const statusDiv = document.getElementById("status") as HTMLDivElement;
+      if (statusDiv) {
+        statusDiv.textContent = "Equation loaded for editing!";
+        setTimeout(() => {
+          statusDiv.textContent = "";
+        }, 3000);
+      }
+    }
+  } catch (error) {
+    console.error("Error loading equation from LaTeX:", error);
+    const statusDiv = document.getElementById("status") as HTMLDivElement;
+    if (statusDiv) {
+      statusDiv.textContent = "Error loading equation for editing.";
+      setTimeout(() => {
+        statusDiv.textContent = "";
+      }, 3000);
+    }
+  }
+}
+
+// Parses LaTeX back to internal equation structure
+function parseLatexToEquation(latex: string): EquationElement[] {
+  const result: EquationElement[] = [];
+  let i = 0;
+
+  while (i < latex.length) {
+    if (latex.substr(i, 5) === "\\frac") {
+      // Parse fraction: \frac{num}{den}
+      i += 5;
+      const numerator = parseLatexGroup(latex, i);
+      i = numerator.endIndex;
+      const denominator = parseLatexGroup(latex, i);
+      i = denominator.endIndex;
+
+      result.push({
+        id: `element-${elementIdCounter++}`,
+        type: "fraction",
+        numerator: parseLatexToEquation(numerator.content),
+        denominator: parseLatexToEquation(denominator.content)
+      });
+    } else if (latex.substr(i, 5) === "\\sqrt") {
+      // Parse square root: \sqrt{content}
+      i += 5;
+      const radicand = parseLatexGroup(latex, i);
+      i = radicand.endIndex;
+
+      result.push({
+        id: `element-${elementIdCounter++}`,
+        type: "sqrt",
+        radicand: parseLatexToEquation(radicand.content)
+      });
+    } else if (latex[i] === "^" || latex[i] === "_") {
+      // Handle superscript/subscript
+      const isSuper = latex[i] === "^";
+      i++;
+      
+      // Get the base from the previous element or create one
+      let baseElement: EquationElement;
+      if (result.length > 0 && result[result.length - 1].type === "script") {
+        baseElement = result.pop()!;
+      } else if (result.length > 0) {
+        const lastElement = result.pop()!;
+        baseElement = {
+          id: `element-${elementIdCounter++}`,
+          type: "script",
+          base: [lastElement],
+          superscript: undefined,
+          subscript: undefined
+        };
+      } else {
+        baseElement = {
+          id: `element-${elementIdCounter++}`,
+          type: "script",
+          base: [],
+          superscript: undefined,
+          subscript: undefined
+        };
+      }
+
+      const scriptContent = parseLatexGroup(latex, i);
+      i = scriptContent.endIndex;
+
+      if (isSuper) {
+        baseElement.superscript = parseLatexToEquation(scriptContent.content);
+      } else {
+        baseElement.subscript = parseLatexToEquation(scriptContent.content);
+      }
+
+      result.push(baseElement);
+    } else if (latex[i] === "{") {
+      // Parse group
+      const group = parseLatexGroup(latex, i);
+      i = group.endIndex;
+      result.push(...parseLatexToEquation(group.content));
+    } else if (latex[i] === " ") {
+      // Skip spaces
+      i++;
+    } else if (latex.substr(i, 6) === "\\times") {
+      result.push({
+        id: `element-${elementIdCounter++}`,
+        type: "text",
+        value: "×"
+      });
+      i += 6;
+    } else if (latex.substr(i, 4) === "\\div") {
+      result.push({
+        id: `element-${elementIdCounter++}`,
+        type: "text",
+        value: "÷"
+      });
+      i += 4;
+    } else {
+      // Regular character
+      result.push({
+        id: `element-${elementIdCounter++}`,
+        type: "text",
+        value: latex[i]
+      });
+      i++;
+    }
+  }
+
+  return result;
+}
+
+// Helper function to parse a LaTeX group {...}
+function parseLatexGroup(latex: string, startIndex: number): { content: string; endIndex: number } {
+  if (latex[startIndex] !== "{") {
+    // Single character
+    return {
+      content: latex[startIndex] || "",
+      endIndex: startIndex + 1
+    };
+  }
+
+  let braceCount = 0;
+  let i = startIndex;
+  
+  while (i < latex.length) {
+    if (latex[i] === "{") {
+      braceCount++;
+    } else if (latex[i] === "}") {
+      braceCount--;
+      if (braceCount === 0) {
+        return {
+          content: latex.substring(startIndex + 1, i),
+          endIndex: i + 1
+        };
+      }
+    }
+    i++;
+  }
+
+  // Unclosed brace - return what we have
+  return {
+    content: latex.substring(startIndex + 1),
+    endIndex: latex.length
+  };
 }
 
 // Handles clicks on the equation display area to enable editing.
@@ -368,27 +609,8 @@ function insertScript(type: "superscript" | "subscript"): void {
   const context = getContext(activeContextPath);
   if (!context) return;
 
-  // Check if we're adjacent to an existing script element to extend it
-  const adjacentElement = context.array[cursorPosition - 1];
-  if (adjacentElement && adjacentElement.type === "script") {
-    // Extend the existing script element
-    if (type === "superscript" && !adjacentElement.superscript) {
-      adjacentElement.superscript = [];
-      activeContextPath = `${activeContextPath}/${adjacentElement.id}/superscript`;
-      cursorPosition = 0;
-      updateDisplay();
-      return;
-    }
-    if (type === "subscript" && !adjacentElement.subscript) {
-      adjacentElement.subscript = [];
-      activeContextPath = `${activeContextPath}/${adjacentElement.id}/subscript`;
-      cursorPosition = 0;
-      updateDisplay();
-      return;
-    }
-  }
-
-  // Create a new script element
+  // Always create a new script element (don't extend existing ones)
+  // Ensures superscript and subscript buttons create separate elements
   const scriptElement: EquationElement = {
     id: `element-${elementIdCounter++}`,
     type: "script",
@@ -803,12 +1025,12 @@ async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
       );
 
       // Insert the image with positioning using OOXML
-      const ooxml = createInlineImageWithPositionOoxml(base64Svg, width, height, baselineOffsetPt);
+      const ooxml = createInlineImageWithPositionOoxml(base64Svg, width, height, baselineOffsetPt, latex);
       selection.insertOoxml(ooxml, Word.InsertLocation.replace);
       await context.sync();
     });
 
-    statusDiv.textContent = `Equation inserted! Baseline offset: ${baselineOffsetPt.toFixed(2)}pt`;
+    statusDiv.textContent = `Equation inserted.`;
 
     // Clear the equation after successful insertion
     clearEquation();
@@ -1121,7 +1343,8 @@ function createInlineImageWithPositionOoxml(
   base64Svg: string,
   width: number, // in pixels
   height: number, // in pixels
-  baselineOffsetPt: number = 0 // vertical offset in points for baseline alignment
+  baselineOffsetPt: number = 0, // vertical offset in points for baseline alignment
+  altText: string = "" // LaTeX formula as alt text for editing
 ): string {
   // 1 inch = 914400 EMUs
   // 1 inch = 96 pixels (96 DPI)
@@ -1169,13 +1392,13 @@ function createInlineImageWithPositionOoxml(
                 <wp:inline distT="0" distB="0" distL="0" distR="0">
                   <wp:extent cx="${widthInEmus}" cy="${heightInEmus}"/>
                   <wp:effectExtent l="0" t="0" r="0" b="0"/>
-                  <wp:docPr id="${uniqueId}" name="Math Equation"/>
+                  <wp:docPr id="${uniqueId}" name="Math Equation" descr="${altText}"/>
                   <wp:cNvGraphicFramePr/>
                   <a:graphic>
                     <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
                       <pic:pic>
                         <pic:nvPicPr>
-                          <pic:cNvPr id="${uniqueId}" name="Math Equation"/>
+                          <pic:cNvPr id="${uniqueId}" name="Math Equation" descr="${altText}"/>
                           <pic:cNvPicPr/>
                         </pic:nvPicPr>
                         <pic:blipFill>

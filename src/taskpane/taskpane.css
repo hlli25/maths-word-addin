@@ -126,6 +126,12 @@ body {
   padding: 0 2px;
 }
 
+.equation-element.text-element {
+  font-family: "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: normal;
+}
+
 .operator {
   margin: 0 4px;
   font-size: 20px;
@@ -185,7 +191,7 @@ body {
 }
 
 .sqrt-symbol {
-  font-size: 2.2em; /* Larger symbol */
+  font-size: 1.4em;
   line-height: 1;
   margin-right: 2px;
   margin-top: 0.2em; /* Align with baseline */
@@ -216,9 +222,10 @@ body {
 .script-container {
   display: inline-flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: flex-end;
   vertical-align: middle;
   margin: 0 1px;
+  position: relative;
 }
 
 .base-container {
@@ -233,43 +240,51 @@ body {
 .script-subsup {
   display: flex;
   flex-direction: column;
-  font-size: 0.75em; /* Smaller font for scripts */
+  font-size: 0.67em;
   line-height: 1;
   margin-left: 1px;
-  justify-content: center;
+  justify-content: space-between;
   align-items: flex-start;
+  position: relative;
+  min-height: 1.5em;
 }
 
 .superscript-container {
-  min-height: 1em;
+  min-height: 0.8em;
   min-width: 20px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
-  vertical-align: top;
-  transform: translateY(-0.3em);
+  position: relative;
+  top: -1em;
+  margin-bottom: 0.1em;
 }
 
 .subscript-container {
-  min-height: 1em;
+  min-height: 0.8em;
   min-width: 20px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
-  vertical-align: bottom;
-  transform: translateY(0.2em);
+  position: relative;
+  bottom: -0.3em;
+  margin-top: 0.1em;
 }
 
 .superscript-container:empty::before {
   content: "□";
   color: #a0a0a0;
   font-size: 0.8em;
+  display: inline-block;
+  vertical-align: top;
 }
 
 .subscript-container:empty::before {
   content: "□";
   color: #a0a0a0;
   font-size: 0.8em;
+  display: inline-block;
+  vertical-align: bottom;
 }
 
 .base-container:empty::before {
