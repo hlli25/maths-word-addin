@@ -218,6 +218,84 @@ body {
   color: #a0a0a0;
 }
 
+/* N-th Root Styling */
+.nthroot {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 2px;
+  position: relative;
+}
+
+.nthroot-index {
+  display: inline-flex;
+  font-size: 0.7em;
+  position: absolute;
+  left: -0.8em;
+  top: -1.4em;
+}
+
+.nthroot-index .equation-container {
+  min-height: 12px;
+  min-width: 12px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 1px 2px;
+}
+
+.nthroot-index .equation-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+.nthroot-symbol {
+  font-size: 1.4em;
+  line-height: 1;
+  margin-right: 0px;
+  margin-top: -0.5em;
+}
+
+.nthroot-radicand {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 4px;
+  border-top: 1.5px solid #333; /* The overline */
+}
+
+.nthroot-radicand .equation-container {
+  min-height: 15px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+}
+
+.nthroot-radicand .equation-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+/* Root button icon styling */
+.nthroot-icon {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.root-index {
+  font-size: 0.8em;
+  vertical-align: super;
+  margin-right: 1px;
+  position: relative;
+  top: -0.3em;
+}
+
+.root-radicand {
+  margin-left: 1px;
+}
+
 /* Script (Superscript/Subscript) Styling */
 .script-container {
   display: inline-flex;
@@ -418,6 +496,13 @@ body {
 
 .tab-pane.active {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
 }
 
 .builder-btn {

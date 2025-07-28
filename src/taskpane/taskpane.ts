@@ -9,13 +9,15 @@ declare const MathJax: any;
 // Equation element types
 interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "script";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
   denominator?: EquationElement[];
-  // for sqrt
+  // for sqrt and nthroot
   radicand?: EquationElement[];
+  // for nthroot
+  index?: EquationElement[];
   // for script
   base?: EquationElement[];
   superscript?: EquationElement[];
@@ -110,6 +112,8 @@ function run(): void {
       insertOperator(button.dataset.operator || "");
     } else if (button.classList.contains("sqrt-btn")) {
       insertSquareRoot();
+    } else if (button.classList.contains("nthroot-btn")) {
+      insertNthRoot();
     } else if (button.classList.contains("sup-btn")) {
       insertScript("superscript");
     } else if (button.classList.contains("sub-btn")) {
@@ -294,16 +298,45 @@ function parseLatexToEquation(latex: string): EquationElement[] {
         denominator: parseLatexToEquation(denominator.content)
       });
     } else if (latex.substr(i, 5) === "\\sqrt") {
-      // Parse square root: \sqrt{content}
+      // Parse square root: \sqrt{content} or nth root: \sqrt[index]{content}
       i += 5;
-      const radicand = parseLatexGroup(latex, i);
-      i = radicand.endIndex;
+      
+      // Check if there's an optional index [...]
+      if (i < latex.length && latex[i] === "[") {
+        // Parse nth root: \sqrt[index]{content}
+        const indexStart = i + 1;
+        let indexEnd = indexStart;
+        let bracketCount = 1;
+        
+        while (indexEnd < latex.length && bracketCount > 0) {
+          if (latex[indexEnd] === "[") bracketCount++;
+          else if (latex[indexEnd] === "]") bracketCount--;
+          indexEnd++;
+        }
+        
+        const indexContent = latex.substring(indexStart, indexEnd - 1);
+        i = indexEnd;
+        
+        const radicand = parseLatexGroup(latex, i);
+        i = radicand.endIndex;
 
-      result.push({
-        id: `element-${elementIdCounter++}`,
-        type: "sqrt",
-        radicand: parseLatexToEquation(radicand.content)
-      });
+        result.push({
+          id: `element-${elementIdCounter++}`,
+          type: "nthroot",
+          index: parseLatexToEquation(indexContent),
+          radicand: parseLatexToEquation(radicand.content)
+        });
+      } else {
+        // Parse square root: \sqrt{content}
+        const radicand = parseLatexGroup(latex, i);
+        i = radicand.endIndex;
+
+        result.push({
+          id: `element-${elementIdCounter++}`,
+          type: "sqrt",
+          radicand: parseLatexToEquation(radicand.content)
+        });
+      }
     } else if (latex[i] === "^" || latex[i] === "_") {
       // Handle superscript/subscript
       const isSuper = latex[i] === "^";
@@ -457,6 +490,10 @@ function findElementById(elements: EquationElement[], id: string): EquationEleme
     }
     if (el.type === "sqrt") {
       const found = findElementById(el.radicand!, id);
+      if (found) return found;
+    }
+    if (el.type === "nthroot") {
+      const found = findElementById(el.index!, id) || findElementById(el.radicand!, id);
       if (found) return found;
     }
     if (el.type === "script") {
@@ -616,6 +653,30 @@ function insertSquareRoot(): void {
 
   // Move context into the new sqrt's radicand
   activeContextPath = `${activeContextPath}/${sqrtElement.id}/radicand`;
+  cursorPosition = 0;
+
+  updateDisplay();
+}
+
+function insertNthRoot(): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  const nthRootElement: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "nthroot",
+    index: [],
+    radicand: [],
+  };
+
+  context.array.splice(cursorPosition, 0, nthRootElement);
+
+  // Move context into the new nthroot's index
+  activeContextPath = `${activeContextPath}/${nthRootElement.id}/index`;
   cursorPosition = 0;
 
   updateDisplay();
@@ -896,6 +957,28 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
           </div>
         </div>
       </span>`;
+    } else if (element.type === "nthroot") {
+      const indexPath = `${contextPath}/${element.id}/index`;
+      const radicandPath = `${contextPath}/${element.id}/radicand`;
+      html += `<span class="equation-element">
+        <div class="nthroot" id="${element.id}">
+          <div class="nthroot-index">
+            <div class="equation-container ${
+              activeContextPath === indexPath ? "active-context" : ""
+            }" data-context-path="${indexPath}">
+              ${buildEquationHtml(element.index!, indexPath)}
+            </div>
+          </div>
+          <span class="nthroot-symbol">√</span>
+          <div class="nthroot-radicand">
+            <div class="equation-container ${
+              activeContextPath === radicandPath ? "active-context" : ""
+            }" data-context-path="${radicandPath}">
+              ${buildEquationHtml(element.radicand!, radicandPath)}
+            </div>
+          </div>
+        </div>
+      </span>`;
     } else if (element.type === "script") {
       const basePath = `${contextPath}/${element.id}/base`;
       const supPath = `${contextPath}/${element.id}/superscript`;
@@ -1039,8 +1122,6 @@ function equationToLatex(): string {
         let value = element.value || "";
         if (value === "×") value = "\\times";
         if (value === "÷") value = "\\div";
-
-        // Don't include font size commands in LaTeX - let MathJax handle sizing
         if (/[a-zA-Z]/.test(value)) {
           latex += value;
         } else if (/[+\-=\\times\\div]/.test(value)) {
@@ -1059,6 +1140,10 @@ function equationToLatex(): string {
       } else if (element.type === "sqrt") {
         const radicand = toLatexRecursive(element.radicand!);
         latex += `\\sqrt{${radicand || " "}}`;
+      } else if (element.type === "nthroot") {
+        const index = toLatexRecursive(element.index!);
+        const radicand = toLatexRecursive(element.radicand!);
+        latex += `\\sqrt[${index || " "}]{${radicand || " "}}`;
       } else if (element.type === "script") {
         const base = toLatexRecursive(element.base!);
         latex += `{${base || " "}}`;
