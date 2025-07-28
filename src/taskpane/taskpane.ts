@@ -9,9 +9,9 @@ declare const MathJax: any;
 // Equation element types
 interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "sqrt" | "script";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "script";
   value?: string;
-  // for fraction
+  // for fraction and bevelled-fraction
   numerator?: EquationElement[];
   denominator?: EquationElement[];
   // for sqrt
@@ -28,6 +28,7 @@ let equation: EquationElement[] = [];
 let activeContextPath: string | null = null;
 let cursorPosition = 0;
 let elementIdCounter = 0;
+let globalFontSize = 12; // default font size in points
 
 // Selection tracking for equation loading
 let lastSelectedImageId: string | null = null;
@@ -67,6 +68,7 @@ function run(): void {
   const equationDisplay = document.getElementById("equationDisplay") as HTMLDivElement;
   const tabNav = document.querySelector(".tab-nav") as HTMLDivElement;
   const tabContent = document.querySelector(".tab-content") as HTMLDivElement;
+  const fontSizeInput = document.getElementById("fontSizeInput") as HTMLInputElement;
 
   // Check: ensure all critical elements are present
   if (
@@ -76,7 +78,8 @@ function run(): void {
     !hiddenInput ||
     !equationDisplay ||
     !tabNav ||
-    !tabContent
+    !tabContent ||
+    !fontSizeInput
   ) {
     console.error("One or more critical elements are missing from the DOM.");
     return;
@@ -90,6 +93,9 @@ function run(): void {
   hiddenInput.addEventListener("keydown", handleKeyPress);
   hiddenInput.addEventListener("input", handleInput);
 
+  // Set up font size input handler
+  fontSizeInput.addEventListener("input", handleFontSizeChange);
+
   // Use event delegation for builder buttons within the tab content
   tabContent.addEventListener("click", (e) => {
     const target = e.target as HTMLElement;
@@ -98,6 +104,8 @@ function run(): void {
 
     if (button.classList.contains("fraction-btn")) {
       insertFraction();
+    } else if (button.classList.contains("bevelled-fraction-btn")) {
+      insertBevelledFraction();
     } else if (button.classList.contains("operator-btn")) {
       insertOperator(button.dataset.operator || "");
     } else if (button.classList.contains("sqrt-btn")) {
@@ -106,6 +114,8 @@ function run(): void {
       insertScript("superscript");
     } else if (button.classList.contains("sub-btn")) {
       insertScript("subscript");
+    } else if (button.classList.contains("sup-sub-btn")) {
+      insertSuperscriptSubscript();
     }
   });
 
@@ -441,7 +451,7 @@ function handleDisplayClick(e: MouseEvent): void {
 function findElementById(elements: EquationElement[], id: string): EquationElement | null {
   for (const el of elements) {
     if (el.id === id) return el;
-    if (el.type === "fraction") {
+    if (el.type === "fraction" || el.type === "bevelled-fraction") {
       const found = findElementById(el.numerator!, id) || findElementById(el.denominator!, id);
       if (found) return found;
     }
@@ -512,6 +522,17 @@ function handleInput(e: Event): void {
   if (activeContextPath && char && /[0-9a-zA-Z+\-=().,]/.test(char)) {
     insertTextAtCursor(char);
     updateDisplay();
+  }
+}
+
+// Handles font size input changes
+function handleFontSizeChange(e: Event): void {
+  const input = e.target as HTMLInputElement;
+  const newSize = parseInt(input.value);
+  
+  if (!isNaN(newSize) && newSize >= 6 && newSize <= 72) {
+    globalFontSize = newSize;
+    updateDisplay(); // Update visual preview to reflect new font size
   }
 }
 
@@ -628,6 +649,59 @@ function insertScript(type: "superscript" | "subscript"): void {
   updateDisplay();
 }
 
+// Inserts a bevelled fraction element into the equation.
+function insertBevelledFraction(): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  const bevelledFraction: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "bevelled-fraction",
+    numerator: [],
+    denominator: [],
+  };
+
+  context.array.splice(cursorPosition, 0, bevelledFraction);
+  cursorPosition++;
+
+  // Move context into the new bevelled fraction's numerator
+  activeContextPath = `${activeContextPath}/${bevelledFraction.id}/numerator`;
+  cursorPosition = 0;
+
+  updateDisplay();
+  updateAllParenthesesScaling();
+}
+
+// Inserts a superscript-subscript element into the equation.
+function insertSuperscriptSubscript(): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  const scriptElement: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "script",
+    base: [],
+    superscript: [],
+    subscript: [],
+  };
+
+  context.array.splice(cursorPosition, 0, scriptElement);
+
+  // Move context into the new script's base first
+  activeContextPath = `${activeContextPath}/${scriptElement.id}/base`;
+  cursorPosition = 0;
+
+  updateDisplay();
+}
+
 // Dynamically scales parentheses if they contain a fraction.
 function updateAllParenthesesScaling(): void {
   function recurse(elements: EquationElement[]) {
@@ -641,7 +715,7 @@ function updateAllParenthesesScaling(): void {
     elements.forEach((el) => {
       if (el.type === "text" && /[()]/.test(el.value || "")) {
         el.scaleFactor = 1;
-      } else if (el.type === "fraction") {
+      } else if (el.type === "fraction" || el.type === "bevelled-fraction") {
         recurse(el.numerator);
         recurse(el.denominator);
       } else if (el.type === "sqrt") {
@@ -669,7 +743,7 @@ function updateAllParenthesesScaling(): void {
     });
 
     parenPairs.forEach((pair) => {
-      const hasFraction = pair.content.some((el) => el.type === "fraction");
+      const hasFraction = pair.content.some((el) => el.type === "fraction" || el.type === "bevelled-fraction");
       const scaleFactor = hasFraction ? 1.5 : 1;
       pair.open.element.scaleFactor = scaleFactor;
       pair.close.element.scaleFactor = scaleFactor;
@@ -761,15 +835,16 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
       const isOperator = /[+\-×÷=]/.test(element.value || "");
       const isParenthesis = /[()]/.test(element.value || "");
       const isVariable = /[a-zA-Z]/.test(element.value || "");
+      const displayFontSize = globalFontSize * 1.5; // 50% larger for better readability
 
       if (isParenthesis && element.scaleFactor && element.scaleFactor > 1) {
-        html += `<span class="equation-element parenthesis scaled" style="--scale-factor: ${element.scaleFactor}">${element.value}</span>`;
+        html += `<span class="equation-element parenthesis scaled" style="--scale-factor: ${element.scaleFactor}; font-size: ${displayFontSize}px;">${element.value}</span>`;
       } else if (isOperator) {
-        html += `<span class="equation-element operator">${element.value}</span>`;
+        html += `<span class="equation-element operator" style="font-size: ${displayFontSize}px;">${element.value}</span>`;
       } else if (isVariable) {
-        html += `<span class="equation-element text-element" style="font-style: italic;">${element.value}</span>`;
+        html += `<span class="equation-element text-element" style="font-style: italic; font-size: ${displayFontSize}px;">${element.value}</span>`;
       } else {
-        html += `<span class="equation-element text-element">${element.value}</span>`;
+        html += `<span class="equation-element text-element" style="font-size: ${displayFontSize}px;">${element.value}</span>`;
       }
     } else if (element.type === "fraction") {
       const numeratorPath = `${contextPath}/${element.id}/numerator`;
@@ -783,6 +858,24 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
           </div>
           <div class="fraction-bar"></div>
           <div class="equation-container denominator-container ${
+            activeContextPath === denominatorPath ? "active-context" : ""
+          }" data-context-path="${denominatorPath}">
+            ${buildEquationHtml(element.denominator, denominatorPath)}
+          </div>
+        </div>
+      </span>`;
+    } else if (element.type === "bevelled-fraction") {
+      const numeratorPath = `${contextPath}/${element.id}/numerator`;
+      const denominatorPath = `${contextPath}/${element.id}/denominator`;
+      html += `<span class="equation-element">
+        <div class="bevelled-fraction" id="${element.id}">
+          <div class="equation-container bevelled-numerator-container ${
+            activeContextPath === numeratorPath ? "active-context" : ""
+          }" data-context-path="${numeratorPath}">
+            ${buildEquationHtml(element.numerator, numeratorPath)}
+          </div>
+          <span class="bevelled-slash">/</span>
+          <div class="equation-container bevelled-denominator-container ${
             activeContextPath === denominatorPath ? "active-context" : ""
           }" data-context-path="${denominatorPath}">
             ${buildEquationHtml(element.denominator, denominatorPath)}
@@ -807,12 +900,21 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
       const basePath = `${contextPath}/${element.id}/base`;
       const supPath = `${contextPath}/${element.id}/superscript`;
       const subPath = `${contextPath}/${element.id}/subscript`;
+      
+      // Check if this is a combined superscript-subscript element
+      const isCombined = element.superscript !== undefined && element.subscript !== undefined;
+      const containerClass = isCombined ? "script-container combined-script" : "script-container";
+      const baseClass = isCombined ? "base-container combined-base" : "base-container";
+      const scriptsClass = isCombined ? "script-subsup combined-scripts" : "script-subsup";
+      const superClass = isCombined ? "superscript-container combined-superscript" : "superscript-container";
+      const subClass = isCombined ? "subscript-container combined-subscript" : "subscript-container";
+      
       html += `<span class="equation-element">
-        <div class="script-container" id="${element.id}">
-          <div class="equation-container base-container ${activeContextPath === basePath ? "active-context" : ""}" data-context-path="${basePath}">${buildEquationHtml(element.base!, basePath)}</div>
-          <div class="script-subsup">
-            ${element.superscript !== undefined ? `<div class="equation-container superscript-container ${activeContextPath === supPath ? "active-context" : ""}" data-context-path="${supPath}">${buildEquationHtml(element.superscript, supPath)}</div>` : ""}
-            ${element.subscript !== undefined ? `<div class="equation-container subscript-container ${activeContextPath === subPath ? "active-context" : ""}" data-context-path="${subPath}">${buildEquationHtml(element.subscript, subPath)}</div>` : ""}
+        <div class="${containerClass}" id="${element.id}">
+          <div class="equation-container ${baseClass} ${activeContextPath === basePath ? "active-context" : ""}" data-context-path="${basePath}">${buildEquationHtml(element.base!, basePath)}</div>
+          <div class="${scriptsClass}">
+            ${element.superscript !== undefined ? `<div class="equation-container ${superClass} ${activeContextPath === supPath ? "active-context" : ""}" data-context-path="${supPath}">${buildEquationHtml(element.superscript, supPath)}</div>` : ""}
+            ${element.subscript !== undefined ? `<div class="equation-container ${subClass} ${activeContextPath === subPath ? "active-context" : ""}" data-context-path="${subPath}">${buildEquationHtml(element.subscript, subPath)}</div>` : ""}
           </div>
         </div></span>`;
     }
@@ -938,6 +1040,7 @@ function equationToLatex(): string {
         if (value === "×") value = "\\times";
         if (value === "÷") value = "\\div";
 
+        // Don't include font size commands in LaTeX - let MathJax handle sizing
         if (/[a-zA-Z]/.test(value)) {
           latex += value;
         } else if (/[+\-=\\times\\div]/.test(value)) {
@@ -949,6 +1052,10 @@ function equationToLatex(): string {
         const num = toLatexRecursive(element.numerator);
         const den = toLatexRecursive(element.denominator);
         latex += `\\frac{${num || " "}}{${den || " "}}`;
+      } else if (element.type === "bevelled-fraction") {
+        const num = toLatexRecursive(element.numerator);
+        const den = toLatexRecursive(element.denominator);
+        latex += `{${num || " "}}/{${den || " "}}`;
       } else if (element.type === "sqrt") {
         const radicand = toLatexRecursive(element.radicand!);
         latex += `\\sqrt{${radicand || " "}}`;
@@ -973,7 +1080,7 @@ function equationToLatex(): string {
 // The main function to render, prepare, and insert the equation into the Word document.
 async function insertEquationToWord(statusDiv: HTMLDivElement): Promise<void> {
   const insertButton = document.getElementById("insert-equation-button") as HTMLButtonElement;
-  const fontSize = 12; // Default font size in points (pt)
+  const fontSize = globalFontSize; // Use the global font size
 
   if (equation.length === 0) {
     statusDiv.textContent = "Please create an equation first.";

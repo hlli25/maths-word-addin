@@ -57,6 +57,13 @@
         <input type="text" class="equation-input" id="hiddenInput" />
 
 
+        <!-- Font Size Control -->
+        <div class="font-controls">
+            <label for="fontSizeInput" class="font-label">Font Size:</label>
+            <input type="number" id="fontSizeInput" class="font-size-input" value="12" min="6" max="72" step="1" />
+            <span class="font-unit">pt</span>
+        </div>
+
         <!-- Button Panel with Tabs -->
         <div class="tab-panel">
             <div class="tab-nav">
@@ -65,10 +72,28 @@
             </div>
             <div class="tab-content">
                 <div id="structures" class="tab-pane active">
-                    <button class="builder-btn fraction-btn" title="Fraction">□/□</button>
+                    <button class="builder-btn fraction-btn" title="Fraction">
+                        <div class="fraction-icon">
+                            <div class="fraction-numerator">□</div>
+                            <div class="fraction-line"></div>
+                            <div class="fraction-denominator">□</div>
+                        </div>
+                    </button>
+                    <button class="builder-btn bevelled-fraction-btn" title="Bevelled Fraction">
+                        <div class="bevelled-fraction-icon">□/□</div>
+                    </button>
                     <button class="builder-btn sqrt-btn" title="Square Root">√□</button>
                     <button class="builder-btn sup-btn" title="Superscript">□<sup>□</sup></button>
                     <button class="builder-btn sub-btn" title="Subscript">□<sub>□</sub></button>
+                    <button class="builder-btn sup-sub-btn" title="Superscript-Subscript">
+                        <div class="sup-sub-icon">
+                            <div class="sup-sub-base">□</div>
+                            <div class="sup-sub-scripts">
+                                <div class="sup-sub-super">□</div>
+                                <div class="sup-sub-sub">□</div>
+                            </div>
+                        </div>
+                    </button>
                 </div>
                 <div id="operations" class="tab-pane">
                     <button class="builder-btn operator-btn" data-operator="×">×</button>

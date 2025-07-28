@@ -168,8 +168,8 @@ body {
 
 .numerator-container,
 .denominator-container {
-  min-height: 1.5em;
-  min-width: 30px;
+  min-height: 15px;
+  min-width: 15px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
@@ -193,8 +193,8 @@ body {
 .sqrt-symbol {
   font-size: 1.4em;
   line-height: 1;
-  margin-right: 2px;
-  margin-top: 0.2em; /* Align with baseline */
+  margin-right: 0px;
+  margin-top: -0.5em;
 }
 
 .sqrt-radicand {
@@ -206,8 +206,8 @@ body {
 }
 
 .sqrt-radicand .equation-container {
-  min-height: 1.5em;
-  min-width: 30px;
+  min-height: 15px;
+  min-width: 15px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
@@ -231,7 +231,8 @@ body {
 .base-container {
   display: inline-flex;
   align-items: center;
-  min-width: 20px;
+  min-height: 15px;
+  min-width: 15px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
@@ -250,31 +251,33 @@ body {
 }
 
 .superscript-container {
-  min-height: 0.8em;
-  min-width: 20px;
+  min-height: 10px;
+  min-width: 15px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
   position: relative;
   top: -1em;
   margin-bottom: 0.1em;
+  font-size: 0.67em;
 }
 
 .subscript-container {
-  min-height: 0.8em;
-  min-width: 20px;
+  min-height: 10px;
+  min-width: 15px;
   border: 1px dashed #c8c8c8;
   border-radius: 2px;
   background-color: #f9f9f9;
   position: relative;
-  bottom: -0.3em;
+  bottom: -0.5em;
   margin-top: 0.1em;
+  font-size: 0.67em;
 }
 
 .superscript-container:empty::before {
   content: "□";
   color: #a0a0a0;
-  font-size: 0.8em;
+  font-size: 0.67em;
   display: inline-block;
   vertical-align: top;
 }
@@ -282,12 +285,89 @@ body {
 .subscript-container:empty::before {
   content: "□";
   color: #a0a0a0;
-  font-size: 0.8em;
+  font-size: 0.67em;
   display: inline-block;
   vertical-align: bottom;
 }
 
 .base-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+/* Combined Superscript-Subscript Styling (for "Superscript-subscript" button) */
+.combined-script {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-end;
+  vertical-align: middle;
+  margin: 0 1px;
+  position: relative;
+}
+
+.combined-base {
+  display: inline-flex;
+  align-items: center;
+  min-height: 15px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+}
+
+.combined-scripts {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.5em;
+  line-height: 1;
+  margin-left: 1px;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  min-height: 1.5em;
+}
+
+.combined-superscript {
+  min-height: 10px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  position: relative;
+  top: 0em;
+  margin-bottom: 0;
+  font-size: 0.67em;
+}
+
+.combined-subscript {
+  min-height: 10px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  position: relative;
+  bottom: -1em;
+  margin-top: 0;
+  font-size: 0.67em;
+}
+
+.combined-superscript:empty::before {
+  content: "□";
+  color: #a0a0a0;
+  font-size: 0.67em;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.combined-subscript:empty::before {
+  content: "□";
+  color: #a0a0a0;
+  font-size: 0.67em;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.combined-base:empty::before {
   content: "□";
   color: #a0a0a0;
 }
@@ -375,6 +455,107 @@ body {
   position: relative;
 }
 
+/* Fraction Button Icon Styling */
+.fraction-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.fraction-numerator,
+.fraction-denominator {
+  font-size: 10px;
+  color: #666;
+  padding: 1px 0;
+}
+
+.fraction-line {
+  width: 16px;
+  height: 1px;
+  background-color: #666;
+  margin: 1px 0;
+}
+
+/* Bevelled Fraction Button Icon Styling */
+.bevelled-fraction-icon {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Bevelled Fraction Display Styling */
+.bevelled-fraction {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+.bevelled-numerator-container,
+.bevelled-denominator-container {
+  min-height: 1.2em;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 1px 3px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bevelled-numerator-container:empty::before,
+.bevelled-denominator-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+.bevelled-slash {
+  margin: 0 2px;
+  font-size: 1.1em;
+  color: #333;
+  font-style: italic;
+}
+
+/* Superscript-Subscript Button Icon Styling */
+.sup-sub-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #666;
+  gap: 1px;
+}
+
+.sup-sub-base {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sup-sub-scripts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  font-size: 8px;
+  line-height: 0.8;
+  margin-left: 1px;
+}
+
+.sup-sub-super {
+  margin-bottom: -1px;
+  position: relative;
+  top: -1px;
+}
+
+.sup-sub-sub {
+  margin-top: -1px;
+  position: relative;
+  bottom: -1px;
+}
+
 /* Footer Styling */
 .footer {
   margin-top: auto;
@@ -435,6 +616,44 @@ body {
   color: #333;
   margin-top: 12px;
   height: 15px; /* Reserve space to prevent layout shifts */
+}
+
+/* Font Controls Styling */
+.font-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  background-color: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+}
+
+.font-label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.font-size-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #c8c8c8;
+  border-radius: 2px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.font-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.font-unit {
+  font-size: 12px;
+  color: #666;
 }
 
 /* Instructions Section */
