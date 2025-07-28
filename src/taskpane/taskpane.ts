@@ -9,7 +9,7 @@ declare const MathJax: any;
 // Equation element types
 interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -22,6 +22,9 @@ interface EquationElement {
   base?: EquationElement[];
   superscript?: EquationElement[];
   subscript?: EquationElement[];
+  // for bracket
+  content?: EquationElement[];
+  bracketType?: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical";
   scaleFactor?: number;
 }
 
@@ -120,6 +123,11 @@ function run(): void {
       insertScript("subscript");
     } else if (button.classList.contains("sup-sub-btn")) {
       insertSuperscriptSubscript();
+    } else if (button.classList.contains("bracket-btn")) {
+      const bracketType = button.dataset.bracketType as "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical";
+      if (bracketType) {
+        insertBracket(bracketType);
+      }
     }
   });
 
@@ -397,6 +405,26 @@ function parseLatexToEquation(latex: string): EquationElement[] {
         value: "÷"
       });
       i += 4;
+    } else if (latex.substr(i, 5) === "\\left") {
+      // Parse bracket: \left(...)\right(...) or \left[...]\right] etc.
+      const bracketInfo = parseLatexBracket(latex, i);
+      if (bracketInfo) {
+        result.push({
+          id: `element-${elementIdCounter++}`,
+          type: "bracket",
+          bracketType: bracketInfo.bracketType,
+          content: parseLatexToEquation(bracketInfo.content)
+        });
+        i = bracketInfo.endIndex;
+      } else {
+        // Fallback if parsing fails
+        result.push({
+          id: `element-${elementIdCounter++}`,
+          type: "text",
+          value: latex[i]
+        });
+        i++;
+      }
     } else {
       // Regular character
       result.push({
@@ -444,6 +472,97 @@ function parseLatexGroup(latex: string, startIndex: number): { content: string; 
     content: latex.substring(startIndex + 1),
     endIndex: latex.length
   };
+}
+
+// Helper function to parse LaTeX bracket commands like \left(...\right)
+function parseLatexBracket(latex: string, startIndex: number): { bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"; content: string; endIndex: number } | null {
+  if (latex.substr(startIndex, 5) !== "\\left") {
+    return null;
+  }
+  
+  let i = startIndex + 5; // Skip \left
+  
+  // Determine bracket type from the opening bracket
+  let bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical";
+  let expectedRight: string;
+  
+  if (latex[i] === "(") {
+    bracketType = "parentheses";
+    expectedRight = "\\right)";
+    i++;
+  } else if (latex[i] === "[") {
+    bracketType = "square";
+    expectedRight = "\\right]";
+    i++;
+  } else if (latex.substr(i, 2) === "\\{") {
+    bracketType = "curly";
+    expectedRight = "\\right\\}";
+    i += 2;
+  } else if (latex.substr(i, 7) === "\\lfloor") {
+    bracketType = "floor";
+    expectedRight = "\\right\\rfloor";
+    i += 7;
+  } else if (latex.substr(i, 6) === "\\lceil") {
+    bracketType = "ceiling";
+    expectedRight = "\\right\\rceil";
+    i += 6;
+  } else if (latex.substr(i, 2) === "\\|") {
+    bracketType = "double-vertical";
+    expectedRight = "\\right\\|";
+    i += 2;
+  } else if (latex[i] === "|") {
+    bracketType = "vertical";
+    expectedRight = "\\right|";
+    i++;
+  } else {
+    return null; // Unknown bracket type
+  }
+  
+  // Find the matching \right...
+  const contentStart = i;
+  let depth = 1;
+  let j = i;
+  
+  while (j < latex.length && depth > 0) {
+    if (latex.substr(j, 5) === "\\left") {
+      depth++;
+      j += 5;
+    } else if (latex.substr(j, 6) === "\\right") {
+      depth--;
+      if (depth === 0) {
+        // Check if this is our expected closing bracket
+        if (latex.substr(j, expectedRight.length) === expectedRight) {
+          // Found our closing bracket
+          const content = latex.substring(contentStart, j);
+          return {
+            bracketType,
+            content,
+            endIndex: j + expectedRight.length
+          };
+        } else {
+          // This is not our expected closing bracket, which means mismatched brackets
+          return null;
+        }
+      } else {
+        // Find how many characters this \right command takes
+        let rightCommandLength = 6; // minimum \right
+        if (latex.substr(j, 8) === "\\right\\{" || latex.substr(j, 8) === "\\right\\|") {
+          rightCommandLength = 8;
+        } else if (latex.substr(j, 13) === "\\right\\rfloor") {
+          rightCommandLength = 13;
+        } else if (latex.substr(j, 12) === "\\right\\rceil") {
+          rightCommandLength = 12;
+        } else if (latex.substr(j, 7) === "\\right)" || latex.substr(j, 7) === "\\right]" || latex.substr(j, 7) === "\\right|") {
+          rightCommandLength = 7;
+        }
+        j += rightCommandLength;
+      }
+    } else {
+      j++;
+    }
+  }
+  
+  return null; // No matching \right found
 }
 
 // Handles clicks on the equation display area to enable editing.
@@ -501,6 +620,10 @@ function findElementById(elements: EquationElement[], id: string): EquationEleme
         findElementById(el.base || [], id) ||
         findElementById(el.superscript || [], id) ||
         findElementById(el.subscript || [], id);
+      if (found) return found;
+    }
+    if (el.type === "bracket") {
+      const found = findElementById(el.content || [], id);
       if (found) return found;
     }
   }
@@ -763,6 +886,76 @@ function insertSuperscriptSubscript(): void {
   updateDisplay();
 }
 
+// Inserts a bracket element into the equation.
+function insertBracket(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): void {
+  if (!activeContextPath) {
+    activeContextPath = "root";
+    cursorPosition = equation.length;
+  }
+  const context = getContext(activeContextPath);
+  if (!context) return;
+
+  const bracketElement: EquationElement = {
+    id: `element-${elementIdCounter++}`,
+    type: "bracket",
+    bracketType: bracketType,
+    content: [],
+  };
+
+  context.array.splice(cursorPosition, 0, bracketElement);
+  cursorPosition++;
+
+  // Move context into the new bracket's content
+  activeContextPath = `${activeContextPath}/${bracketElement.id}/content`;
+  cursorPosition = 0;
+
+  updateDisplay();
+}
+
+// Gets the left and right bracket symbols for a given bracket type.
+function getBracketSymbols(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): { left: string; right: string } {
+  switch (bracketType) {
+    case "parentheses":
+      return { left: "(", right: ")" };
+    case "square":
+      return { left: "[", right: "]" };
+    case "curly":
+      return { left: "{", right: "}" };
+    case "floor":
+      return { left: "⌊", right: "⌋" };
+    case "ceiling":
+      return { left: "⌈", right: "⌉" };
+    case "vertical":
+      return { left: "|", right: "|" };
+    case "double-vertical":
+      return { left: "‖", right: "‖" };
+    default:
+      return { left: "(", right: ")" };
+  }
+}
+
+// Gets the LaTeX symbols for brackets that require auto-sizing.
+function getBracketLatexSymbols(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): { latexLeft: string; latexRight: string } {
+  switch (bracketType) {
+    case "parentheses":
+      return { latexLeft: "\\left(", latexRight: "\\right)" };
+    case "square":
+      return { latexLeft: "\\left[", latexRight: "\\right]" };
+    case "curly":
+      return { latexLeft: "\\left\\{", latexRight: "\\right\\}" };
+    case "floor":
+      return { latexLeft: "\\left\\lfloor", latexRight: "\\right\\rfloor" };
+    case "ceiling":
+      return { latexLeft: "\\left\\lceil", latexRight: "\\right\\rceil" };
+    case "vertical":
+      return { latexLeft: "\\left|", latexRight: "\\right|" };
+    case "double-vertical":
+      return { latexLeft: "\\left\\|", latexRight: "\\right\\|" };
+    default:
+      return { latexLeft: "\\left(", latexRight: "\\right)" };
+  }
+}
+
 // Dynamically scales parentheses if they contain a fraction.
 function updateAllParenthesesScaling(): void {
   function recurse(elements: EquationElement[]) {
@@ -785,6 +978,8 @@ function updateAllParenthesesScaling(): void {
         recurse(el.base!);
         if (el.superscript) recurse(el.superscript);
         if (el.subscript) recurse(el.subscript);
+      } else if (el.type === "bracket") {
+        recurse(el.content!);
       }
     });
 
@@ -1000,6 +1195,21 @@ function buildEquationHtml(elements: EquationElement[], contextPath: string): st
             ${element.subscript !== undefined ? `<div class="equation-container ${subClass} ${activeContextPath === subPath ? "active-context" : ""}" data-context-path="${subPath}">${buildEquationHtml(element.subscript, subPath)}</div>` : ""}
           </div>
         </div></span>`;
+    } else if (element.type === "bracket") {
+      const contentPath = `${contextPath}/${element.id}/content`;
+      const { left, right } = getBracketSymbols(element.bracketType!);
+      
+      html += `<span class="equation-element">
+        <div class="bracket-container" id="${element.id}">
+          <span class="bracket-left">${left}</span>
+          <div class="equation-container bracket-content-container ${
+            activeContextPath === contentPath ? "active-context" : ""
+          }" data-context-path="${contentPath}">
+            ${buildEquationHtml(element.content!, contentPath)}
+          </div>
+          <span class="bracket-right">${right}</span>
+        </div>
+      </span>`;
     }
   });
 
@@ -1155,6 +1365,10 @@ function equationToLatex(): string {
         } else if (element.subscript) {
           latex += `_{${toLatexRecursive(element.subscript) || " "}}`;
         }
+      } else if (element.type === "bracket") {
+        const content = toLatexRecursive(element.content!);
+        const { latexLeft, latexRight } = getBracketLatexSymbols(element.bracketType!);
+        latex += `${latexLeft}${content || " "}${latexRight}`;
       }
     });
     return latex;
