@@ -16,8 +16,10 @@ export interface EquationElement {
   subscript?: EquationElement[];
   // for bracket
   content?: EquationElement[];
-  bracketType?: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical";
+  leftBracketSymbol?: string;
+  rightBracketSymbol?: string;
   scaleFactor?: number;
+  nestingDepth?: number;
 }
 
 export class EquationBuilder {
@@ -112,12 +114,14 @@ export class EquationBuilder {
     };
   }
 
-  createBracketElement(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): EquationElement {
+  createBracketElement(leftSymbol: string, rightSymbol: string): EquationElement {
     return {
       id: this.generateElementId(),
       type: "bracket",
-      bracketType: bracketType,
+      leftBracketSymbol: leftSymbol,
+      rightBracketSymbol: rightSymbol,
       content: [],
+      nestingDepth: 0,
     };
   }
 
@@ -153,6 +157,10 @@ export class EquationBuilder {
 
   updateParenthesesScaling(): void {
     this.updateParenthesesScalingRecursive(this.equation);
+  }
+
+  updateBracketNesting(): void {
+    this.updateBracketNestingRecursive(this.equation, 0);
   }
 
   private updateParenthesesScalingRecursive(elements: EquationElement[]): void {
@@ -200,6 +208,27 @@ export class EquationBuilder {
       const scaleFactor = hasFraction ? 1.5 : 1;
       pair.open.element.scaleFactor = scaleFactor;
       pair.close.element.scaleFactor = scaleFactor;
+    });
+  }
+
+  private updateBracketNestingRecursive(elements: EquationElement[], currentDepth: number): void {
+    elements.forEach((element) => {
+      if (element.type === "bracket") {
+        element.nestingDepth = currentDepth;
+        this.updateBracketNestingRecursive(element.content!, currentDepth + 1);
+      } else if (element.type === "fraction" || element.type === "bevelled-fraction") {
+        this.updateBracketNestingRecursive(element.numerator!, currentDepth);
+        this.updateBracketNestingRecursive(element.denominator!, currentDepth);
+      } else if (element.type === "sqrt") {
+        this.updateBracketNestingRecursive(element.radicand!, currentDepth);
+      } else if (element.type === "nthroot") {
+        this.updateBracketNestingRecursive(element.index!, currentDepth);
+        this.updateBracketNestingRecursive(element.radicand!, currentDepth);
+      } else if (element.type === "script") {
+        this.updateBracketNestingRecursive(element.base!, currentDepth);
+        if (element.superscript) this.updateBracketNestingRecursive(element.superscript, currentDepth);
+        if (element.subscript) this.updateBracketNestingRecursive(element.subscript, currentDepth);
+      }
     });
   }
 }

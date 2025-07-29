@@ -106,16 +106,40 @@
                     </div>
                 </div>
                 <div id="brackets" class="tab-pane">
-                    <div class="button-row">
-                        <button class="builder-btn bracket-btn" data-bracket-type="parentheses" title="Parentheses">(□)</button>
-                        <button class="builder-btn bracket-btn" data-bracket-type="square" title="Square Brackets">[□]</button>
-                        <button class="builder-btn bracket-btn" data-bracket-type="curly" title="Curly Brackets">{□}</button>
-                        <button class="builder-btn bracket-btn" data-bracket-type="floor" title="Floor Brackets">⌊□⌋</button>
+                    <div class="bracket-builder">
+                        <div class="bracket-component">
+                            <select id="leftBracketSelect" class="bracket-select">
+                                <option value=""></option>
+                                <option value="(" selected>(</option>
+                                <option value="[">[</option>
+                                <option value="{">{</option>
+                                <option value="⌊">⌊</option>
+                                <option value="⌈">⌈</option>
+                                <option value="|">|</option>
+                                <option value="‖">‖</option>
+                            </select>
+                        </div>
+                        
+                        <div class="bracket-component bracket-input">
+                            <div class="bracket-input-display">□</div>
+                        </div>
+                        
+                        <div class="bracket-component">
+                            <select id="rightBracketSelect" class="bracket-select">
+                                <option value=""></option>
+                                <option value=")" selected>)</option>
+                                <option value="]">]</option>
+                                <option value="}">}</option>
+                                <option value="⌋">⌋</option>
+                                <option value="⌉">⌉</option>
+                                <option value="|">|</option>
+                                <option value="‖">‖</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="button-row">
-                        <button class="builder-btn bracket-btn" data-bracket-type="ceiling" title="Ceiling Brackets">⌈□⌉</button>
-                        <button class="builder-btn bracket-btn" data-bracket-type="vertical" title="Vertical Bars">|□|</button>
-                        <button class="builder-btn bracket-btn" data-bracket-type="double-vertical" title="Double Vertical Bars">‖□‖</button>
+                    
+                    <div class="bracket-actions">
+                        <button id="insertCustomBracket" class="builder-btn custom-bracket-btn">Insert Bracket(s)</button>
                     </div>
                 </div>
                 <div id="operations" class="tab-pane">

@@ -219,23 +219,61 @@ export class InputHandler {
     this.updateDisplay();
   }
 
-  insertBracket(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): void {
+  insertBracket(leftSymbol: string, rightSymbol: string): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }
 
-    const bracketElement = this.equationBuilder.createBracketElement(bracketType);
+    const bracketElement = this.equationBuilder.createBracketElement(leftSymbol, rightSymbol);
     this.contextManager.insertElementAtCursor(bracketElement);
+
+    // Update bracket nesting depths
+    this.equationBuilder.updateBracketNesting();
 
     // Move context into the new bracket's content
     const contentPath = this.contextManager.getElementContextPath(bracketElement.id, "content");
     this.contextManager.enterContextPath(contentPath, 0);
 
     this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
+  insertCustomBrackets(leftBracket: string, rightBracket: string): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Handle different bracket insertion scenarios
+    if (!leftBracket && !rightBracket) {
+      return; // Nothing to insert
+    }
+
+    if (leftBracket && !rightBracket) {
+      // Insert only left bracket as text
+      this.contextManager.insertTextAtCursor(leftBracket);
+    } else if (!leftBracket && rightBracket) {
+      // Insert only right bracket as text
+      this.contextManager.insertTextAtCursor(rightBracket);
+    } else {
+      // Create bracket element for any combination
+      const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
+      this.contextManager.insertElementAtCursor(bracketElement);
+      
+      // Update bracket nesting depths
+      this.equationBuilder.updateBracketNesting();
+      
+      // Move context into the new bracket's content
+      const contentPath = this.contextManager.getElementContextPath(bracketElement.id, "content");
+      this.contextManager.enterContextPath(contentPath, 0);
+    }
+
+    this.updateDisplay();
+    this.focusHiddenInput();
   }
 
   private handleBackspace(): void {
     if (this.contextManager.handleBackspace()) {
+      this.equationBuilder.updateBracketNesting();
       this.updateDisplay();
       this.equationBuilder.updateParenthesesScaling();
     }
@@ -243,6 +281,7 @@ export class InputHandler {
 
   private handleDelete(): void {
     if (this.contextManager.handleDelete()) {
+      this.equationBuilder.updateBracketNesting();
       this.updateDisplay();
       this.equationBuilder.updateParenthesesScaling();
     }

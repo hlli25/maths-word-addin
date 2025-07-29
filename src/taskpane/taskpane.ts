@@ -146,11 +146,8 @@ class MathAddinApp {
       this.inputHandler.insertScript("subscript");
     } else if (button.classList.contains("sup-sub-btn")) {
       this.inputHandler.insertSuperscriptSubscript();
-    } else if (button.classList.contains("bracket-btn")) {
-      const bracketType = (button as HTMLElement).dataset.bracketType as any;
-      if (bracketType) {
-        this.inputHandler.insertBracket(bracketType);
-      }
+    } else if (button.classList.contains("custom-bracket-btn")) {
+      this.handleCustomBracketInsertion();
     }
   }
 
@@ -163,6 +160,21 @@ class MathAddinApp {
     if (equationDisplay) {
       this.displayRenderer.updateDisplay(equationDisplay, this.equationBuilder.getEquation());
     }
+  }
+
+  private handleCustomBracketInsertion(): void {
+    const leftSelect = document.getElementById("leftBracketSelect") as HTMLSelectElement;
+    const rightSelect = document.getElementById("rightBracketSelect") as HTMLSelectElement;
+    
+    if (!leftSelect || !rightSelect) {
+      console.error("Bracket select elements not found");
+      return;
+    }
+
+    const leftBracket = leftSelect.value;
+    const rightBracket = rightSelect.value;
+
+    this.inputHandler.insertCustomBrackets(leftBracket, rightBracket);
   }
 
   private async handleEquationLoaded(latex: string): Promise<void> {

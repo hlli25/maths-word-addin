@@ -209,7 +209,8 @@ export class DisplayRenderer {
 
   private renderBracketElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
     const contentPath = `${contextPath}/${element.id}/content`;
-    const { left, right } = this.getBracketSymbols(element.bracketType!);
+    const left = element.leftBracketSymbol || "";
+    const right = element.rightBracketSymbol || "";
     
     return `<span class="equation-element">
       <div class="bracket-container" id="${element.id}">
@@ -224,26 +225,6 @@ export class DisplayRenderer {
     </span>`;
   }
 
-  private getBracketSymbols(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): { left: string; right: string } {
-    switch (bracketType) {
-      case "parentheses":
-        return { left: "(", right: ")" };
-      case "square":
-        return { left: "[", right: "]" };
-      case "curly":
-        return { left: "{", right: "}" };
-      case "floor":
-        return { left: "⌊", right: "⌋" };
-      case "ceiling":
-        return { left: "⌈", right: "⌉" };
-      case "vertical":
-        return { left: "|", right: "|" };
-      case "double-vertical":
-        return { left: "‖", right: "‖" };
-      default:
-        return { left: "(", right: ")" };
-    }
-  }
 
   private updateAllFractionBars(): void {
     document.querySelectorAll(".fraction").forEach((fractionElement) => {
