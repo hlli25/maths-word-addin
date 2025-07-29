@@ -81,6 +81,8 @@ export class OfficeService {
       const parsedEquation = this.latexConverter.parseFromLatex(latex);
       if (parsedEquation) {
         this.equationBuilder.setEquation(parsedEquation);
+        // Update bracket nesting after loading the equation
+        this.equationBuilder.updateBracketNesting();
         return true;
       }
       return false;

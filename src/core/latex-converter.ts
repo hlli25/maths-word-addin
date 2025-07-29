@@ -60,7 +60,11 @@ export class LatexConverter {
         }
       } else if (element.type === "bracket") {
         const content = this.toLatexRecursive(element.content!);
-        const { latexLeft, latexRight } = this.getBracketLatexSymbols(element.bracketType!);
+        const { latexLeft, latexRight } = this.getBracketLatexSymbols(
+          element.leftBracketSymbol!,
+          element.rightBracketSymbol!,
+          element.nestingDepth || 0
+        );
         latex += `${latexLeft}${content || " "}${latexRight}`;
       }
     });
@@ -178,13 +182,15 @@ export class LatexConverter {
         });
         i += 4;
       } else if (latex.substr(i, 5) === "\\left") {
-        const bracketInfo = this.parseLatexBracket(latex, i);
+        const bracketInfo = this.parseBracketCommand(latex, i);
         if (bracketInfo) {
           result.push({
             id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
             type: "bracket",
-            bracketType: bracketInfo.bracketType,
-            content: this.parseLatexToEquation(bracketInfo.content)
+            leftBracketSymbol: bracketInfo.leftSymbol,
+            rightBracketSymbol: bracketInfo.rightSymbol,
+            content: this.parseLatexToEquation(bracketInfo.content),
+            nestingDepth: bracketInfo.nestingDepth
           });
           i = bracketInfo.endIndex;
         } else {
@@ -194,6 +200,32 @@ export class LatexConverter {
             value: latex[i]
           });
           i++;
+        }
+      } else if (this.isBracketCommand(latex, i)) {
+        const bracketInfo = this.parseBracketCommand(latex, i);
+        if (bracketInfo) {
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "bracket",
+            leftBracketSymbol: bracketInfo.leftSymbol,
+            rightBracketSymbol: bracketInfo.rightSymbol,
+            content: this.parseLatexToEquation(bracketInfo.content),
+            nestingDepth: bracketInfo.nestingDepth
+          });
+          i = bracketInfo.endIndex;
+        } else {
+          // Skip bracket commands that couldn't be parsed to prevent them appearing as text
+          const skipped = this.skipBracketCommand(latex, i);
+          if (skipped > 0) {
+            i += skipped;
+          } else {
+            result.push({
+              id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+              type: "text",
+              value: latex[i]
+            });
+            i++;
+          }
         }
       } else {
         result.push({
@@ -240,82 +272,87 @@ export class LatexConverter {
     };
   }
 
-  private parseLatexBracket(latex: string, startIndex: number): { bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"; content: string; endIndex: number } | null {
-    if (latex.substr(startIndex, 5) !== "\\left") {
-      return null;
+
+  private isBracketCommand(latex: string, index: number): boolean {
+    const bracketCommands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    return bracketCommands.some(cmd => latex.substr(index, cmd.length) === cmd);
+  }
+
+  private skipBracketCommand(latex: string, index: number): number {
+    const bracketCommands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
+    for (const cmd of bracketCommands) {
+      if (latex.substr(index, cmd.length) === cmd) {
+        return cmd.length;
+      }
+    }
+    return 0;
+  }
+
+  private parseBracketCommand(latex: string, startIndex: number): { leftSymbol: string; rightSymbol: string; content: string; endIndex: number; nestingDepth: number } | null {
+    // Extract the bracket command and determine nesting depth
+    let leftCommand = "";
+    let nestingDepth = 0;
+    
+    const commands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    for (let i = 0; i < commands.length; i++) {
+      if (latex.substr(startIndex, commands[i].length) === commands[i]) {
+        leftCommand = commands[i];
+        if (i > 0) { // Not \left
+          nestingDepth = commands.length - i - 1; // Reverse mapping for proper sizing
+        }
+        break;
+      }
     }
     
-    let i = startIndex + 5;
+    if (!leftCommand) return null;
     
-    let bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical";
-    let expectedRight: string;
+    let pos = startIndex + leftCommand.length;
     
-    if (latex[i] === "(") {
-      bracketType = "parentheses";
-      expectedRight = "\\right)";
-      i++;
-    } else if (latex[i] === "[") {
-      bracketType = "square";
-      expectedRight = "\\right]";
-      i++;
-    } else if (latex.substr(i, 2) === "\\{") {
-      bracketType = "curly";
-      expectedRight = "\\right\\}";
-      i += 2;
-    } else if (latex.substr(i, 7) === "\\lfloor") {
-      bracketType = "floor";
-      expectedRight = "\\right\\rfloor";
-      i += 7;
-    } else if (latex.substr(i, 6) === "\\lceil") {
-      bracketType = "ceiling";
-      expectedRight = "\\right\\rceil";
-      i += 6;
-    } else if (latex.substr(i, 2) === "\\|") {
-      bracketType = "double-vertical";
-      expectedRight = "\\right\\|";
-      i += 2;
-    } else if (latex[i] === "|") {
-      bracketType = "vertical";
-      expectedRight = "\\right|";
-      i++;
-    } else {
-      return null;
-    }
+    // Extract the left bracket symbol
+    const leftBracketInfo = this.extractBracketSymbol(latex, pos);
+    if (!leftBracketInfo) return null;
     
-    const contentStart = i;
+    pos = leftBracketInfo.endIndex;
+    const leftSymbol = leftBracketInfo.symbol;
+    
+    // Find the matching right bracket by looking for balanced brackets
+    const contentStart = pos;
     let depth = 1;
-    let j = i;
+    let j = pos;
     
     while (j < latex.length && depth > 0) {
-      if (latex.substr(j, 5) === "\\left") {
-        depth++;
-        j += 5;
-      } else if (latex.substr(j, 6) === "\\right") {
-        depth--;
-        if (depth === 0) {
-          if (latex.substr(j, expectedRight.length) === expectedRight) {
+      // Check for right bracket commands
+      if (latex.substr(j, 6) === "\\right" || 
+          latex.substr(j, 5) === "\\bigr" || 
+          latex.substr(j, 5) === "\\Bigr" || 
+          latex.substr(j, 6) === "\\biggr" || 
+          latex.substr(j, 6) === "\\Biggr") {
+        
+        let rightCommandLength = latex.substr(j, 6) === "\\right" ? 6 : 
+                                latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr" ? 6 : 5;
+        
+        const rightBracketInfo = this.extractBracketSymbol(latex, j + rightCommandLength);
+        if (rightBracketInfo) {
+          depth--;
+          if (depth === 0) {
             const content = latex.substring(contentStart, j);
             return {
-              bracketType,
+              leftSymbol,
+              rightSymbol: rightBracketInfo.symbol,
               content,
-              endIndex: j + expectedRight.length
+              endIndex: rightBracketInfo.endIndex,
+              nestingDepth
             };
-          } else {
-            return null;
           }
+          j = rightBracketInfo.endIndex;
         } else {
-          let rightCommandLength = 6;
-          if (latex.substr(j, 8) === "\\right\\{" || latex.substr(j, 8) === "\\right\\|") {
-            rightCommandLength = 8;
-          } else if (latex.substr(j, 13) === "\\right\\rfloor") {
-            rightCommandLength = 13;
-          } else if (latex.substr(j, 12) === "\\right\\rceil") {
-            rightCommandLength = 12;
-          } else if (latex.substr(j, 7) === "\\right)" || latex.substr(j, 7) === "\\right]" || latex.substr(j, 7) === "\\right|") {
-            rightCommandLength = 7;
-          }
-          j += rightCommandLength;
+          j++;
         }
+      }
+      // Check for nested left bracket commands
+      else if (this.isBracketCommand(latex, j)) {
+        depth++;
+        j++;
       } else {
         j++;
       }
@@ -324,24 +361,75 @@ export class LatexConverter {
     return null;
   }
 
-  private getBracketLatexSymbols(bracketType: "parentheses" | "square" | "curly" | "floor" | "ceiling" | "vertical" | "double-vertical"): { latexLeft: string; latexRight: string } {
-    switch (bracketType) {
-      case "parentheses":
-        return { latexLeft: "\\left(", latexRight: "\\right)" };
-      case "square":
-        return { latexLeft: "\\left[", latexRight: "\\right]" };
-      case "curly":
-        return { latexLeft: "\\left\\{", latexRight: "\\right\\}" };
-      case "floor":
-        return { latexLeft: "\\left\\lfloor", latexRight: "\\right\\rfloor" };
-      case "ceiling":
-        return { latexLeft: "\\left\\lceil", latexRight: "\\right\\rceil" };
-      case "vertical":
-        return { latexLeft: "\\left|", latexRight: "\\right|" };
-      case "double-vertical":
-        return { latexLeft: "\\left\\|", latexRight: "\\right\\|" };
-      default:
-        return { latexLeft: "\\left(", latexRight: "\\right)" };
-    }
+  private extractBracketSymbol(latex: string, startIndex: number): { symbol: string; endIndex: number } | null {
+    if (startIndex >= latex.length) return null;
+    
+    if (latex[startIndex] === "(") return { symbol: "(", endIndex: startIndex + 1 };
+    if (latex[startIndex] === ")") return { symbol: ")", endIndex: startIndex + 1 };
+    if (latex[startIndex] === "[") return { symbol: "[", endIndex: startIndex + 1 };
+    if (latex[startIndex] === "]") return { symbol: "]", endIndex: startIndex + 1 };
+    if (latex[startIndex] === "|") return { symbol: "|", endIndex: startIndex + 1 };
+    
+    if (latex.substr(startIndex, 2) === "\\{") return { symbol: "{", endIndex: startIndex + 2 };
+    if (latex.substr(startIndex, 2) === "\\}") return { symbol: "}", endIndex: startIndex + 2 };
+    if (latex.substr(startIndex, 2) === "\\|") return { symbol: "‖", endIndex: startIndex + 2 };
+    
+    if (latex.substr(startIndex, 7) === "\\lfloor") return { symbol: "⌊", endIndex: startIndex + 7 };
+    if (latex.substr(startIndex, 7) === "\\rfloor") return { symbol: "⌋", endIndex: startIndex + 7 };
+    if (latex.substr(startIndex, 6) === "\\lceil") return { symbol: "⌈", endIndex: startIndex + 6 };
+    if (latex.substr(startIndex, 6) === "\\rceil") return { symbol: "⌉", endIndex: startIndex + 6 };
+    
+    return null;
   }
+
+  private getBracketLatexSymbols(leftSymbol: string, rightSymbol: string, nestingDepth: number = 0): { latexLeft: string; latexRight: string } {
+    const sizeCommands = ["", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    const sizeCommandsRight = ["", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
+    
+    // For deeper nesting, use smaller brackets (reverse index calculation)
+    const reversedDepth = Math.max(0, sizeCommands.length - 1 - nestingDepth);
+    const sizeIndex = Math.min(reversedDepth, sizeCommands.length - 1);
+    const leftSize = sizeCommands[sizeIndex];
+    const rightSize = sizeCommandsRight[sizeIndex];
+
+    // Map symbols to LaTeX bracket commands
+    const getLatexBracket = (symbol: string, isLeft: boolean, sizeCommand: string): string => {
+      if (!symbol) return "";
+      
+      switch (symbol) {
+        case "(":
+          return sizeCommand ? `${sizeCommand}(` : "\\left(";
+        case ")":
+          return sizeCommand ? `${sizeCommand})` : "\\right)";
+        case "[":
+          return sizeCommand ? `${sizeCommand}[` : "\\left[";
+        case "]":
+          return sizeCommand ? `${sizeCommand}]` : "\\right]";
+        case "{":
+          return sizeCommand ? `${sizeCommand}\\{` : "\\left\\{";
+        case "}":
+          return sizeCommand ? `${sizeCommand}\\}` : "\\right\\}";
+        case "⌊":
+          return sizeCommand ? `${sizeCommand}\\lfloor` : "\\left\\lfloor";
+        case "⌋":
+          return sizeCommand ? `${sizeCommand}\\rfloor` : "\\right\\rfloor";
+        case "⌈":
+          return sizeCommand ? `${sizeCommand}\\lceil` : "\\left\\lceil";
+        case "⌉":
+          return sizeCommand ? `${sizeCommand}\\rceil` : "\\right\\rceil";
+        case "|":
+          return sizeCommand ? `${sizeCommand}|` : "\\left|";
+        case "‖":
+          return sizeCommand ? `${sizeCommand}\\|` : "\\left\\|";
+        default:
+          return symbol; // fallback to the raw symbol
+      }
+    };
+
+    const latexLeft = getLatexBracket(leftSymbol, true, leftSize);
+    const latexRight = getLatexBracket(rightSymbol, false, rightSize);
+
+    return { latexLeft, latexRight };
+  }
+
 }

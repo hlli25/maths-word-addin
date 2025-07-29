@@ -816,6 +816,100 @@ body {
   text-align: center;
 }
 
+/* Bracket Builder Layout */
+.bracket-builder {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+}
+
+.bracket-component {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.bracket-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
+}
+
+.bracket-select {
+  padding: 6px 8px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background-color: white;
+  font-size: 16px;
+  font-family: "Times New Roman", serif;
+  min-width: 60px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.bracket-select:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.bracket-input {
+  min-width: 80px;
+}
+
+.bracket-input-display {
+  padding: 8px 16px;
+  border: 2px solid #0078d4;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 18px;
+  font-family: "Times New Roman", serif;
+  text-align: center;
+  color: #333;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bracket-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.custom-bracket-btn {
+  background-color: #0078d4;
+  color: white;
+  border: 1px solid #0078d4;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.custom-bracket-btn:hover {
+  background-color: #005a9e;
+  border-color: #005a9e;
+}
+
+.custom-bracket-btn:disabled {
+  background-color: #c8c8c8;
+  border-color: #c8c8c8;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
 /* Hidden container used for rendering the equation with MathJax */
 #mathjax-renderer {
   visibility: hidden;
