@@ -8,7 +8,8 @@ export class LatexConverter {
   }
 
   convertToLatex(elements: EquationElement[]): string {
-    return this.toLatexRecursive(elements).trim();
+    const maxDepth = this.findMaxNestingDepth(elements);
+    return this.toLatexRecursive(elements, maxDepth).trim();
   }
 
   parseFromLatex(latex: string): EquationElement[] {
@@ -19,7 +20,38 @@ export class LatexConverter {
     return text.includes("\\") || text.includes("{") || text.includes("}");
   }
 
-  private toLatexRecursive(elements: EquationElement[]): string {
+  private findMaxNestingDepth(elements: EquationElement[]): number {
+    let maxDepth = 0;
+    
+    const findMaxDepthRecursive = (elements: EquationElement[]): number => {
+      let localMax = 0;
+      
+      elements.forEach((element) => {
+        if (element.type === "bracket") {
+          localMax = Math.max(localMax, element.nestingDepth || 0);
+          localMax = Math.max(localMax, findMaxDepthRecursive(element.content || []));
+        } else {
+          // Recursively check all array properties of the element
+          const childArrays = [
+            element.numerator, element.denominator, // fraction, bevelled-fraction
+            element.radicand, element.index,        // sqrt, nthroot
+            element.base, element.superscript, element.subscript, // script
+            element.content                         // bracket (already handled above)
+          ].filter(Boolean);
+          
+          childArrays.forEach(childArray => {
+            localMax = Math.max(localMax, findMaxDepthRecursive(childArray));
+          });
+        }
+      });
+      
+      return localMax;
+    };
+    
+    return findMaxDepthRecursive(elements);
+  }
+
+  private toLatexRecursive(elements: EquationElement[], maxDepth: number = 0): string {
     let latex = "";
     elements.forEach((element) => {
       if (element.type === "text") {
@@ -34,36 +66,37 @@ export class LatexConverter {
           latex += value;
         }
       } else if (element.type === "fraction") {
-        const num = this.toLatexRecursive(element.numerator!);
-        const den = this.toLatexRecursive(element.denominator!);
+        const num = this.toLatexRecursive(element.numerator!, maxDepth);
+        const den = this.toLatexRecursive(element.denominator!, maxDepth);
         latex += `\\frac{${num || " "}}{${den || " "}}`;
       } else if (element.type === "bevelled-fraction") {
-        const num = this.toLatexRecursive(element.numerator!);
-        const den = this.toLatexRecursive(element.denominator!);
+        const num = this.toLatexRecursive(element.numerator!, maxDepth);
+        const den = this.toLatexRecursive(element.denominator!, maxDepth);
         latex += `{${num || " "}}/{${den || " "}}`;
       } else if (element.type === "sqrt") {
-        const radicand = this.toLatexRecursive(element.radicand!);
+        const radicand = this.toLatexRecursive(element.radicand!, maxDepth);
         latex += `\\sqrt{${radicand || " "}}`;
       } else if (element.type === "nthroot") {
-        const index = this.toLatexRecursive(element.index!);
-        const radicand = this.toLatexRecursive(element.radicand!);
+        const index = this.toLatexRecursive(element.index!, maxDepth);
+        const radicand = this.toLatexRecursive(element.radicand!, maxDepth);
         latex += `\\sqrt[${index || " "}]{${radicand || " "}}`;
       } else if (element.type === "script") {
-        const base = this.toLatexRecursive(element.base!);
+        const base = this.toLatexRecursive(element.base!, maxDepth);
         latex += `{${base || " "}}`;
         if (element.superscript && element.subscript) {
-          latex += `^{${this.toLatexRecursive(element.superscript) || " "}}_{${this.toLatexRecursive(element.subscript) || " "}}`;
+          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth) || " "}}_{${this.toLatexRecursive(element.subscript, maxDepth) || " "}}`;
         } else if (element.superscript) {
-          latex += `^{${this.toLatexRecursive(element.superscript) || " "}}`;
+          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth) || " "}}`;
         } else if (element.subscript) {
-          latex += `_{${this.toLatexRecursive(element.subscript) || " "}}`;
+          latex += `_{${this.toLatexRecursive(element.subscript, maxDepth) || " "}}`;
         }
       } else if (element.type === "bracket") {
-        const content = this.toLatexRecursive(element.content!);
+        const content = this.toLatexRecursive(element.content!, maxDepth);
         const { latexLeft, latexRight } = this.getBracketLatexSymbols(
           element.leftBracketSymbol!,
           element.rightBracketSymbol!,
-          element.nestingDepth || 0
+          element.nestingDepth || 0,
+          maxDepth
         );
         latex += `${latexLeft}${content || " "}${latexRight}`;
       }
@@ -378,19 +411,46 @@ export class LatexConverter {
     if (latex.substr(startIndex, 7) === "\\rfloor") return { symbol: "⌋", endIndex: startIndex + 7 };
     if (latex.substr(startIndex, 6) === "\\lceil") return { symbol: "⌈", endIndex: startIndex + 6 };
     if (latex.substr(startIndex, 6) === "\\rceil") return { symbol: "⌉", endIndex: startIndex + 6 };
+    if (latex.substr(startIndex, 7) === "\\langle") return { symbol: "⟨", endIndex: startIndex + 7 };
+    if (latex.substr(startIndex, 7) === "\\rangle") return { symbol: "⟩", endIndex: startIndex + 7 };
     
     return null;
   }
 
-  private getBracketLatexSymbols(leftSymbol: string, rightSymbol: string, nestingDepth: number = 0): { latexLeft: string; latexRight: string } {
+  private getBracketLatexSymbols(leftSymbol: string, rightSymbol: string, nestingDepth: number = 0, maxDepth: number = 0): { latexLeft: string; latexRight: string } {
     const sizeCommands = ["", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
     const sizeCommandsRight = ["", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
     
-    // For deeper nesting, use smaller brackets (reverse index calculation)
-    const reversedDepth = Math.max(0, sizeCommands.length - 1 - nestingDepth);
-    const sizeIndex = Math.min(reversedDepth, sizeCommands.length - 1);
-    const leftSize = sizeCommands[sizeIndex];
-    const rightSize = sizeCommandsRight[sizeIndex];
+    // nestingDepth 0 = outermost, maxDepth = innermost depth
+    // Only brackets at maxDepth should use \left/\right (smallest)
+    // All others use progressively larger sizes as they get more outer
+    let leftSize: string;
+    let rightSize: string;
+    
+    if (nestingDepth === maxDepth) {
+      // Innermost brackets (at maxDepth) always use \left/\right
+      leftSize = "";
+      rightSize = "";
+    } else {
+      // Calculate size based on distance from innermost
+      // We want: outermost -> \Biggl, next -> \biggl, next -> \Bigl, next -> \bigl, innermost -> \left
+      const distanceFromInnermost = maxDepth - nestingDepth;
+      
+      if (distanceFromInnermost <= 0) {
+        // Should not happen since innermost is handled above, but fallback
+        leftSize = "";
+        rightSize = "";
+      } else if (distanceFromInnermost >= sizeCommands.length) {
+        // Very outer brackets use largest size
+        leftSize = sizeCommands[sizeCommands.length - 1]; // \Biggl
+        rightSize = sizeCommandsRight[sizeCommandsRight.length - 1]; // \Biggr
+      } else {
+        // Map distance to size: distance 1 -> \bigl, distance 2 -> \Bigl, etc.
+        // sizeCommands[0] = "", sizeCommands[1] = \bigl, so we need distanceFromInnermost as index
+        leftSize = sizeCommands[distanceFromInnermost];
+        rightSize = sizeCommandsRight[distanceFromInnermost];
+      }
+    }
 
     // Map symbols to LaTeX bracket commands
     const getLatexBracket = (symbol: string, isLeft: boolean, sizeCommand: string): string => {
@@ -421,6 +481,10 @@ export class LatexConverter {
           return sizeCommand ? `${sizeCommand}|` : "\\left|";
         case "‖":
           return sizeCommand ? `${sizeCommand}\\|` : "\\left\\|";
+        case "⟨":
+          return sizeCommand ? `${sizeCommand}\\langle` : "\\left\\langle";
+        case "⟩":
+          return sizeCommand ? `${sizeCommand}\\rangle` : "\\right\\rangle";
         default:
           return symbol; // fallback to the raw symbol
       }
