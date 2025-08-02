@@ -174,9 +174,81 @@ export class InputHandler {
       this.contextManager.enterRootContext();
     }
 
-    this.contextManager.insertTextAtCursor(operator);
+    // Convert LaTeX commands to Unicode symbols for display
+    const unicodeSymbol = this.convertLatexToUnicode(operator);
+    this.contextManager.insertTextAtCursor(unicodeSymbol);
     this.updateDisplay();
     this.focusHiddenInput();
+  }
+
+  private convertLatexToUnicode(latex: string): string {
+    const latexToUnicodeMap: { [key: string]: string } = {
+      "\\times": "×",
+      "\\div": "÷",
+      "\\pm": "±",
+      "\\mp": "∓",
+      "\\cdot": "·",
+      "\\ast": "∗",
+      "\\star": "⋆",
+      "\\circ": "∘",
+      "\\bullet": "•",
+      "\\neq": "≠",
+      "\\sim": "∼",
+      "\\simeq": "≃",
+      "\\approx": "≈",
+      "\\equiv": "≡",
+      "\\cong": "≅",
+      "\\ncong": "≇",
+      "\\propto": "∝",
+      "\\leq": "≤",
+      "\\geq": "≥",
+      "\\nless": "≮",
+      "\\ngtr": "≯",
+      "\\nleq": "≰",
+      "\\ngeq": "≱",
+      "\\prec": "≺",
+      "\\succ": "≻",
+      "\\preceq": "⪯",
+      "\\succeq": "⪰",
+      "\\ll": "≪",
+      "\\gg": "≫",
+      "\\cap": "∩",
+      "\\cup": "∪",
+      "\\setminus": "∖",
+      "\\in": "∈",
+      "\\ni": "∋",
+      "\\notin": "∉",
+      "\\subset": "⊂",
+      "\\supset": "⊃",
+      "\\subseteq": "⊆",
+      "\\supseteq": "⊇",
+      "\\nsubseteq": "⊈",
+      "\\nsupseteq": "⊉",
+      "\\subsetneq": "⊊",
+      "\\supsetneq": "⊋",
+      "\\oplus": "⊕",
+      "\\ominus": "⊖",
+      "\\otimes": "⊗",
+      "\\oslash": "⊘",
+      "\\odot": "⊙",
+      "\\triangleleft": "◁",
+      "\\triangleright": "▷",
+      "\\wr": "≀",
+      "\\wedge": "∧",
+      "\\vee": "∨",
+      "\\vdash": "⊢",
+      "\\models": "⊨",
+      "\\top": "⊤",
+      "\\bot": "⊥",
+      "\\bowtie": "⋈",
+      "\\diamond": "⋄",
+      "\\asymp": "≍",
+      "\\triangleq": "≜",
+      "\\therefore": "∴",
+      "\\because": "∵"
+    };
+
+    return latexToUnicodeMap[latex] || latex;
   }
 
   insertFraction(): void {

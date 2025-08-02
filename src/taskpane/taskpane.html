@@ -74,39 +74,67 @@
             <div class="tab-nav">
                 <button class="tab-btn active" data-tab="structures">Structures</button>
                 <button class="tab-btn" data-tab="brackets">Brackets</button>
-                <button class="tab-btn" data-tab="operations">Operations</button>
+                <button class="tab-btn" data-tab="operators">Operators</button>
             </div>
             <div class="tab-content">
                 <div id="structures" class="tab-pane active">
                     <div class="button-row">
                         <button class="builder-btn fraction-btn" title="Fraction">
-                            <div class="fraction-icon">
-                                <div class="fraction-numerator">□</div>
-                                <div class="fraction-line"></div>
-                                <div class="fraction-denominator">□</div>
-                            </div>
+                            <math>
+                                <mfrac>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </mfrac>
+                            </math>
                         </button>
                         <button class="builder-btn bevelled-fraction-btn" title="Bevelled Fraction">
-                            <div class="bevelled-fraction-icon">□/□</div>
+                            <math>
+                                <mi>□</mi>
+                                <mo>/</mo>
+                                <mi>□</mi>
+                            </math>
                         </button>
-                        <button class="builder-btn sqrt-btn" title="Square Root">√□</button>
+                        <button class="builder-btn sqrt-btn" title="Square Root">
+                            <math>
+                                <msqrt>
+                                    <mi>□</mi>
+                                </msqrt>
+                            </math>
+                        </button>
                         <button class="builder-btn nthroot-btn" title="Root">
-                            <div class="nthroot-icon">
-                                <span class="root-index">□</span>√<span class="root-radicand">□</span>
-                            </div>
+                            <math>
+                                <mroot>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </mroot>
+                            </math>
                         </button>
                     </div>
                     <div class="button-row">
-                        <button class="builder-btn sup-btn" title="Superscript">□<sup>□</sup></button>
-                        <button class="builder-btn sub-btn" title="Subscript">□<sub>□</sub></button>
+                        <button class="builder-btn sup-btn" title="Superscript">
+                            <math>
+                                <msup>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </msup>
+                            </math>
+                        </button>
+                        <button class="builder-btn sub-btn" title="Subscript">
+                            <math>
+                                <msub>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </msub>
+                            </math>
+                        </button>
                         <button class="builder-btn sup-sub-btn" title="Superscript-Subscript">
-                            <div class="sup-sub-icon">
-                                <div class="sup-sub-base">□</div>
-                                <div class="sup-sub-scripts">
-                                    <div class="sup-sub-super">□</div>
-                                    <div class="sup-sub-sub">□</div>
-                                </div>
-                            </div>
+                            <math>
+                                <msubsup>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </msubsup>
+                            </math>
                         </button>
                     </div>
                 </div>
@@ -149,9 +177,92 @@
                         <button id="insertCustomBracket" class="builder-btn custom-bracket-btn">Insert Bracket(s)</button>
                     </div>
                 </div>
-                <div id="operations" class="tab-pane">
-                    <button class="builder-btn operator-btn" data-operator="×">×</button>
-                    <button class="builder-btn operator-btn" data-operator="÷">÷</button>
+                <div id="operators" class="tab-pane">
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\times"><math><mo>×</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\div"><math><mo>÷</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\pm"><math><mo>±</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\mp"><math><mo>∓</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\cdot"><math><mo>·</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ast"><math><mo>∗</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\star"><math><mo>⋆</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\circ"><math><mo>∘</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\bullet"><math><mo>•</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\neq"><math><mo>≠</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\sim"><math><mo>∼</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\simeq"><math><mo>≃</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\approx"><math><mo>≈</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\equiv"><math><mo>≡</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\cong"><math><mo>≅</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ncong"><math><mo>≇</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\propto"><math><mo>∝</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\leq"><math><mo>≤</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\geq"><math><mo>≥</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\nless"><math><mo>≮</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ngtr"><math><mo>≯</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\nleq"><math><mo>≰</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ngeq"><math><mo>≱</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\prec"><math><mo>≺</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\succ"><math><mo>≻</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\preceq"><math><mo>⪯</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\succeq"><math><mo>⪰</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ll"><math><mo>≪</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\gg"><math><mo>≫</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\cap"><math><mo>∩</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\cup"><math><mo>∪</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\setminus"><math><mo>∖</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\in"><math><mo>∈</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ni"><math><mo>∋</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\notin"><math><mo>∉</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\subset"><math><mo>⊂</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\supset"><math><mo>⊃</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\subseteq"><math><mo>⊆</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\supseteq"><math><mo>⊇</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\nsubseteq"><math><mo>⊈</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\nsupseteq"><math><mo>⊉</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\subsetneq"><math><mo>⊊</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\supsetneq"><math><mo>⊋</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\oplus"><math><mo>⊕</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\ominus"><math><mo>⊖</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\otimes"><math><mo>⊗</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\oslash"><math><mo>⊘</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\odot"><math><mo>⊙</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\triangleleft"><math><mo>◁</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\triangleright"><math><mo>▷</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\wr"><math><mo>≀</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\wedge"><math><mo>∧</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\vee"><math><mo>∨</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\vdash"><math><mo>⊢</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\models"><math><mo>⊨</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\top"><math><mo>⊤</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\bot"><math><mo>⊥</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\bowtie"><math><mo>⋈</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\diamond"><math><mo>⋄</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\asymp"><math><mo>≍</mo></math></button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\triangleq"><math><mo>≜</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\therefore"><math><mo>∴</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\because"><math><mo>∵</mo></math></button>
+                    </div>
                 </div>
             </div>
         </div>
