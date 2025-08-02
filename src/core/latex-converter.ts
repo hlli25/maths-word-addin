@@ -17,7 +17,25 @@ export class LatexConverter {
   }
 
   isValidLatex(text: string): boolean {
-    return text.includes("\\") || text.includes("{") || text.includes("}");
+    // Check for LaTeX commands
+    if (text.includes("\\") || text.includes("{") || text.includes("}")) {
+      return true;
+    }
+    
+    // For simple mathematical expressions, be more specific:
+    // Must contain at least one operator or variable pattern
+    const trimmed = text.trim();
+    
+    // Check if it contains operators
+    const hasMathOperators = /[+\-=×÷]/.test(trimmed);
+    
+    // Check if it has variable patterns (letter followed by number, or standalone variables)
+    const hasVariables = /[a-zA-Z][0-9]|[a-zA-Z]\s*[+\-=×÷]|[+\-=×÷]\s*[a-zA-Z]/.test(trimmed);
+    
+    // Only accept if it looks like a mathematical expression and contains only valid characters
+    const hasValidCharsOnly = /^[a-zA-Z0-9+\-=×÷\s\(\)\.]+$/.test(trimmed);
+    
+    return hasValidCharsOnly && (hasMathOperators || hasVariables) && trimmed.length > 0;
   }
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
@@ -53,18 +71,41 @@ export class LatexConverter {
 
   private toLatexRecursive(elements: EquationElement[], maxDepth: number = 0): string {
     let latex = "";
-    elements.forEach((element) => {
+    
+    // Group consecutive text elements with same formatting
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      
       if (element.type === "text") {
-        let value = element.value || "";
-        if (value === "×") value = "\\times";
-        if (value === "÷") value = "\\div";
-        if (/[a-zA-Z]/.test(value)) {
-          latex += value;
-        } else if (/[+\-=\\times\\div]/.test(value)) {
-          latex += ` ${value} `;
-        } else {
-          latex += value;
+        // Look ahead to group consecutive text elements with same formatting
+        let groupedText = "";
+        let j = i;
+        let currentBold = element.bold;
+        
+        while (j < elements.length && 
+               elements[j].type === "text" && 
+               elements[j].bold === currentBold) {
+          let value = elements[j].value || "";
+          if (value === "×") value = "\\times";
+          if (value === "÷") value = "\\div";
+          
+          // Add spacing for operators
+          if (/[+\-=\\times\\div]/.test(value)) {
+            groupedText += ` ${value} `;
+          } else {
+            groupedText += value;
+          }
+          j++;
         }
+        
+        // Apply formatting to the grouped text
+        let formattedText = groupedText;
+        if (currentBold) {
+          formattedText = `\\mathbf{${groupedText}}`;
+        }
+        
+        latex += formattedText;
+        i = j - 1; // Skip the elements which have been already processed
       } else if (element.type === "fraction") {
         const num = this.toLatexRecursive(element.numerator!, maxDepth);
         const den = this.toLatexRecursive(element.denominator!, maxDepth);
@@ -100,7 +141,7 @@ export class LatexConverter {
         );
         latex += `${latexLeft}${content || " "}${latexRight}`;
       }
-    });
+    }
     return latex;
   }
 
@@ -214,6 +255,63 @@ export class LatexConverter {
           value: "÷"
         });
         i += 4;
+      } else if (latex.substr(i, 7) === "\\mathbf") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.bold = true;
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 7) === "\\mathit") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.italic = true;
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 10) === "\\textcolor") {
+        i += 10;
+        const colorGroup = this.parseLatexGroup(latex, i);
+        i = colorGroup.endIndex;
+        const contentGroup = this.parseLatexGroup(latex, i);
+        i = contentGroup.endIndex;
+        const formattedElements = this.parseLatexToEquation(contentGroup.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.color = colorGroup.content;
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 10) === "\\underline") {
+        i += 10;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.underline = "single";
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 7) === "\\cancel") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.strikethrough = true;
+          }
+        });
+        result.push(...formattedElements);
       } else if (latex.substr(i, 5) === "\\left") {
         const bracketInfo = this.parseBracketCommand(latex, i);
         if (bracketInfo) {
@@ -403,6 +501,16 @@ export class LatexConverter {
     if (latex[startIndex] === "]") return { symbol: "]", endIndex: startIndex + 1 };
     if (latex[startIndex] === "|") return { symbol: "|", endIndex: startIndex + 1 };
     
+    // Only treat "." as invisible bracket if immediately following a bracket command
+    if (latex[startIndex] === ".") {
+      const bracketCommands = ["\\left", "\\right", "\\bigl", "\\bigr", "\\Bigl", "\\Bigr", "\\biggl", "\\biggr", "\\Biggl", "\\Biggr"];
+      for (const cmd of bracketCommands) {
+        if (startIndex >= cmd.length && latex.substr(startIndex - cmd.length, cmd.length) === cmd) {
+          return { symbol: ".", endIndex: startIndex + 1 };
+        }
+      }
+    }
+    
     if (latex.substr(startIndex, 2) === "\\{") return { symbol: "{", endIndex: startIndex + 2 };
     if (latex.substr(startIndex, 2) === "\\}") return { symbol: "}", endIndex: startIndex + 2 };
     if (latex.substr(startIndex, 2) === "\\|") return { symbol: "‖", endIndex: startIndex + 2 };
@@ -485,6 +593,8 @@ export class LatexConverter {
           return sizeCommand ? `${sizeCommand}\\langle` : "\\left\\langle";
         case "⟩":
           return sizeCommand ? `${sizeCommand}\\rangle` : "\\right\\rangle";
+        case ".":
+          return sizeCommand ? `${sizeCommand}.` : isLeft ? "\\left." : "\\right.";
         default:
           return symbol; // fallback to the raw symbol
       }

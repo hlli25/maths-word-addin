@@ -20,6 +20,12 @@ export interface EquationElement {
   rightBracketSymbol?: string;
   scaleFactor?: number;
   nestingDepth?: number;
+  // text formatting
+  bold?: boolean;
+  italic?: boolean;
+  underline?: "single" | "double" | "wave";
+  strikethrough?: boolean;
+  color?: string;
 }
 
 export class EquationBuilder {

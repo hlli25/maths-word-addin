@@ -21,7 +21,7 @@
     <script>
         window.MathJax = {
             tex: {
-                packages: {'[+]': ['textmacros']},
+                packages: {'[+]': ['textmacros', 'cancel', 'color', 'ams']},
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
             },
@@ -51,17 +51,22 @@
         <p class="ms-fontSize-m ms-fontWeight-regular">Build your equation using the visual editor below.</p>
         
         <!-- Equation Builder Display -->
-        <div class="equation-display equation-container" id="equationDisplay">
+        <div class="equation-display equation-container" id="equationDisplay" data-context-path="root">
             <span class="empty-state">Click here and start typing your equation</span>
         </div>
         <input type="text" class="equation-input" id="hiddenInput" />
 
 
-        <!-- Font Size Control -->
+        <!-- Font Size Control with Format Buttons -->
         <div class="font-controls">
             <label for="fontSizeInput" class="font-label">Font Size:</label>
             <input type="number" id="fontSizeInput" class="font-size-input" value="12" min="6" max="72" step="1" />
             <span class="font-unit">pt</span>
+            <div class="format-buttons">
+                <button class="format-btn bold-btn" title="Bold (Ctrl+B)">
+                    <strong>B</strong>
+                </button>
+            </div>
         </div>
 
         <!-- Button Panel with Tabs -->

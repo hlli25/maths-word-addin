@@ -5,10 +5,23 @@ export interface ContextInfo {
   parent: EquationElement | null;
 }
 
+export interface SelectionState {
+  startPosition: number;
+  endPosition: number;
+  contextPath: string;
+  isActive: boolean;
+}
+
 export class ContextManager {
   private activeContextPath: string | null = null;
   private cursorPosition = 0;
   private equationBuilder: EquationBuilder;
+  private selection: SelectionState = {
+    startPosition: 0,
+    endPosition: 0,
+    contextPath: '',
+    isActive: false
+  };
 
   constructor(equationBuilder: EquationBuilder) {
     this.equationBuilder = equationBuilder;
@@ -200,6 +213,156 @@ export class ContextManager {
     this.equationBuilder.insertElement(element, context.array, this.cursorPosition);
     this.cursorPosition++;
     return true;
+  }
+
+  // Selection management methods
+  getSelection(): SelectionState {
+    return { ...this.selection };
+  }
+
+  setSelection(startPosition: number, endPosition: number, contextPath?: string): void {
+    this.selection = {
+      startPosition: Math.min(startPosition, endPosition),
+      endPosition: Math.max(startPosition, endPosition),
+      contextPath: contextPath || this.activeContextPath || 'root',
+      isActive: true
+    };
+  }
+
+  clearSelection(): void {
+    this.selection.isActive = false;
+  }
+
+  hasSelection(): boolean {
+    return this.selection.isActive && this.selection.startPosition !== this.selection.endPosition;
+  }
+
+  extendSelection(direction: number): void {
+    if (!this.selection.isActive) {
+      // Start new selection from cursor position
+      const newStart = this.cursorPosition;
+      const newEnd = this.cursorPosition + direction;
+      this.setSelection(newStart, newEnd);
+      
+      // Update cursor to the moving end of selection
+      this.cursorPosition = newEnd;
+    } else {
+      // The cursor position determines which end of the selection to extend
+      if (this.cursorPosition === this.selection.endPosition) {
+        // Cursor is at end, extend end position
+        this.selection.endPosition = Math.max(0, this.selection.endPosition + direction);
+        this.cursorPosition = this.selection.endPosition;
+      } else if (this.cursorPosition === this.selection.startPosition) {
+        // Cursor is at start, extend start position
+        this.selection.startPosition = Math.max(0, this.selection.startPosition + direction);
+        this.cursorPosition = this.selection.startPosition;
+      } else {
+        // Cursor position is inconsistent, fix it by extending from current position
+        if (direction > 0) {
+          this.selection.endPosition = Math.max(0, this.cursorPosition + direction);
+          this.cursorPosition = this.selection.endPosition;
+        } else {
+          this.selection.startPosition = Math.max(0, this.cursorPosition + direction);
+          this.cursorPosition = this.selection.startPosition;
+        }
+      }
+      
+      // Ensure start <= end and normalize selection
+      if (this.selection.startPosition > this.selection.endPosition) {
+        const temp = this.selection.startPosition;
+        this.selection.startPosition = this.selection.endPosition;
+        this.selection.endPosition = temp;
+      }
+      
+      // If selection becomes empty, clear it
+      if (this.selection.startPosition === this.selection.endPosition) {
+        this.clearSelection();
+      }
+    }
+  }
+
+  deleteSelection(): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) return false;
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Delete elements in selection range
+    const deleteCount = this.selection.endPosition - this.selection.startPosition;
+    context.array.splice(this.selection.startPosition, deleteCount);
+    
+    // Move cursor to start of deleted selection
+    this.cursorPosition = this.selection.startPosition;
+    this.clearSelection();
+    
+    return true;
+  }
+
+  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold'>>): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) {
+      return false;
+    }
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) {
+      return false;
+    }
+
+    // Apply formatting to all elements in selection
+    let elementsModified = 0;
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        
+        // Only apply formatting to text elements
+        if (element.type === 'text') {
+          // Restrict bold formatting for operators
+          const isOperator = /[+\-×÷=<>≤≥≠]/.test(element.value || "");
+          
+          if (isOperator && (formatting.bold !== undefined)) {
+            // Skip bold for operators, but allow other formatting
+            const filteredFormatting = { ...formatting };
+            delete filteredFormatting.bold;
+            Object.assign(element, filteredFormatting);
+          } else {
+            // Handle bold: false by removing the bold property
+            if (formatting.bold === false) {
+              delete element.bold;
+            } else {
+              Object.assign(element, formatting);
+            }
+            elementsModified++;
+          }
+        }
+      }
+    }
+    
+    return true;
+  }
+
+  isSelectionBold(): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) return false;
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Check if all selected text elements are bold
+    let hasTextElements = false;
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        if (element.type === 'text') {
+          hasTextElements = true;
+          // If any text element is not bold, selection is not fully bold
+          if (!element.bold) {
+            return false;
+          }
+        }
+      }
+    }
+    
+    // Return true only if we found text elements and all are bold
+    return hasTextElements;
   }
 
   getElementContextPath(elementId: string, containerName: string): string {

@@ -117,8 +117,13 @@ class MathAddinApp {
     // Builder buttons (using event delegation)
     elements.tabContent.addEventListener("click", (e) => this.handleBuilderButtonClick(e));
 
+    // Format buttons (using event delegation)
+    document.addEventListener("click", (e) => this.handleFormatButtonClick(e));
+
     // Display click handling
-    elements.equationDisplay.addEventListener("click", (e) => this.inputHandler.handleDisplayClick(e));
+    elements.equationDisplay.addEventListener("mousedown", (e) => this.inputHandler.handleMouseDown(e));
+    elements.equationDisplay.addEventListener("mousemove", (e) => this.inputHandler.handleMouseMove(e));
+    elements.equationDisplay.addEventListener("mouseup", (e) => this.inputHandler.handleMouseUp(e));
 
     // Document click handling for exiting edit mode
     document.addEventListener("click", (e) => this.inputHandler.handleDocumentClick(e));
@@ -149,6 +154,17 @@ class MathAddinApp {
     } else if (button.classList.contains("custom-bracket-btn")) {
       this.handleCustomBracketInsertion();
     }
+  }
+
+  private handleFormatButtonClick(e: Event): void {
+    const target = e.target as HTMLElement;
+    const button = target.closest("button.format-btn");
+    if (!button) return;
+
+    if (button.classList.contains("bold-btn")) {
+      this.inputHandler.toggleBold();
+    }
+    // Future format buttons (italic, underline) can be added here
   }
 
   private handleClearEquation(): void {

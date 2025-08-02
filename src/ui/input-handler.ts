@@ -7,6 +7,8 @@ export class InputHandler {
   private contextManager: ContextManager;
   private displayRenderer: DisplayRenderer;
   private displayElement: HTMLElement;
+  private isDragging = false;
+  private dragStartPosition = 0;
 
   constructor(
     equationBuilder: EquationBuilder,
@@ -31,20 +33,42 @@ export class InputHandler {
       this.handleDelete();
     } else if (key === "ArrowLeft") {
       e.preventDefault();
-      this.contextManager.moveCursor(-1);
+      if (e.shiftKey) {
+        this.contextManager.extendSelection(-1);
+      } else {
+        this.contextManager.clearSelection();
+        this.contextManager.moveCursor(-1);
+      }
       this.updateDisplay();
     } else if (key === "ArrowRight") {
       e.preventDefault();
-      this.contextManager.moveCursor(1);
+      if (e.shiftKey) {
+        this.contextManager.extendSelection(1);
+      } else {
+        this.contextManager.clearSelection();
+        this.contextManager.moveCursor(1);
+      }
       this.updateDisplay();
     } else if (key === "ArrowUp" || key === "ArrowDown") {
       e.preventDefault();
+      if (!e.shiftKey) {
+        this.contextManager.clearSelection();
+      }
       this.contextManager.navigateUpDown(key);
       this.updateDisplay();
     } else if (key === "Tab") {
       e.preventDefault();
+      if (!e.shiftKey) {
+        this.contextManager.clearSelection();
+      }
       this.contextManager.navigateUpDown(e.shiftKey ? "ArrowUp" : "ArrowDown");
       this.updateDisplay();
+    } else if (e.ctrlKey && key.toLowerCase() === 'a') {
+      e.preventDefault();
+      this.selectAll();
+    } else if (e.ctrlKey && key.toLowerCase() === 'b') {
+      e.preventDefault();
+      this.toggleBold();
     }
   }
 
@@ -62,21 +86,51 @@ export class InputHandler {
   handleDisplayClick(e: MouseEvent): void {
     e.stopPropagation();
     const target = e.target as HTMLElement;
-    const equationContainer = target.closest(".equation-container") as HTMLElement;
+    
+    // Find the equation container, trying multiple approaches
+    let equationContainer = target.closest(".equation-container") as HTMLElement;
+    
+    // If we didn't find a container directly, check if we clicked on a child element
+    if (!equationContainer && target.classList.contains('equation-container')) {
+      equationContainer = target;
+    }
+    
+    // Don't clear selection if clicking on formatting buttons or tab panel
+    const isFormattingClick = target.closest('.format-btn') || target.closest('.tab-panel');
+    
+    // Clear selection unless this is part of a drag operation or formatting click
+    if (!this.isDragging && !isFormattingClick) {
+      this.contextManager.clearSelection();
+    }
 
     if (equationContainer) {
       const path = equationContainer.dataset.contextPath;
+      
       if (path) {
         this.contextManager.enterContextPath(path);
         const context = this.contextManager.getContext(path);
+        
         if (context) {
-          this.contextManager.setCursorPosition(context.array.length);
+          const position = this.getClickPosition(e, equationContainer, context.array);
+          this.contextManager.setCursorPosition(position);
+          
+          // Start drag selection
+          this.isDragging = false; // Will be set to true on mousemove
+          this.dragStartPosition = position;
         }
       } else {
         this.contextManager.enterRootContext();
+        const position = this.getClickPosition(e, equationContainer, this.equationBuilder.getEquation());
+        this.contextManager.setCursorPosition(position);
+        this.dragStartPosition = position;
       }
     } else {
       this.contextManager.enterRootContext();
+      this.dragStartPosition = 0;
+      
+      // Force set cursor position to end of equation when clicking on empty area
+      const equation = this.equationBuilder.getEquation();
+      this.contextManager.setCursorPosition(equation.length);
     }
 
     this.focusHiddenInput();
@@ -88,12 +142,16 @@ export class InputHandler {
     const tabPanel = document.querySelector(".tab-panel");
     const target = event.target as HTMLElement;
 
+    // Check if clicked element is a formatting button
+    const isFormattingButton = target.closest('.format-btn') !== null;
+    
     if (
       this.contextManager.isActive() &&
       display &&
       !display.contains(target) &&
       tabPanel &&
-      !tabPanel.contains(target)
+      !tabPanel.contains(target) &&
+      !isFormattingButton  // Don't exit editing mode when clicking formatting buttons
     ) {
       this.contextManager.exitEditingMode();
       this.blurHiddenInput();
@@ -248,51 +306,35 @@ export class InputHandler {
       return; // Nothing to insert
     }
 
-    if (leftBracket && !rightBracket) {
-      // Insert only left bracket as text
-      this.contextManager.insertTextAtCursor(leftBracket);
-    } else if (!leftBracket && rightBracket) {
-      // Insert only right bracket as text
-      this.contextManager.insertTextAtCursor(rightBracket);
-    } else {
-      // Create bracket element for any combination
-      const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
-      this.contextManager.insertElementAtCursor(bracketElement);
-      
-      // Update bracket nesting depths
-      this.equationBuilder.updateBracketNesting();
-      
-      // Move context into the new bracket's content
-      const contentPath = this.contextManager.getElementContextPath(bracketElement.id, "content");
-      this.contextManager.enterContextPath(contentPath, 0);
-    }
+    // Always create a bracket element when at least one side is specified
+    // Convert empty strings to "." for invisible brackets
+    const leftSymbol = leftBracket || ".";
+    const rightSymbol = rightBracket || ".";
+    
+    const bracketElement = this.equationBuilder.createBracketElement(leftSymbol, rightSymbol);
+    this.contextManager.insertElementAtCursor(bracketElement);
+    
+    // Update bracket nesting depths
+    this.equationBuilder.updateBracketNesting();
+    
+    // Move context into the new bracket's content
+    const contentPath = this.contextManager.getElementContextPath(bracketElement.id, "content");
+    this.contextManager.enterContextPath(contentPath, 0);
 
     this.updateDisplay();
     this.focusHiddenInput();
   }
 
-  private handleBackspace(): void {
-    if (this.contextManager.handleBackspace()) {
-      this.equationBuilder.updateBracketNesting();
-      this.updateDisplay();
-      this.equationBuilder.updateParenthesesScaling();
-    }
-  }
-
-  private handleDelete(): void {
-    if (this.contextManager.handleDelete()) {
-      this.equationBuilder.updateBracketNesting();
-      this.updateDisplay();
-      this.equationBuilder.updateParenthesesScaling();
-    }
-  }
 
   private updateDisplay(): void {
     this.displayRenderer.updateDisplay(this.displayElement, this.equationBuilder.getEquation());
     
     // Ensure the hidden input is focused if we are in an active context
+    // Use setTimeout to ensure focus happens after DOM updates are complete
     if (this.contextManager.isActive()) {
-      this.focusHiddenInput();
+      setTimeout(() => {
+        this.focusHiddenInput();
+      }, 0);
     }
   }
 
@@ -307,6 +349,145 @@ export class InputHandler {
     const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
     if (hiddenInput) {
       hiddenInput.blur();
+    }
+  }
+
+  handleMouseDown(e: MouseEvent): void {
+    this.isDragging = false;
+    this.handleDisplayClick(e);
+  }
+
+  handleMouseMove(e: MouseEvent): void {
+    if (e.buttons === 1 && this.contextManager.isActive()) { // Left mouse button is down
+      this.isDragging = true;
+      const target = e.target as HTMLElement;
+      const equationContainer = target.closest(".equation-container") as HTMLElement;
+      
+      if (equationContainer) {
+        const path = equationContainer.dataset.contextPath;
+        const currentPath = this.contextManager.getActiveContextPath();
+        
+        // Only allow selection within the same context
+        if (path === currentPath) {
+          const context = this.contextManager.getContext(path!);
+          if (context) {
+            const currentPosition = this.getClickPosition(e, equationContainer, context.array);
+            
+            this.contextManager.setSelection(this.dragStartPosition, currentPosition, path!);
+            
+            // Update cursor position to the end of selection for consistent state
+            const selection = this.contextManager.getSelection();
+            this.contextManager.setCursorPosition(selection.endPosition);
+            
+            this.updateDisplay();
+          }
+        }
+      }
+    }
+  }
+
+  handleMouseUp(e: MouseEvent): void {
+    this.isDragging = false;
+  }
+
+  private getClickPosition(e: MouseEvent, container: HTMLElement, elements: any[]): number {
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    
+    // Find all text elements within the container
+    const textElements = container.querySelectorAll('.equation-element');
+    
+    if (textElements.length === 0) {
+      return 0;
+    }
+    
+    let closestPosition = 0;
+    let minDistance = Infinity;
+    
+    // Check each element to find the closest one to the click
+    textElements.forEach((element, index) => {
+      const elementRect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate element position relative to container
+      const elementLeft = elementRect.left - containerRect.left;
+      const elementRight = elementRect.right - containerRect.left;
+      const elementCenter = elementLeft + (elementRect.width / 2);
+      
+      // Distance from click to element center
+      const distanceToCenter = Math.abs(clickX - elementCenter);
+      
+      // Distance from click to element left edge (for cursor positioning)
+      const distanceToLeft = Math.abs(clickX - elementLeft);
+      const distanceToRight = Math.abs(clickX - elementRight);
+      
+      // Determine if click is closer to left or right side of this element
+      if (distanceToLeft < minDistance) {
+        minDistance = distanceToLeft;
+        closestPosition = index; // Before this element
+      }
+      
+      if (distanceToRight < minDistance) {
+        minDistance = distanceToRight;
+        closestPosition = index + 1; // After this element
+      }
+    });
+    
+    // Ensure position is within bounds
+    return Math.max(0, Math.min(closestPosition, elements.length));
+  }
+
+  private selectAll(): void {
+    if (!this.contextManager.isActive()) return;
+    
+    const context = this.contextManager.getCurrentContext();
+    if (context) {
+      this.contextManager.setSelection(0, context.array.length);
+      this.updateDisplay();
+    }
+  }
+
+  toggleBold(): void {
+    if (!this.contextManager.hasSelection()) {
+      return;
+    }
+    
+    // Check if selected text is already bold to determine toggle action
+    const isBold = this.contextManager.isSelectionBold();
+    
+    if (isBold) {
+      this.contextManager.applyFormattingToSelection({ bold: false });
+    } else {
+      this.contextManager.applyFormattingToSelection({ bold: true });
+    }
+    
+    this.contextManager.clearSelection(); // Clear selection after formatting
+    this.updateDisplay();
+  }
+
+  private handleBackspace(): void {
+    if (this.contextManager.hasSelection()) {
+      this.contextManager.deleteSelection();
+      this.equationBuilder.updateBracketNesting();
+      this.updateDisplay();
+      this.equationBuilder.updateParenthesesScaling();
+    } else if (this.contextManager.handleBackspace()) {
+      this.equationBuilder.updateBracketNesting();
+      this.updateDisplay();
+      this.equationBuilder.updateParenthesesScaling();
+    }
+  }
+
+  private handleDelete(): void {
+    if (this.contextManager.hasSelection()) {
+      this.contextManager.deleteSelection();
+      this.equationBuilder.updateBracketNesting();
+      this.updateDisplay();
+      this.equationBuilder.updateParenthesesScaling();
+    } else if (this.contextManager.handleDelete()) {
+      this.equationBuilder.updateBracketNesting();
+      this.updateDisplay();
+      this.equationBuilder.updateParenthesesScaling();
     }
   }
 }

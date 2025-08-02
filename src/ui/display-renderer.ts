@@ -37,7 +37,10 @@ export class DisplayRenderer {
     }
 
     displayElement.classList.toggle("active", activeContextPath !== null);
-    displayElement.innerHTML = this.buildEquationHtml(elements, "root");
+    
+    // Wrap root content in a container with proper context path
+    const rootContent = this.buildEquationHtml(elements, "root");
+    displayElement.innerHTML = `<div class="equation-container root-container" data-context-path="root">${rootContent}</div>`;
 
     // After rendering, ensure all fraction bars are correctly sized
     setTimeout(() => this.updateAllFractionBars(), 0);
@@ -47,15 +50,20 @@ export class DisplayRenderer {
     let html = "";
     const activeContextPath = this.contextManager.getActiveContextPath();
     const cursorPosition = this.contextManager.getCursorPosition();
+    const selection = this.contextManager.getSelection();
     const isActive = contextPath === activeContextPath;
+    const hasSelection = selection.isActive && selection.contextPath === contextPath;
 
     elements.forEach((element, index) => {
       if (isActive && index === cursorPosition) {
         html += '<span class="cursor"></span>';
       }
 
+      // Check if this element is in the selection
+      const isSelected = hasSelection && index >= selection.startPosition && index < selection.endPosition;
+      
       if (element.type === "text") {
-        html += this.renderTextElement(element);
+        html += this.renderTextElement(element, isSelected);
       } else if (element.type === "fraction") {
         html += this.renderFractionElement(element, contextPath, activeContextPath);
       } else if (element.type === "bevelled-fraction") {
@@ -83,21 +91,42 @@ export class DisplayRenderer {
     return html;
   }
 
-  private renderTextElement(element: EquationElement): string {
+  private renderTextElement(element: EquationElement, isSelected: boolean = false): string {
     const isOperator = /[+\-×÷=]/.test(element.value || "");
     const isParenthesis = /[()]/.test(element.value || "");
     const isVariable = /[a-zA-Z]/.test(element.value || "");
     const displayFontSize = this.globalFontSize * 1.5;
-
-    if (isParenthesis && element.scaleFactor && element.scaleFactor > 1) {
-      return `<span class="equation-element parenthesis scaled" style="--scale-factor: ${element.scaleFactor}; font-size: ${displayFontSize}px;">${element.value}</span>`;
-    } else if (isOperator) {
-      return `<span class="equation-element operator" style="font-size: ${displayFontSize}px;">${element.value}</span>`;
-    } else if (isVariable) {
-      return `<span class="equation-element text-element" style="font-style: italic; font-size: ${displayFontSize}px;">${element.value}</span>`;
-    } else {
-      return `<span class="equation-element text-element" style="font-size: ${displayFontSize}px;">${element.value}</span>`;
+    
+    // Build CSS classes
+    let classes = "equation-element";
+    if (isSelected) classes += " selected";
+    
+    // Build inline styles
+    let styles = `font-size: ${displayFontSize}px;`;
+    
+    // Apply text formatting
+    if (element.bold) styles += " font-weight: bold;";
+    // Variables are italic by default, but not when they are bold (matches LaTeX \mathbf behavior)
+    if (element.italic || (isVariable && !element.bold)) styles += " font-style: italic;";
+    if (element.color) styles += ` color: ${element.color};`;
+    if (element.underline) {
+      if (element.underline === "single") styles += " text-decoration: underline;";
+      else if (element.underline === "double") styles += " text-decoration: underline; text-decoration-style: double;";
+      else if (element.underline === "wave") styles += " text-decoration: underline wavy;";
     }
+    if (element.strikethrough) styles += " text-decoration: line-through;";
+    
+    // Handle special element types
+    if (isParenthesis && element.scaleFactor && element.scaleFactor > 1) {
+      classes += " parenthesis scaled";
+      styles += ` --scale-factor: ${element.scaleFactor};`;
+    } else if (isOperator) {
+      classes += " operator";
+    } else {
+      classes += " text-element";
+    }
+
+    return `<span class="${classes}" style="${styles}">${element.value}</span>`;
   }
 
   private renderFractionElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
@@ -209,8 +238,10 @@ export class DisplayRenderer {
 
   private renderBracketElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
     const contentPath = `${contextPath}/${element.id}/content`;
-    const left = element.leftBracketSymbol || "";
-    const right = element.rightBracketSymbol || "";
+    
+    // Don't display "." invisible brackets in the visual editor
+    const left = (element.leftBracketSymbol === "." || !element.leftBracketSymbol) ? "" : element.leftBracketSymbol;
+    const right = (element.rightBracketSymbol === "." || !element.rightBracketSymbol) ? "" : element.rightBracketSymbol;
     
     return `<span class="equation-element">
       <div class="bracket-container" id="${element.id}">
