@@ -546,9 +546,24 @@ body {
   background-color: #fff;
 }
 
+.tab-nav-container {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eaeaea;
+  position: relative;
+}
+
 .tab-nav {
   display: flex;
-  border-bottom: 1px solid #eaeaea;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+}
+
+.tab-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
@@ -570,6 +585,36 @@ body {
   color: #0078d4;
   font-weight: 600;
   border-bottom-color: #0078d4;
+}
+
+.tab-scroll-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.tab-scroll-btn:hover {
+  background-color: #f3f2f1;
+  color: #333;
+}
+
+.tab-scroll-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tab-scroll-btn:disabled:hover {
+  background-color: transparent;
+  color: #666;
 }
 
 .tab-content {

@@ -71,10 +71,22 @@
 
         <!-- Button Panel with Tabs -->
         <div class="tab-panel">
-            <div class="tab-nav">
-                <button class="tab-btn active" data-tab="structures">Structures</button>
-                <button class="tab-btn" data-tab="brackets">Brackets</button>
-                <button class="tab-btn" data-tab="operators">Operators</button>
+            <div class="tab-nav-container">
+                <button class="tab-scroll-btn tab-scroll-left" id="tabScrollLeft">
+                    <svg width="8" height="12" viewBox="0 0 8 8">
+                        <path d="M8 2 L4 6 L8 10" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    </svg>
+                </button>
+                <div class="tab-nav" id="tabNav">
+                    <button class="tab-btn active" data-tab="structures">Structures</button>
+                    <button class="tab-btn" data-tab="brackets">Brackets</button>
+                    <button class="tab-btn" data-tab="operators">Operators</button>
+                </div>
+                <button class="tab-scroll-btn tab-scroll-right" id="tabScrollRight">
+                    <svg width="12" height="12" viewBox="0 0 12 12">
+                        <path d="M4 2 L8 6 L4 10" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    </svg>
+                </button>
             </div>
             <div class="tab-content">
                 <div id="structures" class="tab-pane active">
