@@ -87,6 +87,21 @@ export class InputHandler {
     e.stopPropagation();
     const target = e.target as HTMLElement;
     
+    // Check if click is on scrollbar area more precisely
+    const rect = this.displayElement.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Check if click is in the horizontal scrollbar area (bottom of the element)
+    if (clickY > this.displayElement.clientHeight) {
+      return; // Don't move cursor when clicking on horizontal scrollbar
+    }
+    
+    // Check if click is in the vertical scrollbar area (right edge)  
+    if (clickX > this.displayElement.clientWidth) {
+      return; // Don't move cursor when clicking on vertical scrollbar
+    }
+    
     // Find the equation container, trying multiple approaches
     let equationContainer = target.closest(".equation-container") as HTMLElement;
     
@@ -406,6 +421,7 @@ export class InputHandler {
     if (this.contextManager.isActive()) {
       setTimeout(() => {
         this.focusHiddenInput();
+        this.scrollCursorIntoView();
       }, 0);
     }
   }
@@ -421,6 +437,18 @@ export class InputHandler {
     const hiddenInput = document.getElementById("hiddenInput") as HTMLInputElement;
     if (hiddenInput) {
       hiddenInput.blur();
+    }
+  }
+
+  private scrollCursorIntoView(): void {
+    const cursor = this.displayElement.querySelector('.cursor') as HTMLElement;
+    if (cursor) {
+      // Scroll the cursor into view horizontally
+      cursor.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
     }
   }
 

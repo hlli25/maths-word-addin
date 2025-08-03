@@ -11,6 +11,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 360px;
   box-sizing: border-box;
   background-color: #f3f4f6;
 }
@@ -89,15 +90,37 @@ body {
   flex-grow: 1;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
   cursor: text;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+/* Style the horizontal scrollbar for the equation display */
+.equation-display::-webkit-scrollbar {
+  height: 8px;
+}
+
+.equation-display::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.equation-display::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.equation-display::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .equation-container {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
   min-height: 28px; /* Base height for an empty line */
@@ -107,6 +130,24 @@ body {
   border-radius: 3px;
   cursor: text;
   position: relative;
+}
+
+/* Specific styling for root container to prevent wrapping */
+.equation-container.root-container {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+/* Add extra space after the equation content for horizontal scrolling */
+.equation-container.root-container::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  flex-shrink: 0;
 }
 
 #equationDisplay.equation-container {
@@ -147,6 +188,10 @@ body {
   background-color: #000;
   animation: blink 1s step-end infinite;
   vertical-align: middle;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  margin: 0 1px; /* Small margin to prevent clipping */
 }
 
 @keyframes blink {
@@ -529,11 +574,14 @@ body {
 
 .tab-content {
   padding: 8px;
+  height: 150px;
+  overflow: hidden;
 }
 
 .tab-pane {
   display: none; /* Hide inactive panes */
   gap: 4px;
+  height: 100%;
 }
 
 .tab-pane.active {
@@ -542,13 +590,40 @@ body {
   gap: 4px;
 }
 
+/* Add scrollbar for all tab panes that might overflow */
+.tab-pane {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Style the scrollbar for better appearance */
+.tab-pane::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-pane::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tab-pane::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.tab-pane::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
 .button-row {
   display: flex;
   gap: 4px;
 }
 
 .builder-btn {
-  padding: 6px 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid #c8c8c8;
   background-color: #fff;
   border-radius: 3px;
@@ -914,11 +989,11 @@ body {
 }
 
 .bracket-input-display {
-  padding: 8px 16px;
+  padding: 6px 14px;
   border: 2px solid #0078d4;
   border-radius: 4px;
   background-color: white;
-  font-size: 18px;
+  font-size: 16px;
   font-family: "Times New Roman", serif;
   text-align: center;
   color: #333;
@@ -938,12 +1013,18 @@ body {
   background-color: #0078d4;
   color: white;
   border: 1px solid #0078d4;
-  padding: 10px 20px;
+  padding: 10px 24px;
   font-size: 14px;
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease-in-out;
+  min-width: 140px;
+  white-space: nowrap;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .custom-bracket-btn:hover {
