@@ -110,15 +110,89 @@ export class SvgProcessor {
   }
 
   private fixColors(svgClone: SVGElement): void {
+    // First, check if there are any actual color values in the SVG
     const allElements = svgClone.querySelectorAll("*");
-    allElements.forEach((element) => {
-      if (element.getAttribute("stroke") === "currentColor") {
-        element.setAttribute("stroke", "black");
-      }
-      if (element.getAttribute("fill") === "currentColor") {
-        element.setAttribute("fill", "black");
-      }
+    const hasActualColors = Array.from(allElements).some(element => {
+      const fill = element.getAttribute("fill");
+      const stroke = element.getAttribute("stroke");
+      return (fill && fill !== "black" && fill !== "white" && fill !== "currentColor") ||
+             (stroke && stroke !== "black" && stroke !== "white" && stroke !== "currentColor");
     });
+    
+    
+    allElements.forEach((element) => {
+      const fill = element.getAttribute("fill");
+      const stroke = element.getAttribute("stroke");
+      
+      // If there are actual colors in the SVG, be more careful with currentColor
+      if (hasActualColors) {
+        // Only fix currentColor if the element doesn't have a parent with actual colors
+        if (fill === "currentColor") {
+          // Check if this element or its parent has an actual color
+          const parentWithColor = this.findParentWithColor(element);
+          if (!parentWithColor) {
+            element.setAttribute("fill", "black");
+          } else {
+            // Remove currentColor to inherit from parent
+            element.removeAttribute("fill");
+          }
+        }
+        if (stroke === "currentColor") {
+          const parentWithColor = this.findParentWithColor(element);
+          if (!parentWithColor) {
+            element.setAttribute("stroke", "black");
+          } else {
+            // Remove currentColor to inherit from parent
+            element.removeAttribute("stroke");
+          }
+        }
+        
+        // If child elements have no color attributes under a colored parent, 
+        // explicitly set the parent's color
+        const parentWithColor = this.findParentWithColor(element);
+        if (hasActualColors && parentWithColor) {
+          const currentFill = element.getAttribute("fill");
+          const currentStroke = element.getAttribute("stroke");
+          
+          // If element has null/empty color attributes, set explicit colors from parent
+          if (currentFill === "" || currentFill === "null" || currentFill === null) {
+            const parentFill = parentWithColor.getAttribute("fill");
+            if (parentFill && parentFill !== "black" && parentFill !== "white" && parentFill !== "currentColor") {
+              element.setAttribute("fill", parentFill);
+            }
+          }
+          if (currentStroke === "" || currentStroke === "null" || currentStroke === null) {
+            const parentStroke = parentWithColor.getAttribute("stroke");
+            if (parentStroke && parentStroke !== "black" && parentStroke !== "white" && parentStroke !== "currentColor") {
+              element.setAttribute("stroke", parentStroke);
+            }
+          }
+        }
+      } else {
+        // No actual colors, safe to convert all currentColor to black
+        if (fill === "currentColor") {
+          element.setAttribute("fill", "black");
+        }
+        if (stroke === "currentColor") {
+          element.setAttribute("stroke", "black");
+        }
+      }
+      
+    });
+  }
+
+  private findParentWithColor(element: Element): Element | null {
+    let parent = element.parentElement;
+    while (parent) {
+      const fill = parent.getAttribute("fill");
+      const stroke = parent.getAttribute("stroke");
+      if ((fill && fill !== "black" && fill !== "white" && fill !== "currentColor") ||
+          (stroke && stroke !== "black" && stroke !== "white" && stroke !== "currentColor")) {
+        return parent;
+      }
+      parent = parent.parentElement;
+    }
+    return null;
   }
 
   private addWhiteBackground(svgClone: SVGElement, minX: number, minY: number, vbWidth: number, vbHeight: number): void {
@@ -128,6 +202,9 @@ export class SvgProcessor {
     bgRect.setAttribute("width", String(vbWidth));
     bgRect.setAttribute("height", String(vbHeight));
     bgRect.setAttribute("fill", "white");
+    
+    
+    // Insert background as first child (behind other elements)
     svgClone.insertBefore(bgRect, svgClone.firstChild);
   }
 
@@ -146,7 +223,16 @@ export class SvgProcessor {
           if (useElement.hasAttribute("transform")) {
             newPath.setAttribute("transform", useElement.getAttribute("transform")!);
           }
-          newPath.setAttribute("fill", "black");
+          
+          // Preserve colors from the use element or referenced element
+          const fillColor = useElement.getAttribute("fill") || referencedElement.getAttribute("fill") || "black";
+          const strokeColor = useElement.getAttribute("stroke") || referencedElement.getAttribute("stroke");
+          
+          newPath.setAttribute("fill", fillColor);
+          if (strokeColor) {
+            newPath.setAttribute("stroke", strokeColor);
+          }
+          
           useElement.parentNode?.replaceChild(newPath, useElement);
         }
       }

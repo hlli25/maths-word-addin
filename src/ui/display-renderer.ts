@@ -112,9 +112,8 @@ export class DisplayRenderer {
     if (element.underline) {
       if (element.underline === "single") styles += " text-decoration: underline;";
       else if (element.underline === "double") styles += " text-decoration: underline; text-decoration-style: double;";
-      else if (element.underline === "wave") styles += " text-decoration: underline wavy;";
     }
-    if (element.strikethrough) styles += " text-decoration: line-through;";
+    if (element.cancel) classes += " math-cancel";
     
     // Handle special element types
     if (isParenthesis && element.scaleFactor && element.scaleFactor > 1) {

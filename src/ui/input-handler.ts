@@ -9,6 +9,7 @@ export class InputHandler {
   private displayElement: HTMLElement;
   private isDragging = false;
   private dragStartPosition = 0;
+  public onSelectionChange?: () => void;
 
   constructor(
     equationBuilder: EquationBuilder,
@@ -77,9 +78,13 @@ export class InputHandler {
     const char = input.value.slice(-1);
     input.value = "";
 
-    if (this.contextManager.isActive() && char && /[0-9a-zA-Z+\-=().,]/.test(char)) {
-      this.contextManager.insertTextAtCursor(char);
-      this.updateDisplay();
+    if (this.contextManager.isActive() && char) {
+      // Sanitize the character before inserting
+      const sanitizedChar = this.sanitizeInputChar(char);
+      if (sanitizedChar) {
+        this.contextManager.insertTextAtCursor(sanitizedChar);
+        this.updateDisplay();
+      }
     }
   }
 
@@ -110,12 +115,23 @@ export class InputHandler {
       equationContainer = target;
     }
     
-    // Don't clear selection if clicking on formatting buttons or tab panel
-    const isFormattingClick = target.closest('.format-btn') || target.closest('.tab-panel');
+    // Don't clear selection if clicking on formatting buttons, dropdowns, or tab panel
+    const isFormattingClick = target.closest('.format-btn') || 
+                             target.closest('.tab-panel') ||
+                             target.closest('.underline-dropdown-container') ||
+                             target.closest('.underline-dropdown') ||
+                             target.closest('.color-dropdown-container') ||
+                             target.closest('.color-panel') ||
+                             target.closest('.font-size-container') ||
+                             target.closest('.font-size-dropdown');
     
     // Clear selection unless this is part of a drag operation or formatting click
     if (!this.isDragging && !isFormattingClick) {
       this.contextManager.clearSelection();
+      // Notify that selection changed
+      if (this.onSelectionChange) {
+        this.onSelectionChange();
+      }
     }
 
     if (equationContainer) {
@@ -157,8 +173,14 @@ export class InputHandler {
     const tabPanel = document.querySelector(".tab-panel");
     const target = event.target as HTMLElement;
 
-    // Check if clicked element is a formatting button
-    const isFormattingButton = target.closest('.format-btn') !== null;
+    // Check if clicked element is a formatting button or dropdown
+    const isFormattingClick = target.closest('.format-btn') || 
+                             target.closest('.underline-dropdown-container') ||
+                             target.closest('.underline-dropdown') ||
+                             target.closest('.color-dropdown-container') ||
+                             target.closest('.color-panel') ||
+                             target.closest('.font-size-container') ||
+                             target.closest('.font-size-dropdown');
     
     if (
       this.contextManager.isActive() &&
@@ -166,7 +188,7 @@ export class InputHandler {
       !display.contains(target) &&
       tabPanel &&
       !tabPanel.contains(target) &&
-      !isFormattingButton  // Don't exit editing mode when clicking formatting buttons
+      !isFormattingClick  // Don't exit editing mode when clicking formatting buttons
     ) {
       this.contextManager.exitEditingMode();
       this.blurHiddenInput();
@@ -178,7 +200,7 @@ export class InputHandler {
     const input = e.target as HTMLInputElement;
     const newSize = parseInt(input.value);
     
-    if (!isNaN(newSize) && newSize >= 6 && newSize <= 72) {
+    if (!isNaN(newSize) && newSize >= 6 && newSize <= 144) {
       this.displayRenderer.setGlobalFontSize(newSize);
       this.updateDisplay();
     }
@@ -488,6 +510,11 @@ export class InputHandler {
 
   handleMouseUp(e: MouseEvent): void {
     this.isDragging = false;
+    
+    // Notify that selection may have changed
+    if (this.onSelectionChange) {
+      this.onSelectionChange();
+    }
   }
 
   private getClickPosition(e: MouseEvent, container: HTMLElement, elements: any[]): number {
@@ -565,6 +592,72 @@ export class InputHandler {
     this.updateDisplay();
   }
 
+  toggleItalic(): void {
+    if (!this.contextManager.hasSelection()) {
+      return;
+    }
+    
+    // Check if selected text is already italic to determine toggle action
+    const isItalic = this.contextManager.isSelectionItalic();
+    
+    if (isItalic) {
+      this.contextManager.applyFormattingToSelection({ italic: false });
+    } else {
+      this.contextManager.applyFormattingToSelection({ italic: true });
+    }
+    
+    this.contextManager.clearSelection(); // Clear selection after formatting
+    this.updateDisplay();
+  }
+
+  toggleCancel(): void {
+    if (!this.contextManager.hasSelection()) {
+      return;
+    }
+    
+    // Check if selected text is already cancel to determine toggle action
+    const isCancel = this.contextManager.isSelectionCancel();
+    
+    if (isCancel) {
+      this.contextManager.applyFormattingToSelection({ cancel: false });
+    } else {
+      this.contextManager.applyFormattingToSelection({ cancel: true });
+    }
+    
+    this.contextManager.clearSelection(); // Clear selection after formatting
+    this.updateDisplay();
+  }
+
+  setUnderlineStyle(underlineType: string): void {
+    if (!this.contextManager.hasSelection()) {
+      return;
+    }
+    
+    if (underlineType === "none") {
+      this.contextManager.applyFormattingToSelection({ underline: false, underlineStyle: null });
+    } else {
+      this.contextManager.applyFormattingToSelection({ underline: true, underlineStyle: underlineType });
+    }
+    
+    this.contextManager.clearSelection(); // Clear selection after formatting
+    this.updateDisplay();
+  }
+
+  getSelectionFormatting(): { bold?: boolean; italic?: boolean; underline?: string | boolean; cancel?: boolean; color?: string } | null {
+    return this.contextManager.getSelectionFormatting();
+  }
+
+  setTextColor(color: string): void {
+    if (!this.contextManager.hasSelection()) {
+      return;
+    }
+    
+    this.contextManager.applyFormattingToSelection({ color: color });
+    
+    this.contextManager.clearSelection(); // Clear selection after formatting
+    this.updateDisplay();
+  }
+
   private handleBackspace(): void {
     if (this.contextManager.hasSelection()) {
       this.contextManager.deleteSelection();
@@ -589,5 +682,24 @@ export class InputHandler {
       this.updateDisplay();
       this.equationBuilder.updateParenthesesScaling();
     }
+  }
+
+  private sanitizeInputChar(char: string): string {
+    // Only block control characters and backslash
+    const charCode = char.charCodeAt(0);
+    
+    // Block control characters (0-31, 127)
+    if (charCode < 32 || charCode === 127) {
+      return '';
+    }
+    
+    // Block backslash ('\') due to issues in MathJax
+    if (char === '\\') {
+      return '';
+    }
+    
+    // Allow all other characters including $ % ^ _ ~ # & { }
+    // The LaTeX converter will handle proper escaping when converting to LaTeX
+    return char;
   }
 }

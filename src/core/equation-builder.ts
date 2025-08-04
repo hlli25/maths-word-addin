@@ -23,7 +23,7 @@ export interface EquationElement {
   // text formatting
   bold?: boolean;
   italic?: boolean;
-  underline?: "single" | "double" | "wave";
+  underline?: "single" | "double";
   strikethrough?: boolean;
   color?: string;
 }

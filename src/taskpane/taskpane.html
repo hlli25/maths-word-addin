@@ -20,8 +20,9 @@
     <!-- MathJax configuration and loading -->
     <script>
         window.MathJax = {
+            loader: {load: ['[tex]/boldsymbol', '[tex]/color']},
             tex: {
-                packages: {'[+]': ['textmacros', 'cancel', 'color', 'ams']},
+                packages: {'[+]': ['base', 'boldsymbol', 'color', 'ams']},
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
             },
@@ -57,15 +58,130 @@
         <input type="text" class="equation-input" id="hiddenInput" />
 
 
-        <!-- Font Size Control with Format Buttons -->
+        <!-- Format Controls -->
         <div class="font-controls">
-            <label for="fontSizeInput" class="font-label">Font Size:</label>
-            <input type="number" id="fontSizeInput" class="font-size-input" value="12" min="6" max="72" step="1" />
-            <span class="font-unit">pt</span>
+            <!-- Font Size Combobox -->
+            <div class="control-group">
+                <div class="font-size-container">
+                    <div class="font-size-combobox">
+                        <input type="text" id="fontSizeInput" class="font-size-input" value="12" />
+                        <button class="font-size-dropdown-btn" id="fontSizeDropdownBtn" type="button">
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="font-size-dropdown" id="fontSizeDropdown">
+                            <div class="font-size-option" data-size="8">8</div>
+                            <div class="font-size-option" data-size="9">9</div>
+                            <div class="font-size-option" data-size="10">10</div>
+                            <div class="font-size-option" data-size="11">11</div>
+                            <div class="font-size-option" data-size="12">12</div>
+                            <div class="font-size-option" data-size="14">14</div>
+                            <div class="font-size-option" data-size="16">16</div>
+                            <div class="font-size-option" data-size="18">18</div>
+                            <div class="font-size-option" data-size="20">20</div>
+                            <div class="font-size-option" data-size="24">24</div>
+                            <div class="font-size-option" data-size="28">28</div>
+                            <div class="font-size-option" data-size="32">32</div>
+                            <div class="font-size-option" data-size="36">36</div>
+                            <div class="font-size-option" data-size="48">48</div>
+                            <div class="font-size-option" data-size="72">72</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Format Buttons -->
             <div class="format-buttons">
-                <button class="format-btn bold-btn" title="Bold (Ctrl+B)">
+                <button class="format-btn bold-btn" id="boldBtn" title="Bold (Ctrl+B)">
                     <strong>B</strong>
                 </button>
+                <button class="format-btn italic-btn" id="italicBtn" title="Italic (Ctrl+I)">
+                    <em>I</em>
+                </button>
+                <div class="underline-dropdown-container">
+                    <button class="format-btn underline-btn" id="underlineBtn" title="Underline">
+                        <span style="text-decoration: underline;">U</span>
+                    </button>
+                    <button class="format-btn underline-dropdown-btn" id="underlineDropdownBtn" title="More Underline Styles">
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="underline-dropdown" id="underlineDropdown">
+                        <div class="underline-option" data-underline="single">
+                            <span class="underline-visual single-line">_____________</span>
+                        </div>
+                        <div class="underline-option" data-underline="double">
+                            <span class="underline-visual double-line">_____________</span>
+                        </div>
+                        <div class="underline-option" data-underline="none">None</div>
+                    </div>
+                </div>
+                <button class="format-btn cancel-btn" id="cancelBtn" title="Cancel">
+                    <span class="cancel-icon">S</span>
+                </button>
+                <div class="color-dropdown-container">
+                    <button class="format-btn color-btn" id="colorBtn" title="Text Color">
+                        <span class="color-icon">A</span>
+                        <div class="color-preview" id="colorPreview"></div>
+                    </button>
+                    <button class="format-btn color-dropdown-btn" id="colorDropdownBtn" title="More Colors">
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="color-panel" id="colorPanel">
+                        <div class="color-grid">
+                            <!-- Row 1 - Grayscale -->
+                            <div class="color-row">
+                                <div class="color-square" data-color="#000000" style="background-color: #000000;" title="Black"></div>
+                                <div class="color-square" data-color="#434343" style="background-color: #434343;" title="Dark Gray 4"></div>
+                                <div class="color-square" data-color="#666666" style="background-color: #666666;" title="Dark Gray 3"></div>
+                                <div class="color-square" data-color="#999999" style="background-color: #999999;" title="Dark Gray 2"></div>
+                                <div class="color-square" data-color="#B7B7B7" style="background-color: #B7B7B7;" title="Dark Gray 1"></div>
+                                <div class="color-square" data-color="#CCCCCC" style="background-color: #CCCCCC;" title="Gray"></div>
+                                <div class="color-square" data-color="#D9D9D9" style="background-color: #D9D9D9;" title="Light Gray 1"></div>
+                                <div class="color-square" data-color="#EFEFEF" style="background-color: #EFEFEF;" title="Light Gray 2"></div>
+                                <div class="color-square" data-color="#F3F3F3" style="background-color: #F3F3F3;" title="Light Gray 3"></div>
+                                <div class="color-square" data-color="#FFFFFF" style="background-color: #FFFFFF; border: 1px solid #ccc;" title="White"></div>
+                            </div>
+                            <!-- Row 2 - Bright Colors -->
+                            <div class="color-row">
+                                <div class="color-square" data-color="#980000" style="background-color: #980000;" title="Dark Red"></div>
+                                <div class="color-square" data-color="#FF0000" style="background-color: #FF0000;" title="Red"></div>
+                                <div class="color-square" data-color="#FF9900" style="background-color: #FF9900;" title="Orange"></div>
+                                <div class="color-square" data-color="#FFFF00" style="background-color: #FFFF00;" title="Yellow"></div>
+                                <div class="color-square" data-color="#00FF00" style="background-color: #00FF00;" title="Green"></div>
+                                <div class="color-square" data-color="#00FFFF" style="background-color: #00FFFF;" title="Cyan"></div>
+                                <div class="color-square" data-color="#4A86E8" style="background-color: #4A86E8;" title="Light Blue"></div>
+                                <div class="color-square" data-color="#0000FF" style="background-color: #0000FF;" title="Blue"></div>
+                                <div class="color-square" data-color="#9900FF" style="background-color: #9900FF;" title="Purple"></div>
+                                <div class="color-square" data-color="#FF00FF" style="background-color: #FF00FF;" title="Magenta"></div>
+                            </div>
+                            <!-- Row 3 - Dark Colors -->
+                            <div class="color-row">
+                                <div class="color-square" data-color="#85200C" style="background-color: #85200C;" title="Dark Red 2"></div>
+                                <div class="color-square" data-color="#990000" style="background-color: #990000;" title="Dark Red 3"></div>
+                                <div class="color-square" data-color="#B45F06" style="background-color: #B45F06;" title="Dark Orange"></div>
+                                <div class="color-square" data-color="#BF9000" style="background-color: #BF9000;" title="Dark Yellow"></div>
+                                <div class="color-square" data-color="#38761D" style="background-color: #38761D;" title="Dark Green"></div>
+                                <div class="color-square" data-color="#134F5C" style="background-color: #134F5C;" title="Dark Cyan"></div>
+                                <div class="color-square" data-color="#1155CC" style="background-color: #1155CC;" title="Dark Blue 1"></div>
+                                <div class="color-square" data-color="#0B5394" style="background-color: #0B5394;" title="Dark Blue 2"></div>
+                                <div class="color-square" data-color="#351C75" style="background-color: #351C75;" title="Dark Purple"></div>
+                                <div class="color-square" data-color="#741B47" style="background-color: #741B47;" title="Dark Magenta"></div>
+                            </div>
+                        </div>
+                        <div class="hex-input-section">
+                            <div class="hex-input-row">
+                                <label for="hexInput">Hex code:</label>
+                                <div class="hex-input-container">
+                                    <input type="text" id="hexInput" class="hex-input" value="#000000" maxlength="7" placeholder="#000000" />
+                                    <div class="hex-color-preview" id="hexColorPreview"></div>
+                                </div>
+                            </div>
+                            <div class="hex-actions">
+                                <button class="hex-btn hex-ok-btn" id="colorOkBtn">OK</button>
+                                <button class="hex-btn hex-cancel-btn" id="colorCancelBtn">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

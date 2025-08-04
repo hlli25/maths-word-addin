@@ -80,11 +80,17 @@ export class LatexConverter {
         // Look ahead to group consecutive text elements with same formatting
         let groupedText = "";
         let j = i;
-        let currentBold = element.bold;
+        let currentFormatting = {
+          bold: element.bold,
+          italic: element.italic,
+          color: element.color,
+          underline: element.underline,
+          cancel: element.cancel
+        };
         
         while (j < elements.length && 
                elements[j].type === "text" && 
-               elements[j].bold === currentBold) {
+               this.hasEqualFormatting(elements[j], currentFormatting)) {
           let value = elements[j].value || "";
           if (value === "×") value = "\\times";
           if (value === "÷") value = "\\div";
@@ -150,6 +156,9 @@ export class LatexConverter {
           if (value === "∴") value = "\\therefore";
           if (value === "∵") value = "\\because";
           
+          // Escape LaTeX special characters that could break parsing
+          value = this.escapeLatexSpecialChars(value);
+          
           // Add spacing for operators
           if (/[+\-=\\times\\div]/.test(value)) {
             groupedText += ` ${value} `;
@@ -161,9 +170,7 @@ export class LatexConverter {
         
         // Apply formatting to the grouped text
         let formattedText = groupedText;
-        if (currentBold) {
-          formattedText = `\\mathbf{${groupedText}}`;
-        }
+        formattedText = this.applyFormattingToLatex(formattedText, currentFormatting);
         
         latex += formattedText;
         i = j - 1; // Skip the elements which have been already processed
@@ -743,6 +750,18 @@ export class LatexConverter {
           value: "∵"
         });
         i += 8;
+      } else if (latex.substr(i, 11) === "\\boldsymbol") {
+        i += 11;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.bold = true;
+            element.italic = true;
+          }
+        });
+        result.push(...formattedElements);
       } else if (latex.substr(i, 7) === "\\mathbf") {
         i += 7;
         const group = this.parseLatexGroup(latex, i);
@@ -755,6 +774,28 @@ export class LatexConverter {
         });
         result.push(...formattedElements);
       } else if (latex.substr(i, 7) === "\\mathit") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.italic = true;
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 7) === "\\textbf") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.bold = true;
+          }
+        });
+        result.push(...formattedElements);
+      } else if (latex.substr(i, 7) === "\\textit") {
         i += 7;
         const group = this.parseLatexGroup(latex, i);
         i = group.endIndex;
@@ -778,17 +819,47 @@ export class LatexConverter {
           }
         });
         result.push(...formattedElements);
+      } else if (latex.substr(i, 6) === "\\color") {
+        i += 6;
+        const colorGroup = this.parseLatexGroup(latex, i);
+        i = colorGroup.endIndex;
+        const contentGroup = this.parseLatexGroup(latex, i);
+        i = contentGroup.endIndex;
+        const formattedElements = this.parseLatexToEquation(contentGroup.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.color = colorGroup.content;
+          }
+        });
+        result.push(...formattedElements);
       } else if (latex.substr(i, 10) === "\\underline") {
         i += 10;
         const group = this.parseLatexGroup(latex, i);
         i = group.endIndex;
-        const formattedElements = this.parseLatexToEquation(group.content);
-        formattedElements.forEach(element => {
-          if (element.type === "text") {
-            element.underline = "single";
-          }
-        });
-        result.push(...formattedElements);
+        
+        // Check if this is a double underline (nested \underline)
+        const isDoubleUnderline = group.content.startsWith("\\underline{") && group.content.endsWith("}");
+        
+        if (isDoubleUnderline) {
+          // Parse the inner content for double underline
+          const innerContent = group.content.slice(11, -1); // Remove \underline{ and }
+          const formattedElements = this.parseLatexToEquation(innerContent);
+          formattedElements.forEach(element => {
+            if (element.type === "text") {
+              element.underline = "double";
+            }
+          });
+          result.push(...formattedElements);
+        } else {
+          // Single underline
+          const formattedElements = this.parseLatexToEquation(group.content);
+          formattedElements.forEach(element => {
+            if (element.type === "text") {
+              element.underline = "single";
+            }
+          });
+          result.push(...formattedElements);
+        }
       } else if (latex.substr(i, 7) === "\\cancel") {
         i += 7;
         const group = this.parseLatexGroup(latex, i);
@@ -796,10 +867,83 @@ export class LatexConverter {
         const formattedElements = this.parseLatexToEquation(group.content);
         formattedElements.forEach(element => {
           if (element.type === "text") {
-            element.strikethrough = true;
+            element.cancel = true;
           }
         });
         result.push(...formattedElements);
+      } else if (latex.substr(i, 10) === "{\\text{^}}") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "^"
+        });
+        i += 10;
+      } else if (latex.substr(i, 5) === "{\\_}") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "_"
+        });
+        i += 5;
+      } else if (latex.substr(i, 5) === "\\text") {
+        // Handle \text{} commands specially
+        if (latex.substr(i, 9) === "\\text{＆}") {
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "text",
+            value: "&"
+          });
+          i += 9;
+        } else {
+          // Handle other \text{} commands
+          i += 5; // Skip \text
+          const group = this.parseLatexGroup(latex, i);
+          i = group.endIndex;
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "text",
+            value: group.content
+          });
+        }
+      } else if (latex.substr(i, 17) === "\\textasciitilde") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "~"
+        });
+        i += 17;
+        // Skip the {} if present
+        if (latex.substr(i, 2) === "{}") {
+          i += 2;
+        }
+      } else if (latex.substr(i, 2) === "\\{") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "{"
+        });
+        i += 2;
+      } else if (latex.substr(i, 2) === "\\}") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "}"
+        });
+        i += 2;
+      } else if (latex.substr(i, 2) === "\\#") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "#"
+        });
+        i += 2;
+      } else if (latex.substr(i, 2) === "\\%") {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: "%"
+        });
+        i += 2;
       } else if (latex.substr(i, 5) === "\\left") {
         const bracketInfo = this.parseBracketCommand(latex, i);
         if (bracketInfo) {
@@ -1092,6 +1236,84 @@ export class LatexConverter {
     const latexRight = getLatexBracket(rightSymbol, false, rightSize);
 
     return { latexLeft, latexRight };
+  }
+
+  private hasEqualFormatting(element: EquationElement, formatting: any): boolean {
+    return element.bold === formatting.bold &&
+           element.italic === formatting.italic &&
+           element.color === formatting.color &&
+           element.underline === formatting.underline &&
+           element.cancel === formatting.cancel;
+  }
+
+  private applyFormattingToLatex(text: string, formatting: any): string {
+    let result = text;
+    
+    // Apply formatting in the correct nesting order
+    // Bold and italic (innermost)
+    if (formatting.bold && formatting.italic) {
+      // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
+      if (/^\d+$/.test(text.trim())) {
+        result = `\\textit{\\textbf{${result}}}`;
+      } else {
+        result = `\\boldsymbol{${result}}`;
+      }
+    } else if (formatting.bold) {
+      result = `\\mathbf{${result}}`;
+    } else if (formatting.italic) {
+      result = `\\mathit{${result}}`;
+    }
+    
+    // Underline
+    if (formatting.underline) {
+      if (formatting.underline === "double") {
+        // Double underline using nested \underline commands
+        result = `\\underline{\\underline{${result}}}`;
+      } else {
+        // Single underline (default for all other types)
+        result = `\\underline{${result}}`;
+      }
+    }
+    
+    // Cancel
+    if (formatting.cancel) {
+      result = `\\cancel{${result}}`;
+    }
+    
+    // Color (outermost)
+    if (formatting.color) {
+      result = `\\textcolor{${formatting.color}}{${result}}`;
+    }
+    
+    return result;
+  }
+
+  private escapeLatexSpecialChars(text: string): string {
+    // Escape LaTeX special characters that could break parsing
+    // Only escape characters that haven't already been converted to LaTeX commands
+    let result = text;
+    
+    // Don't escape if the text is already a LaTeX command (starts with \)
+    if (result.startsWith('\\')) {
+      return result;
+    }
+    
+    // Escape special characters that could break LaTeX parsing
+    // Backslash is blocked from input due to MathJax spacing issues
+    result = result.replace(/\{/g, '\\{');              // Opening brace
+    result = result.replace(/\}/g, '\\}');              // Closing brace
+    result = result.replace(/#/g, '\\#');               // Hash
+    // Replace & with similar Unicode character that MathJax can handle
+    result = result.replace(/&/g, '\\text{＆}');         // Fullwidth ampersand (U+FF06)
+    result = result.replace(/%/g, '\\%');               // Percent (comment character)
+    result = result.replace(/~/g, '\\textasciitilde{}'); // Tilde
+    
+    // Escape ^ and _ when they should be literal characters (not superscript/subscript)
+    // In math mode, these are special operators, so we need to escape them for literal display
+    result = result.replace(/\^/g, '{\\text{^}}'); // Caret in text mode without backslash
+    result = result.replace(/_/g, '{\\_}');        // Underscore escaped in math mode
+    
+    return result;
   }
 
 }

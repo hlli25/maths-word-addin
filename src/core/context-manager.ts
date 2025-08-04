@@ -298,7 +298,91 @@ export class ContextManager {
     return true;
   }
 
-  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold'>>): boolean {
+  getSelectionFormatting(): { bold?: boolean; italic?: boolean; underline?: string | boolean; cancel?: boolean; color?: string } | null {
+    if (!this.hasSelection() || !this.activeContextPath) {
+      return null;
+    }
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) {
+      return null;
+    }
+
+    // Collect formatting from all selected text elements
+    const formattingCounts = {
+      bold: { true: 0, false: 0 },
+      italic: { true: 0, false: 0 },
+      underline: {} as Record<string, number>,
+      cancel: { true: 0, false: 0 },
+      color: {} as Record<string, number>
+    };
+    
+    let totalTextElements = 0;
+    
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        
+        if (element.type === 'text') {
+          totalTextElements++;
+          
+          // Count bold
+          const bold = element.bold || false;
+          formattingCounts.bold[bold as any]++;
+          
+          // Count italic
+          const italic = element.italic || false;
+          formattingCounts.italic[italic as any]++;
+          
+          // Count underline
+          const underline = element.underline || 'none';
+          const underlineKey = underline === true ? 'single' : (underline === false ? 'none' : underline);
+          formattingCounts.underline[underlineKey] = (formattingCounts.underline[underlineKey] || 0) + 1;
+          
+          // Count cancel
+          const cancel = element.cancel || false;
+          formattingCounts.cancel[cancel as any]++;
+          
+          // Count color
+          const color = element.color || 'default';
+          formattingCounts.color[color] = (formattingCounts.color[color] || 0) + 1;
+        }
+      }
+    }
+    
+    if (totalTextElements === 0) return null;
+    
+    // Determine consistent formatting
+    const result: any = {};
+    
+    // Bold: consistent if all elements have same value
+    if (formattingCounts.bold.true === totalTextElements) result.bold = true;
+    else if (formattingCounts.bold.false === totalTextElements) result.bold = false;
+    
+    // Italic: consistent if all elements have same value
+    if (formattingCounts.italic.true === totalTextElements) result.italic = true;
+    else if (formattingCounts.italic.false === totalTextElements) result.italic = false;
+    
+    // Underline: consistent if all elements have same value
+    const underlineTypes = Object.keys(formattingCounts.underline);
+    if (underlineTypes.length === 1 && formattingCounts.underline[underlineTypes[0]] === totalTextElements) {
+      result.underline = underlineTypes[0];
+    }
+    
+    // Cancel: consistent if all elements have same value
+    if (formattingCounts.cancel.true === totalTextElements) result.cancel = true;
+    else if (formattingCounts.cancel.false === totalTextElements) result.cancel = false;
+    
+    // Color: consistent if all elements have same value
+    const colorTypes = Object.keys(formattingCounts.color);
+    if (colorTypes.length === 1 && formattingCounts.color[colorTypes[0]] === totalTextElements) {
+      result.color = colorTypes[0] === 'default' ? undefined : colorTypes[0];
+    }
+    
+    return result;
+  }
+
+  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'underline' | 'cancel' | 'color' | 'underlineStyle'>>): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
     }
@@ -323,21 +407,40 @@ export class ContextManager {
             // Skip bold for operators, but allow other formatting
             const filteredFormatting = { ...formatting };
             delete filteredFormatting.bold;
-            Object.assign(element, filteredFormatting);
+            this.applyFormattingToElement(element, filteredFormatting);
           } else {
-            // Handle bold: false by removing the bold property
-            if (formatting.bold === false) {
-              delete element.bold;
-            } else {
-              Object.assign(element, formatting);
-            }
-            elementsModified++;
+            this.applyFormattingToElement(element, formatting);
           }
+          elementsModified++;
         }
       }
     }
     
-    return true;
+    if (elementsModified > 0) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  private applyFormattingToElement(element: EquationElement, formatting: any): void {
+    // Handle removal of properties (when value is false)
+    Object.keys(formatting).forEach(key => {
+      if (formatting[key] === false) {
+        delete (element as any)[key];
+      } else if (formatting[key] !== undefined) {
+        (element as any)[key] = formatting[key];
+      }
+    });
+
+    // Special handling for underlineStyle - map to underline property
+    if (formatting.underlineStyle !== undefined) {
+      if (formatting.underlineStyle === null) {
+        delete element.underline;
+      } else {
+        element.underline = formatting.underlineStyle;
+      }
+    }
   }
 
   isSelectionBold(): boolean {
@@ -362,6 +465,54 @@ export class ContextManager {
     }
     
     // Return true only if we found text elements and all are bold
+    return hasTextElements;
+  }
+
+  isSelectionItalic(): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) return false;
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Check if all selected text elements are italic
+    let hasTextElements = false;
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        if (element.type === 'text') {
+          hasTextElements = true;
+          // If any text element is not italic, selection is not fully italic
+          if (!element.italic) {
+            return false;
+          }
+        }
+      }
+    }
+    
+    return hasTextElements;
+  }
+
+  isSelectionCancel(): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) return false;
+    
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Check if all selected text elements are cancel
+    let hasTextElements = false;
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        if (element.type === 'text') {
+          hasTextElements = true;
+          // If any text element is not cancel, selection is not fully cancel
+          if (!element.cancel) {
+            return false;
+          }
+        }
+      }
+    }
+    
     return hasTextElements;
   }
 
