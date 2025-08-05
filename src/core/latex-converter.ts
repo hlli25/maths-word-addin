@@ -54,7 +54,8 @@ export class LatexConverter {
             element.numerator, element.denominator, // fraction, bevelled-fraction
             element.radicand, element.index,        // sqrt, nthroot
             element.base, element.superscript, element.subscript, // script
-            element.content                         // bracket (already handled above)
+            element.content,                        // bracket (already handled above)
+            element.lowerLimit, element.upperLimit, element.operand // large-operator
           ].filter(Boolean);
           
           childArrays.forEach(childArray => {
@@ -92,6 +93,8 @@ export class LatexConverter {
                elements[j].type === "text" && 
                this.hasEqualFormatting(elements[j], currentFormatting)) {
           let value = elements[j].value || "";
+          // Keep + and − as symbols - don't convert to LaTeX commands
+          // + and − (U+2212) work fine directly in LaTeX/MathJax
           if (value === "×") value = "\\times";
           if (value === "÷") value = "\\div";
           if (value === "±") value = "\\pm";
@@ -208,6 +211,35 @@ export class LatexConverter {
           maxDepth
         );
         latex += `${latexLeft}${content || " "}${latexRight}`;
+      } else if (element.type === "large-operator") {
+        const operatorSymbol = this.convertOperatorToLatex(element.operator!);
+        const lowerLimit = this.toLatexRecursive(element.lowerLimit!, maxDepth);
+        const upperLimit = this.toLatexRecursive(element.upperLimit!, maxDepth);
+        const operand = this.toLatexRecursive(element.operand!, maxDepth);
+        
+        let operatorLatex = operatorSymbol;
+        
+        // Apply limit mode and display mode
+        if (element.limitMode === "nolimits") {
+          operatorLatex += "\\nolimits";
+        } else if (element.limitMode === "limits") {
+          operatorLatex += "\\limits";
+        }
+        
+        // Add limits
+        if (lowerLimit && upperLimit) {
+          if (element.displayMode === "display") {
+            latex += `\\displaystyle ${operatorLatex}_{${lowerLimit}}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
+          } else {
+            latex += `${operatorLatex}_{${lowerLimit}}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
+          }
+        } else if (lowerLimit) {
+          latex += `${operatorLatex}_{${lowerLimit}}${operand ? ` ${operand}` : ""}`;
+        } else if (upperLimit) {
+          latex += `${operatorLatex}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
+        } else {
+          latex += `${operatorLatex}${operand ? ` ${operand}` : ""}`;
+        }
       }
     }
     return latex;
@@ -1286,6 +1318,24 @@ export class LatexConverter {
     }
     
     return result;
+  }
+
+  private convertOperatorToLatex(operator: string): string {
+    const operatorMap: { [key: string]: string } = {
+      "∑": "\\sum",
+      "∏": "\\prod",
+      "∐": "\\coprod",
+      "∪": "\\bigcup",
+      "∩": "\\bigcap",
+      "∨": "\\bigvee",
+      "∧": "\\bigwedge",
+      "⨁": "\\bigoplus",
+      "⨂": "\\bigotimes",
+      "⨀": "\\bigodot",
+      "⨄": "\\biguplus"
+    };
+    
+    return operatorMap[operator] || operator;
   }
 
   private escapeLatexSpecialChars(text: string): string {

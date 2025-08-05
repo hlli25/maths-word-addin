@@ -24,7 +24,7 @@ export class DisplayRenderer {
       return '<span class="empty-state">Click here and start typing your equation</span>';
     }
 
-    return this.buildEquationHtml(elements, "root");
+    return this.generateMathML(elements, "root");
   }
 
   updateDisplay(displayElement: HTMLElement, elements: EquationElement[]): void {
@@ -38,237 +38,270 @@ export class DisplayRenderer {
 
     displayElement.classList.toggle("active", activeContextPath !== null);
     
-    // Wrap root content in a container with proper context path
-    const rootContent = this.buildEquationHtml(elements, "root");
-    displayElement.innerHTML = `<div class="equation-container root-container" data-context-path="root">${rootContent}</div>`;
-
-    // After rendering, ensure all fraction bars are correctly sized
-    setTimeout(() => this.updateAllFractionBars(), 0);
+    const mathmlContent = this.generateMathML(elements, "root");
+    const visualHTML = `
+      <div class="visual-equation-container" style="font-size: ${this.globalFontSize * 1.5}px;">
+        ${mathmlContent}
+      </div>
+    `;
+    
+    displayElement.innerHTML = visualHTML;
   }
 
-  private buildEquationHtml(elements: EquationElement[], contextPath: string): string {
-    let html = "";
+  private generateMathML(elements: EquationElement[], contextPath: string): string {
     const activeContextPath = this.contextManager.getActiveContextPath();
     const cursorPosition = this.contextManager.getCursorPosition();
     const selection = this.contextManager.getSelection();
-    const isActive = contextPath === activeContextPath;
-    const hasSelection = selection.isActive && selection.contextPath === contextPath;
+
+    // Add active-context class to the container mrow if this is the active context
+    const isActiveContext = activeContextPath === contextPath;
+    const containerClass = isActiveContext ? 'active-context' : '';
+    const containerClassAttr = containerClass ? ` class="${containerClass}"` : '';
+
+    let mathmlContent = `<math><mrow data-context-path="${contextPath}"${containerClassAttr}>`;
+
+    if (elements.length === 0 && contextPath === activeContextPath) {
+      mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="0" />';
+    }
 
     elements.forEach((element, index) => {
-      if (isActive && index === cursorPosition) {
-        html += '<span class="cursor"></span>';
+      if (contextPath === activeContextPath && index === cursorPosition) {
+        mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="' + index + '" />';
       }
-
-      // Check if this element is in the selection
-      const isSelected = hasSelection && index >= selection.startPosition && index < selection.endPosition;
+      const elementPath = contextPath === 'root' ? `root/${element.id}` : `${contextPath}/${element.id}`;
       
-      if (element.type === "text") {
-        html += this.renderTextElement(element, isSelected);
-      } else if (element.type === "fraction") {
-        html += this.renderFractionElement(element, contextPath, activeContextPath);
-      } else if (element.type === "bevelled-fraction") {
-        html += this.renderBevelledFractionElement(element, contextPath, activeContextPath);
-      } else if (element.type === "sqrt") {
-        html += this.renderSqrtElement(element, contextPath, activeContextPath);
-      } else if (element.type === "nthroot") {
-        html += this.renderNthRootElement(element, contextPath, activeContextPath);
-      } else if (element.type === "script") {
-        html += this.renderScriptElement(element, contextPath, activeContextPath);
-      } else if (element.type === "bracket") {
-        html += this.renderBracketElement(element, contextPath, activeContextPath);
-      }
+      // Check if this element is in the selection range
+      const isSelected = selection.isActive && 
+                        selection.contextPath === contextPath && 
+                        index >= selection.startPosition && 
+                        index < selection.endPosition;
+      
+      mathmlContent += this.elementToMathML(element, elementPath, index, isSelected);
     });
 
-    if (isActive && cursorPosition === elements.length) {
-      html += '<span class="cursor"></span>';
+    if (contextPath === activeContextPath && elements.length === cursorPosition) {
+      mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="' + elements.length + '" />';
     }
-
-    // If the container is empty and active, show a placeholder cursor
-    if (isActive && elements.length === 0 && html.indexOf("cursor") === -1) {
-      html += '<span class="cursor"></span>';
-    }
-
-    return html;
+    
+    mathmlContent += '</mrow></math>';
+    return mathmlContent;
   }
 
-  private renderTextElement(element: EquationElement, isSelected: boolean = false): string {
-    const isOperator = /[+\-×÷=]/.test(element.value || "");
-    const isParenthesis = /[()]/.test(element.value || "");
-    const isVariable = /[a-zA-Z]/.test(element.value || "");
-    const displayFontSize = this.globalFontSize * 1.5;
+  private elementToMathML(element: EquationElement, contextPath: string, position: number, isSelected: boolean = false): string {
+    const activeContextPath = this.contextManager.getActiveContextPath();
+    const isActive = activeContextPath === contextPath;
+
+    switch (element.type) {
+      case 'text':
+        return this.textToMathML(element, isActive, contextPath, position, isSelected);
+      case 'fraction':
+        return this.fractionToMathML(element, contextPath, isActive, position, isSelected);
+      case 'bevelled-fraction':
+        return this.bevelledFractionToMathML(element, contextPath, isActive, position, isSelected);
+      case 'sqrt':
+        return this.sqrtToMathML(element, contextPath, isActive, position, isSelected);
+      case 'nthroot':
+        return this.nthRootToMathML(element, contextPath, isActive, position, isSelected);
+      case 'script':
+        return this.scriptToMathML(element, contextPath, isActive, position, isSelected);
+      case 'bracket':
+        return this.bracketToMathML(element, contextPath, isActive, position, isSelected);
+      case 'large-operator':
+        return this.largeOperatorToMathML(element, contextPath, isActive, position, isSelected);
+      default:
+        return '';
+    }
+  }
+
+  private textToMathML(element: EquationElement, isActive: boolean, contextPath: string, position: number, isSelected: boolean = false): string {
+    const value = element.value || '&#x25A1;'; // Default to a placeholder square
+    const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
+    const isVariable = /[a-zA-Z]/.test(value);
+    const isNumber = /[0-9]/.test(value);
+    const isSymbol = /[^\w\s]/.test(value); // Any non-alphanumeric, non-whitespace character
     
-    // Build CSS classes
-    let classes = "equation-element";
-    if (isSelected) classes += " selected";
+    let tag = 'mi';
+    if (isOperator) tag = 'mo';
+    else if (isNumber) tag = 'mn';
     
-    // Build inline styles
-    let styles = `font-size: ${displayFontSize}px;`;
+    let style = '';
+    if (element.color) style += `color: ${element.color};`;
+    if (element.bold) style += 'font-weight: bold;';
     
-    // Apply text formatting
-    if (element.bold) styles += " font-weight: bold;";
-    // Variables are italic by default, but not when they are bold (matches LaTeX \mathbf behavior)
-    if (element.italic || (isVariable && !element.bold)) styles += " font-style: italic;";
-    if (element.color) styles += ` color: ${element.color};`;
+    // Only apply italic to variables (letters) and only if explicitly set or if it's a variable and not bold
+    // Never apply italic to operators, numbers, or other symbols
+    if (!isSymbol && !isOperator && !isNumber && (element.italic || (isVariable && !element.bold))) {
+      style += 'font-style: italic;';
+    }
+    
+    // Add underline styling
     if (element.underline) {
-      if (element.underline === "single") styles += " text-decoration: underline;";
-      else if (element.underline === "double") styles += " text-decoration: underline; text-decoration-style: double;";
-    }
-    if (element.cancel) classes += " math-cancel";
-    
-    // Handle special element types
-    if (isParenthesis && element.scaleFactor && element.scaleFactor > 1) {
-      classes += " parenthesis scaled";
-      styles += ` --scale-factor: ${element.scaleFactor};`;
-    } else if (isOperator) {
-      classes += " operator";
-    } else {
-      classes += " text-element";
-    }
-
-    return `<span class="${classes}" style="${styles}">${element.value}</span>`;
-  }
-
-  private renderFractionElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const numeratorPath = `${contextPath}/${element.id}/numerator`;
-    const denominatorPath = `${contextPath}/${element.id}/denominator`;
-    
-    return `<span class="equation-element">
-      <div class="fraction" id="${element.id}">
-        <div class="equation-container numerator-container ${
-          activeContextPath === numeratorPath ? "active-context" : ""
-        }" data-context-path="${numeratorPath}">
-          ${this.buildEquationHtml(element.numerator!, numeratorPath)}
-        </div>
-        <div class="fraction-bar"></div>
-        <div class="equation-container denominator-container ${
-          activeContextPath === denominatorPath ? "active-context" : ""
-        }" data-context-path="${denominatorPath}">
-          ${this.buildEquationHtml(element.denominator!, denominatorPath)}
-        </div>
-      </div>
-    </span>`;
-  }
-
-  private renderBevelledFractionElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const numeratorPath = `${contextPath}/${element.id}/numerator`;
-    const denominatorPath = `${contextPath}/${element.id}/denominator`;
-    
-    return `<span class="equation-element">
-      <div class="bevelled-fraction" id="${element.id}">
-        <div class="equation-container bevelled-numerator-container ${
-          activeContextPath === numeratorPath ? "active-context" : ""
-        }" data-context-path="${numeratorPath}">
-          ${this.buildEquationHtml(element.numerator!, numeratorPath)}
-        </div>
-        <span class="bevelled-slash">/</span>
-        <div class="equation-container bevelled-denominator-container ${
-          activeContextPath === denominatorPath ? "active-context" : ""
-        }" data-context-path="${denominatorPath}">
-          ${this.buildEquationHtml(element.denominator!, denominatorPath)}
-        </div>
-      </div>
-    </span>`;
-  }
-
-  private renderSqrtElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const radicandPath = `${contextPath}/${element.id}/radicand`;
-    
-    return `<span class="equation-element">
-      <div class="sqrt" id="${element.id}">
-        <span class="sqrt-symbol">√</span>
-        <div class="sqrt-radicand">
-          <div class="equation-container ${
-            activeContextPath === radicandPath ? "active-context" : ""
-          }" data-context-path="${radicandPath}">
-            ${this.buildEquationHtml(element.radicand!, radicandPath)}
-          </div>
-        </div>
-      </div>
-    </span>`;
-  }
-
-  private renderNthRootElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const indexPath = `${contextPath}/${element.id}/index`;
-    const radicandPath = `${contextPath}/${element.id}/radicand`;
-    
-    return `<span class="equation-element">
-      <div class="nthroot" id="${element.id}">
-        <div class="nthroot-index">
-          <div class="equation-container ${
-            activeContextPath === indexPath ? "active-context" : ""
-          }" data-context-path="${indexPath}">
-            ${this.buildEquationHtml(element.index!, indexPath)}
-          </div>
-        </div>
-        <span class="nthroot-symbol">√</span>
-        <div class="nthroot-radicand">
-          <div class="equation-container ${
-            activeContextPath === radicandPath ? "active-context" : ""
-          }" data-context-path="${radicandPath}">
-            ${this.buildEquationHtml(element.radicand!, radicandPath)}
-          </div>
-        </div>
-      </div>
-    </span>`;
-  }
-
-  private renderScriptElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const basePath = `${contextPath}/${element.id}/base`;
-    const supPath = `${contextPath}/${element.id}/superscript`;
-    const subPath = `${contextPath}/${element.id}/subscript`;
-    
-    const isCombined = element.superscript !== undefined && element.subscript !== undefined;
-    const containerClass = isCombined ? "script-container combined-script" : "script-container";
-    const baseClass = isCombined ? "base-container combined-base" : "base-container";
-    const scriptsClass = isCombined ? "script-subsup combined-scripts" : "script-subsup";
-    const superClass = isCombined ? "superscript-container combined-superscript" : "superscript-container";
-    const subClass = isCombined ? "subscript-container combined-subscript" : "subscript-container";
-    
-    return `<span class="equation-element">
-      <div class="${containerClass}" id="${element.id}">
-        <div class="equation-container ${baseClass} ${activeContextPath === basePath ? "active-context" : ""}" data-context-path="${basePath}">${this.buildEquationHtml(element.base!, basePath)}</div>
-        <div class="${scriptsClass}">
-          ${element.superscript !== undefined ? `<div class="equation-container ${superClass} ${activeContextPath === supPath ? "active-context" : ""}" data-context-path="${supPath}">${this.buildEquationHtml(element.superscript, supPath)}</div>` : ""}
-          ${element.subscript !== undefined ? `<div class="equation-container ${subClass} ${activeContextPath === subPath ? "active-context" : ""}" data-context-path="${subPath}">${this.buildEquationHtml(element.subscript, subPath)}</div>` : ""}
-        </div>
-      </div>
-    </span>`;
-  }
-
-  private renderBracketElement(element: EquationElement, contextPath: string, activeContextPath: string | null): string {
-    const contentPath = `${contextPath}/${element.id}/content`;
-    
-    // Don't display "." invisible brackets in the visual editor
-    const left = (element.leftBracketSymbol === "." || !element.leftBracketSymbol) ? "" : element.leftBracketSymbol;
-    const right = (element.rightBracketSymbol === "." || !element.rightBracketSymbol) ? "" : element.rightBracketSymbol;
-    
-    return `<span class="equation-element">
-      <div class="bracket-container" id="${element.id}">
-        <span class="bracket-left">${left}</span>
-        <div class="equation-container bracket-content-container ${
-          activeContextPath === contentPath ? "active-context" : ""
-        }" data-context-path="${contentPath}">
-          ${this.buildEquationHtml(element.content!, contentPath)}
-        </div>
-        <span class="bracket-right">${right}</span>
-      </div>
-    </span>`;
-  }
-
-
-  private updateAllFractionBars(): void {
-    document.querySelectorAll(".fraction").forEach((fractionElement) => {
-      const numerator = fractionElement.querySelector(".numerator-container") as HTMLElement;
-      const denominator = fractionElement.querySelector(".denominator-container") as HTMLElement;
-      const bar = fractionElement.querySelector(".fraction-bar") as HTMLElement;
-
-      if (numerator && denominator && bar) {
-        const numWidth = numerator.scrollWidth;
-        const denWidth = denominator.scrollWidth;
-        const maxWidth = Math.max(numWidth, denWidth, 20);
-
-        bar.style.width = maxWidth + "px";
+      if (element.underlineStyle === 'double') {
+        style += 'text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;';
+      } else {
+        style += 'text-decoration: underline;';
       }
-    });
+    }
+    
+    // Add selection highlighting
+    if (isSelected) {
+      style += 'background-color: #0078d4; color: white; border-radius: 2px; padding: 1px 2px;';
+    }
+    
+    const styleAttr = style ? `style="${style}"` : '';
+    const classNames = [];
+    if (isActive) classNames.push('active-element');
+    if (isSelected) classNames.push('selected');
+    if (element.cancel) classNames.push('math-cancel');
+    
+    // Add active-context class if this is the active context
+    const activeContextPath = this.contextManager.getActiveContextPath();
+    if (activeContextPath === contextPath) {
+      classNames.push('active-context');
+    }
+    
+    const classAttr = classNames.length > 0 ? `class="${classNames.join(' ')}"` : '';
+    const dataAttrs = `data-context-path="${contextPath}" data-position="${position}"`;
+
+    return `<${tag} ${styleAttr} ${classAttr} ${dataAttrs}>${value}</${tag}>`;
+  }
+
+  private fractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
+    const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    return `<mfrac ${classAttr} ${dataAttrs}>
+      <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
+      <mrow data-context-path="${elementPath}/denominator">${denominatorML}</mrow>
+    </mfrac>`;
+  }
+
+  private bevelledFractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
+    const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    return `<mrow ${classAttr} ${dataAttrs}>
+      <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
+      <mo>/</mo>
+      <mrow data-context-path="${elementPath}/denominator">${denominatorML}</mrow>
+    </mrow>`;
+  }
+
+  private sqrtToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    return `<msqrt ${classAttr} ${dataAttrs}>
+      <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
+    </msqrt>`;
+  }
+
+  private nthRootToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const indexML = this.generateMathMLContent(`${elementPath}/index`, element.index);
+    const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    return `<mroot ${classAttr} ${dataAttrs}>
+      <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
+      <mrow data-context-path="${elementPath}/index">${indexML}</mrow>
+    </mroot>`;
+  }
+
+  private scriptToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const baseML = this.generateMathMLContent(`${elementPath}/base`, element.base);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    if (element.superscript && element.subscript) {
+      const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
+      const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
+      return `<msubsup ${classAttr} ${dataAttrs}>
+        <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
+        <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
+        <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
+      </msubsup>`;
+    } else if (element.superscript) {
+      const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
+      return `<msup ${classAttr} ${dataAttrs}>
+        <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
+        <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
+      </msup>`;
+    } else if (element.subscript) {
+      const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
+      return `<msub ${classAttr} ${dataAttrs}>
+        <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
+        <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
+      </msub>`;
+    }
+    return `<mrow data-context-path="${elementPath}">${baseML}</mrow>`;
+  }
+
+  private bracketToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
+    const leftBracket = element.leftBracketSymbol ? `<mo>${element.leftBracketSymbol}</mo>` : '';
+    const rightBracket = element.rightBracketSymbol ? `<mo>${element.rightBracketSymbol}</mo>` : '';
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    return `<mrow ${classAttr} ${dataAttrs}>
+      ${leftBracket}
+      <mrow data-context-path="${elementPath}/content">${contentML}</mrow>
+      ${rightBracket}
+    </mrow>`;
+  }
+
+  private largeOperatorToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const operator = element.operator || '&#x2211;';
+    const operandML = this.generateMathMLContent(`${elementPath}/operand`, element.operand);
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    
+    // Add displaystyle attribute for display mode
+    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    
+    let operatorML = '';
+    if (element.limitMode === 'limits') {
+      const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
+      const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
+      operatorML = `<munderover ${classAttr} ${dataAttrs}>
+        <mo>${operator}</mo>
+        <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+        <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+      </munderover>`;
+    } else {
+      const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
+      const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
+      operatorML = `<msubsup ${classAttr} ${dataAttrs}>
+        <mo>${operator}</mo>
+        <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+        <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+      </msubsup>`;
+    }
+    
+    // Wrap everything in mrow with displaystyle and include operand
+    return `<mrow ${displayStyle}>
+      ${operatorML}
+      <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
+    </mrow>`;
+  }
+
+  private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {
+    if (!elements || elements.length === 0) {
+      const activeContextPath = this.contextManager.getActiveContextPath();
+      if (activeContextPath === contextPath) {
+        return `<mspace class="cursor" data-context-path="${contextPath}" data-position="0" />`;
+      }
+      // Add active-context class to empty placeholder squares when they're in the active context
+      const isActiveContext = activeContextPath === contextPath;
+      const activeClass = isActiveContext ? ' active-context' : '';
+      return `<mi class="placeholder-square${activeClass}" data-context-path="${contextPath}" data-position="0">&#x25A1;</mi>`;
+    }
+    return this.generateMathML(elements, contextPath);
   }
 }

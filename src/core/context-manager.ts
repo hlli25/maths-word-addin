@@ -143,6 +143,28 @@ export class ContextManager {
           this.navigateOutOfContext("backward");
         }
       }
+    } else if (parentElement.type === "large-operator") {
+      if (direction === "ArrowDown") {
+        if (currentPart === "lowerLimit" && parentElement.upperLimit) {
+          this.activeContextPath = `${parentPath}/${elementId}/upperLimit`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "upperLimit" && parentElement.operand) {
+          this.activeContextPath = `${parentPath}/${elementId}/operand`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("forward");
+        }
+      } else if (direction === "ArrowUp") {
+        if (currentPart === "operand" && parentElement.upperLimit) {
+          this.activeContextPath = `${parentPath}/${elementId}/upperLimit`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "upperLimit" && parentElement.lowerLimit) {
+          this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
+          this.cursorPosition = parentElement.lowerLimit.length;
+        } else {
+          this.navigateOutOfContext("backward");
+        }
+      }
     } else {
       this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
     }

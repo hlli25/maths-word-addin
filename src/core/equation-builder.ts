@@ -1,7 +1,7 @@
 // Equation element types and builder functionality
 export interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -20,6 +20,13 @@ export interface EquationElement {
   rightBracketSymbol?: string;
   scaleFactor?: number;
   nestingDepth?: number;
+  // for large operators (sum, product, union, intersection, etc.)
+  operator?: string; // The operator symbol (∑, ∏, ∪, ∩, etc.)
+  displayMode?: "inline" | "display"; // inline or display style
+  limitMode?: "default" | "nolimits" | "limits"; // how to position limits
+  lowerLimit?: EquationElement[];
+  upperLimit?: EquationElement[];
+  operand?: EquationElement[]; // the expression after the operator
   // text formatting
   bold?: boolean;
   italic?: boolean;
@@ -131,6 +138,23 @@ export class EquationBuilder {
     };
   }
 
+  createLargeOperatorElement(
+    operator: string, 
+    displayMode: "inline" | "display" = "inline", 
+    limitMode: "default" | "nolimits" | "limits" = "default"
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "large-operator",
+      operator: operator,
+      displayMode: displayMode,
+      limitMode: limitMode,
+      lowerLimit: [],
+      upperLimit: [],
+      operand: [],
+    };
+  }
+
   findElementById(elements: EquationElement[], id: string): EquationElement | null {
     for (const el of elements) {
       if (el.id === id) return el;
@@ -155,6 +179,13 @@ export class EquationBuilder {
       }
       if (el.type === "bracket") {
         const found = this.findElementById(el.content || [], id);
+        if (found) return found;
+      }
+      if (el.type === "large-operator") {
+        const found =
+          this.findElementById(el.lowerLimit || [], id) ||
+          this.findElementById(el.upperLimit || [], id) ||
+          this.findElementById(el.operand || [], id);
         if (found) return found;
       }
     }
@@ -191,6 +222,10 @@ export class EquationBuilder {
         if (el.subscript) this.updateParenthesesScalingRecursive(el.subscript);
       } else if (el.type === "bracket") {
         this.updateParenthesesScalingRecursive(el.content!);
+      } else if (el.type === "large-operator") {
+        if (el.lowerLimit) this.updateParenthesesScalingRecursive(el.lowerLimit);
+        if (el.upperLimit) this.updateParenthesesScalingRecursive(el.upperLimit);
+        if (el.operand) this.updateParenthesesScalingRecursive(el.operand);
       }
     });
 
@@ -234,6 +269,10 @@ export class EquationBuilder {
         this.updateBracketNestingRecursive(element.base!, currentDepth);
         if (element.superscript) this.updateBracketNestingRecursive(element.superscript, currentDepth);
         if (element.subscript) this.updateBracketNestingRecursive(element.subscript, currentDepth);
+      } else if (element.type === "large-operator") {
+        if (element.lowerLimit) this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
+        if (element.upperLimit) this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
+        if (element.operand) this.updateBracketNestingRecursive(element.operand, currentDepth);
       }
     });
   }

@@ -226,6 +226,14 @@ class MathAddinApp {
       this.inputHandler.insertSuperscriptSubscript();
     } else if (button.classList.contains("custom-bracket-btn")) {
       this.handleCustomBracketInsertion();
+    } else if (button.classList.contains("sum-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∑", "inline", "nolimits");
+    } else if (button.classList.contains("sum-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∑", "inline", "limits");
+    } else if (button.classList.contains("sum-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∑", "display", "nolimits");
+    } else if (button.classList.contains("sum-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∑", "display", "limits");
     }
   }
 

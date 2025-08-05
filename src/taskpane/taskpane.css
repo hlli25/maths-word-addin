@@ -11,7 +11,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  width: 400px;
+  width: 420px;
   box-sizing: border-box;
   background-color: #f3f4f6;
 }
@@ -86,7 +86,7 @@ body {
   border-radius: 4px;
   padding: 12px;
   font-size: 18px;
-  min-height: 100px;
+  min-height: 120px;
   flex-grow: 1;
   display: flex;
   align-items: center;
@@ -97,6 +97,30 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+}
+
+/* Visual Equation Container for MathML */
+.visual-equation-container {
+  position: relative;
+  display: inline-block;
+  min-height: 100px;
+  min-width: 100px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 8px;
+  transition: border-color 0.2s ease;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+}
+
+.visual-equation-container.active {
+  border-color: #0078d4;
+  background-color: rgba(0, 120, 212, 0.05);
+}
+
+.visual-equation-container math {
+  display: inline-block;
+  vertical-align: baseline;
 }
 
 /* Style the horizontal scrollbar for the equation display */
@@ -121,7 +145,7 @@ body {
 .equation-container {
   display: inline-flex;
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: baseline;
   gap: 2px;
   min-height: 28px; /* Base height for an empty line */
   min-width: 15px; /* To make empty containers clickable */
@@ -169,6 +193,8 @@ body {
 
 .equation-container.active-context {
   border-color: #0078d4;
+  background-color: #f5f5f5; /* Light grey background */
+  box-shadow: 0 0 0 1px #0078d4; /* Subtle blue glow */
 }
 
 /* Hidden input to capture keyboard events */
@@ -180,18 +206,16 @@ body {
   opacity: 0;
 }
 
-/* Cursor Styling */
+/* Cursor Styling for MathML */
 .cursor {
   display: inline-block;
   width: 1px;
-  height: 22px;
-  background-color: #000;
+  background-color: #0078d4;
   animation: blink 1s step-end infinite;
-  vertical-align: middle;
-  position: relative;
-  z-index: 10;
-  flex-shrink: 0;
-  margin: 0 1px; /* Small margin to prevent clipping */
+  margin: 0;
+  vertical-align: baseline;
+  height: 1.2em;
+  transform: translateY(0.2em);
 }
 
 @keyframes blink {
@@ -200,8 +224,113 @@ body {
     background-color: transparent;
   }
   50% {
-    background-color: black;
+    background-color: #0078d4;
   }
+}
+
+/* Active Element Highlighting for MathML */
+.active-element {
+  background-color: transparent;
+  border-radius: 3px;
+  outline: none;
+}
+
+/* Make MathML placeholder squares larger and more visible */
+mi.placeholder-square {
+  font-size: 1.1em;
+  font-weight: bold;
+  min-width: 1.1em;
+  min-height: 1.1em;
+  display: inline-block;
+  text-align: center;
+  color: #d0d0d0;
+  background-color: rgba(200, 200, 200, 0.1);
+  border-radius: 3px;
+  padding: 1px 1px;
+  border: 1px dashed #ccc;
+  line-height: 1.1;
+}
+
+/* Active context styling for placeholder squares */
+mi.placeholder-square.active-context {
+  background-color: #f5f5f5;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+  color: #333;
+}
+
+/* MathML Element Styling */
+math, math * {
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+}
+
+mi:empty {
+  color: #999;
+  border: 1px dashed #ccc;
+  border-radius: 2px;
+  padding: 1px 3px;
+  min-width: 12px;
+  display: inline-block;
+  text-align: center;
+}
+
+/* MathML element spacing and font */
+mfrac, msqrt, mroot, msup, msub, msubsup, mo {
+  margin: 0 2px;
+}
+
+/* Force inline limits to display above/below (not on sides) */
+.equation-display munderover,
+.visual-equation-container munderover {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  vertical-align: baseline !important;
+}
+
+.equation-display munderover > mo,
+.visual-equation-container munderover > mo {
+  order: 2 !important; /* operator in middle */
+}
+
+.equation-display munderover > mrow:first-child,
+.visual-equation-container munderover > mrow:first-child {
+  order: 1 !important; /* upper limit on top */
+  font-size: 0.8em !important;
+}
+
+.equation-display munderover > mrow:last-child,
+.visual-equation-container munderover > mrow:last-child {
+  order: 3 !important; /* lower limit on bottom */
+  font-size: 0.8em !important;
+}
+
+/* Keep button symbols centered and unaffected */
+.builder-btn math,
+.builder-btn math * {
+  vertical-align: middle !important;
+  position: static !important;
+  top: auto !important;
+  margin: 0 !important;
+}
+
+/* Empty state styling */
+.empty-state {
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  background-color: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.empty-state:hover {
+  border-color: #0078d4;
+  background-color: rgba(0, 120, 212, 0.05);
+  color: #0078d4;
 }
 
 /* Equation Element Styling */
@@ -214,7 +343,7 @@ body {
 }
 
 .equation-element.text-element {
-  font-family: "Times New Roman", serif;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
   font-size: 18px;
   font-weight: normal;
 }
@@ -666,8 +795,8 @@ body {
 }
 
 .builder-btn {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid #c8c8c8;
   background-color: #fff;
@@ -685,8 +814,8 @@ body {
 .operator-btn {
   font-size: 16px;
   font-weight: bold;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
 }
 
@@ -1183,6 +1312,34 @@ body {
   transform-origin: center;
 }
 
+/* MathML underline styling */
+mi[style*="underline"], mo[style*="underline"], mn[style*="underline"] {
+  text-decoration: underline;
+}
+
+mi[style*="double-underline"], mo[style*="double-underline"], mn[style*="double-underline"] {
+  text-decoration: underline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* MathML cancel styling */
+mi.math-cancel, mo.math-cancel, mn.math-cancel {
+  position: relative;
+}
+
+mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: currentColor;
+  transform: translateY(-50%) rotate(-15deg);
+  transform-origin: center;
+}
+
 .color-preview {
   width: 16px;
   height: 2px;
@@ -1451,7 +1608,7 @@ body {
   border-radius: 3px;
   background-color: white;
   font-size: 16px;
-  font-family: "Times New Roman", serif;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
   min-width: 60px;
   text-align: center;
   cursor: pointer;
@@ -1473,7 +1630,7 @@ body {
   border-radius: 4px;
   background-color: white;
   font-size: 16px;
-  font-family: "Times New Roman", serif;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
   text-align: center;
   color: #333;
   min-height: 24px;
@@ -1524,4 +1681,255 @@ body {
   position: absolute;
   top: -9999px;
   left: -9999px;
+}
+
+/* Large Operator Styling */
+.large-operator-container {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 4px;
+}
+
+.operator-with-limits {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.operator-with-scripts {
+  display: inline-flex;
+  align-items: baseline;
+  position: relative;
+}
+
+.operator-symbol {
+  font-weight: bold;
+  color: #333;
+  line-height: 1;
+  padding: 2px 4px;
+  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+}
+
+.operator-scripts {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 2px;
+  font-size: 0.8em;
+}
+
+.upper-limit-container,
+.lower-limit-container {
+  font-size: 0.75em;
+  min-height: 12px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 1px 3px;
+  margin: 1px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Limits mode positioning (above/below operator) */
+.limits-mode .upper-limit-container {
+  margin-top: 1px;
+  margin-bottom: 1px; 
+}
+
+.limits-mode .lower-limit-container {
+  margin-top: 2px;
+  margin-bottom: -1px; /* Move lower limit block lower */
+}
+
+/* Script mode positioning (superscript/subscript) */
+/* Inline nolimits mode */
+.inline-mode.script-mode .upper-script-container {
+  margin-top: -4px; /* Move upper script block higher for inline */
+  margin-bottom: 1px;
+}
+
+.inline-mode.script-mode .lower-script-container {
+  margin-top: 1px;
+  margin-bottom: 1px;
+}
+
+/* Display nolimits mode */
+.display-mode.script-mode .upper-script-container {
+  margin-top: -6px; /* Move upper script block even higher for display */
+  margin-bottom: 2px;
+}
+
+.display-mode.script-mode .lower-script-container {
+  margin-top: 2px;
+  margin-bottom: 1px;
+}
+
+.upper-script-container,
+.lower-script-container {
+  font-size: 0.75em;
+  min-height: 10px;
+  min-width: 12px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 1px 2px;
+  margin: 1px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.operand-container {
+  min-height: 15px;
+  min-width: 15px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 2px;
+  background-color: #f9f9f9;
+  padding: 2px 4px;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.upper-limit-container:empty::before,
+.lower-limit-container:empty::before,
+.upper-script-container:empty::before,
+.lower-script-container:empty::before,
+.operand-container:empty::before {
+  content: "□";
+  color: #a0a0a0;
+}
+
+.empty-limit {
+  opacity: 0.5;
+}
+
+/* Large Operator Button Styling */
+.large-operator-btn {
+  width: 72px !important;
+  height: 56px !important;
+  font-size: 12px;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.large-operator-btn math {
+  font-size: 12px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.large-operator-btn math mo {
+  font-size: 1.6em;
+  font-weight: bold;
+}
+
+.large-operator-btn math mi {
+  font-size: 0.8em;
+}
+
+/* Specific styling for limits vs nolimits display */
+.large-operator-btn math munderover {
+  /* Let MathML handle the natural positioning */
+  position: relative;
+}
+
+.large-operator-btn math munderover > mi:first-of-type {
+  order: 1; /* upper limit on top */
+  margin-bottom: 1px;
+}
+
+.large-operator-btn math munderover > mo {
+  order: 2; /* operator in middle */
+  margin: 1px 0;
+}
+
+.large-operator-btn math munderover > mi:last-of-type {
+  order: 3; /* lower limit on bottom */
+  margin-top: 1px;
+}
+
+.large-operator-btn math msubsup {
+  /* Let MathML handle the natural positioning */
+  position: relative;
+}
+
+.large-operator-btn math msubsup > mi {
+  font-size: 0.7em;
+  line-height: 1;
+}
+
+/* Adjust button row spacing for larger buttons */
+#larger-operators .button-row {
+  gap: 8px;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+/* Ensure proper alignment in limits mode */
+.limits-mode .upper-limit-container {
+  order: -1;
+}
+
+.limits-mode .lower-limit-container {
+  order: 1;
+}
+
+/* Visual improvements for active contexts */
+.upper-limit-container.active-context,
+.lower-limit-container.active-context,
+.upper-script-container.active-context,
+.lower-script-container.active-context,
+.operand-container.active-context,
+.numerator-container.active-context,
+.denominator-container.active-context,
+.radicand-container.active-context,
+.base-container.active-context,
+.superscript-container.active-context,
+.subscript-container.active-context,
+.bracket-content-container.active-context,
+.bevelled-numerator-container.active-context,
+.bevelled-denominator-container.active-context {
+  border-color: #0078d4 !important;
+  background-color: #f5f5f5 !important; /* Light grey background for better visibility */
+  box-shadow: 0 0 0 1px #0078d4; /* Subtle blue glow */
+}
+
+/* MathML sizing classes for button display */
+.large-operator-btn .sum-operator-inline {
+  font-size: 1.3em !important;
+  font-weight: bold;
+}
+
+.large-operator-btn .sum-operator-display {
+  font-size: 1.4em !important;
+  font-weight: bold;
+}
+
+.large-operator-btn .sum-limit-inline {
+  font-size: 1.0em !important;
+}
+
+.large-operator-btn .sum-limit-display {
+  font-size: 1.1em !important;
+}
+
+.large-operator-btn .sum-operand-inline {
+  font-size: 1.1em !important;
+}
+
+.large-operator-btn .sum-operand-display {
+  font-size: 1.2em !important;
 }

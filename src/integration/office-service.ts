@@ -33,8 +33,11 @@ export class OfficeService {
         )
       );
 
+      // Add unique prefix to LaTeX for reliable equation detection
+      const prefixedLatex = `hlleqed ${latex}`;
+
       // Insert the image with positioning using OOXML
-      const ooxml = this.createInlineImageWithPositionOoxml(base64Svg, width, height, baselineOffsetPt, latex);
+      const ooxml = this.createInlineImageWithPositionOoxml(base64Svg, width, height, baselineOffsetPt, prefixedLatex);
       selection.insertOoxml(ooxml, Word.InsertLocation.replace);
       await context.sync();
     });
@@ -62,10 +65,13 @@ export class OfficeService {
           const altText = picture.altTextDescription;
           
           if (altText && altText.trim()) {
-            if (this.latexConverter.isValidLatex(altText)) {
-              const loaded = await this.loadEquationFromLatex(altText);
+            // Check if this is an equation created by our editor (has "hlleqed " prefix)
+            if (altText.startsWith('hlleqed ')) {
+              // Remove the prefix to get the original LaTeX
+              const originalLatex = altText.substring(8); // Remove "hlleqed " (8 characters)
+              const loaded = await this.loadEquationFromLatex(originalLatex);
               if (loaded && this.onEquationLoadedCallback) {
-                await this.onEquationLoadedCallback(altText);
+                await this.onEquationLoadedCallback(originalLatex);
               }
             }
           }

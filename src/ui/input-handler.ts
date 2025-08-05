@@ -79,8 +79,16 @@ export class InputHandler {
     input.value = "";
 
     if (this.contextManager.isActive() && char) {
+      // Convert + and - to proper mathematical operator symbols
+      let processedChar = char;
+      if (char === '+') {
+        processedChar = '+'; // Keep as regular plus but ensure it's treated as operator
+      } else if (char === '-') {
+        processedChar = '−'; // Proper minus sign (U+2212), not hyphen-minus
+      }
+      
       // Sanitize the character before inserting
-      const sanitizedChar = this.sanitizeInputChar(char);
+      const sanitizedChar = this.sanitizeInputChar(processedChar);
       if (sanitizedChar) {
         this.contextManager.insertTextAtCursor(sanitizedChar);
         this.updateDisplay();
@@ -107,13 +115,49 @@ export class InputHandler {
       return; // Don't move cursor when clicking on vertical scrollbar
     }
     
-    // Find the equation container, trying multiple approaches
-    let equationContainer = target.closest(".equation-container") as HTMLElement;
+    // Find an element with a context path, starting from the clicked element
+    let contextElement: HTMLElement | null = null;
     
-    // If we didn't find a container directly, check if we clicked on a child element
-    if (!equationContainer && target.classList.contains('equation-container')) {
-      equationContainer = target;
+    // Strategy: Find the most appropriate context level for editing
+    // We want to find the container that represents an editable context (root, numerator, denominator, etc.)
+    
+    // Start with the clicked target and traverse up to find the right context level
+    let currentElement: HTMLElement | null = target;
+    
+    while (currentElement) {
+      const contextPath = currentElement.dataset.contextPath;
+      
+      if (contextPath) {
+        // Check if this is an appropriate editing context level
+        if (contextPath === 'root' || 
+            contextPath.endsWith('/numerator') || 
+            contextPath.endsWith('/denominator') ||
+            contextPath.endsWith('/radicand') ||
+            contextPath.endsWith('/index') ||
+            contextPath.endsWith('/base') ||
+            contextPath.endsWith('/superscript') ||
+            contextPath.endsWith('/subscript') ||
+            contextPath.endsWith('/content') ||
+            contextPath.endsWith('/lowerLimit') ||
+            contextPath.endsWith('/upperLimit') ||
+            contextPath.endsWith('/operand')) {
+          contextElement = currentElement;
+          break;
+        }
+      }
+      
+      // Move up to parent element
+      currentElement = currentElement.parentElement;
     }
+    
+    // If we still don't have one, look for the main equation container
+    if (!contextElement) {
+      contextElement = target.closest(".equation-container") as HTMLElement;
+      if (!contextElement && target.classList.contains('equation-container')) {
+        contextElement = target;
+      }
+    }
+    
     
     // Don't clear selection if clicking on formatting buttons, dropdowns, or tab panel
     const isFormattingClick = target.closest('.format-btn') || 
@@ -126,42 +170,66 @@ export class InputHandler {
                              target.closest('.font-size-dropdown');
     
     // Clear selection unless this is part of a drag operation or formatting click
-    if (!this.isDragging && !isFormattingClick) {
-      this.contextManager.clearSelection();
-      // Notify that selection changed
-      if (this.onSelectionChange) {
-        this.onSelectionChange();
+    // Don't clear selection immediately on mouse down - wait to see if it's a drag
+    if (!isFormattingClick) {
+      // Only clear selection if this is not a mouse down event that could start a drag
+      // We'll clear it in handleMouseUp if no dragging occurred
+      if (this.isDragging === false && e.type !== 'mousedown') {
+        this.contextManager.clearSelection();
+        // Notify that selection changed
+        if (this.onSelectionChange) {
+          this.onSelectionChange();
+        }
       }
     }
 
-    if (equationContainer) {
-      const path = equationContainer.dataset.contextPath;
+    if (contextElement) {
+      const path = contextElement.dataset.contextPath;
       
       if (path) {
-        this.contextManager.enterContextPath(path);
-        const context = this.contextManager.getContext(path);
+        // Enter the appropriate context
+        if (path === "root") {
+          this.contextManager.enterRootContext();
+        } else {
+          this.contextManager.enterContextPath(path);
+        }
         
+        // Get the context and calculate position
+        const context = this.contextManager.getContext(path);
         if (context) {
-          const position = this.getClickPosition(e, equationContainer, context.array);
+          const position = this.getClickPosition(e, contextElement, context.array);
           this.contextManager.setCursorPosition(position);
-          
-          // Start drag selection
-          this.isDragging = false; // Will be set to true on mousemove
           this.dragStartPosition = position;
         }
       } else {
+        // No path found, default to root
         this.contextManager.enterRootContext();
-        const position = this.getClickPosition(e, equationContainer, this.equationBuilder.getEquation());
+        const position = this.getClickPosition(e, contextElement, this.equationBuilder.getEquation());
         this.contextManager.setCursorPosition(position);
         this.dragStartPosition = position;
       }
     } else {
+      // No context element found - default to root context and try to position smartly
       this.contextManager.enterRootContext();
-      this.dragStartPosition = 0;
-      
-      // Force set cursor position to end of equation when clicking on empty area
       const equation = this.equationBuilder.getEquation();
-      this.contextManager.setCursorPosition(equation.length);
+      
+      if (equation.length === 0) {
+        // Empty equation, position at start
+        this.contextManager.setCursorPosition(0);
+        this.dragStartPosition = 0;
+      } else {
+        // Try to use the general click position logic for the main container
+        const mainContainer = this.displayElement.querySelector('[data-context-path="root"]') as HTMLElement;
+        if (mainContainer) {
+          const position = this.getClickPosition(e, mainContainer, equation);
+          this.contextManager.setCursorPosition(position);
+          this.dragStartPosition = position;
+        } else {
+          // Fallback to end of equation
+          this.contextManager.setCursorPosition(equation.length);
+          this.dragStartPosition = equation.length;
+        }
+      }
     }
 
     this.focusHiddenInput();
@@ -220,6 +288,8 @@ export class InputHandler {
 
   private convertLatexToUnicode(latex: string): string {
     const latexToUnicodeMap: { [key: string]: string } = {
+      "\\plus": "+",
+      "\\minus": "−",
       "\\times": "×",
       "\\div": "÷",
       "\\pm": "±",
@@ -282,7 +352,8 @@ export class InputHandler {
       "\\asymp": "≍",
       "\\triangleq": "≜",
       "\\therefore": "∴",
-      "\\because": "∵"
+      "\\because": "∵",
+      "\\sum": "∑"
     };
 
     return latexToUnicodeMap[latex] || latex;
@@ -434,6 +505,48 @@ export class InputHandler {
     this.focusHiddenInput();
   }
 
+  insertSummation(): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create the summation script element with both subscript and superscript
+    const summationElement = this.equationBuilder.createScriptElement(true, true);
+    
+    // Set the base to the summation symbol
+    const sumSymbol = this.equationBuilder.createTextElement("∑");
+    summationElement.base = [sumSymbol];
+    
+    this.contextManager.insertElementAtCursor(summationElement);
+
+    // Move context into the subscript first (lower limit)
+    const subscriptPath = this.contextManager.getElementContextPath(summationElement.id, "subscript");
+    this.contextManager.enterContextPath(subscriptPath, 0);
+
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
+  insertLargeOperator(
+    operator: string, 
+    displayMode: "inline" | "display" = "inline", 
+    limitMode: "default" | "nolimits" | "limits" = "default"
+  ): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    const largeOperatorElement = this.equationBuilder.createLargeOperatorElement(operator, displayMode, limitMode);
+    this.contextManager.insertElementAtCursor(largeOperatorElement);
+
+    // Move context into the lower limit first
+    const lowerLimitPath = this.contextManager.getElementContextPath(largeOperatorElement.id, "lowerLimit");
+    this.contextManager.enterContextPath(lowerLimitPath, 0);
+
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
 
   private updateDisplay(): void {
     this.displayRenderer.updateDisplay(this.displayElement, this.equationBuilder.getEquation());
@@ -483,17 +596,24 @@ export class InputHandler {
     if (e.buttons === 1 && this.contextManager.isActive()) { // Left mouse button is down
       this.isDragging = true;
       const target = e.target as HTMLElement;
-      const equationContainer = target.closest(".equation-container") as HTMLElement;
       
-      if (equationContainer) {
-        const path = equationContainer.dataset.contextPath;
+      // Find an element with a context path, starting from the clicked element
+      let contextElement = target.closest('[data-context-path]') as HTMLElement;
+      
+      // If we didn't find a context element, look for the main equation container
+      if (!contextElement) {
+        contextElement = target.closest(".equation-container") as HTMLElement;
+      }
+      
+      if (contextElement) {
+        const path = contextElement.dataset.contextPath;
         const currentPath = this.contextManager.getActiveContextPath();
         
         // Only allow selection within the same context
         if (path === currentPath) {
           const context = this.contextManager.getContext(path!);
           if (context) {
-            const currentPosition = this.getClickPosition(e, equationContainer, context.array);
+            const currentPosition = this.getClickPosition(e, contextElement, context.array);
             
             this.contextManager.setSelection(this.dragStartPosition, currentPosition, path!);
             
@@ -509,6 +629,24 @@ export class InputHandler {
   }
 
   handleMouseUp(e: MouseEvent): void {
+    // If we weren't dragging, clear any existing selection (this was a simple click)
+    if (!this.isDragging) {
+      // Don't clear selection if clicking on formatting buttons
+      const target = e.target as HTMLElement;
+      const isFormattingClick = target.closest('.format-btn') || 
+                               target.closest('.tab-panel') ||
+                               target.closest('.underline-dropdown-container') ||
+                               target.closest('.underline-dropdown') ||
+                               target.closest('.color-dropdown-container') ||
+                               target.closest('.color-panel') ||
+                               target.closest('.font-size-container') ||
+                               target.closest('.font-size-dropdown');
+      
+      if (!isFormattingClick) {
+        this.contextManager.clearSelection();
+      }
+    }
+    
     this.isDragging = false;
     
     // Notify that selection may have changed
@@ -518,50 +656,76 @@ export class InputHandler {
   }
 
   private getClickPosition(e: MouseEvent, container: HTMLElement, elements: any[]): number {
-    const rect = container.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    
-    // Find all text elements within the container
-    const textElements = container.querySelectorAll('.equation-element');
-    
-    if (textElements.length === 0) {
+    // If no elements, return position 0
+    if (elements.length === 0) {
       return 0;
     }
     
-    let closestPosition = 0;
-    let minDistance = Infinity;
+    const clickX = e.clientX;
+    const containerRect = container.getBoundingClientRect();
+    const containerPath = container.dataset.contextPath;
     
-    // Check each element to find the closest one to the click
-    textElements.forEach((element, index) => {
-      const elementRect = element.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      
-      // Calculate element position relative to container
-      const elementLeft = elementRect.left - containerRect.left;
-      const elementRight = elementRect.right - containerRect.left;
-      const elementCenter = elementLeft + (elementRect.width / 2);
-      
-      // Distance from click to element center
-      const distanceToCenter = Math.abs(clickX - elementCenter);
-      
-      // Distance from click to element left edge (for cursor positioning)
-      const distanceToLeft = Math.abs(clickX - elementLeft);
-      const distanceToRight = Math.abs(clickX - elementRight);
-      
-      // Determine if click is closer to left or right side of this element
-      if (distanceToLeft < minDistance) {
-        minDistance = distanceToLeft;
-        closestPosition = index; // Before this element
-      }
-      
-      if (distanceToRight < minDistance) {
-        minDistance = distanceToRight;
-        closestPosition = index + 1; // After this element
-      }
+    // For character-level positioning, we need to look at ALL visible elements in the container
+    // regardless of their exact context path, but prioritize those that match our context
+    const allVisibleElements = Array.from(container.querySelectorAll('mi, mo, mn, mfrac, msqrt, msup, msub, msubsup, mroot')).filter(el => {
+      const element = el as HTMLElement;
+      return !element.classList.contains('cursor') && element.dataset.position !== undefined;
     });
     
-    // Ensure position is within bounds
-    return Math.max(0, Math.min(closestPosition, elements.length));
+    if (allVisibleElements.length === 0) {
+      // No visible elements, determine position based on click location
+      const relativeX = clickX - containerRect.left;
+      return relativeX < containerRect.width / 2 ? 0 : elements.length;
+    }
+    
+    // Sort elements by their visual position (left to right)
+    allVisibleElements.sort((a, b) => {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      return aRect.left - bRect.left;
+    });
+    
+    // Get the rightmost element to check if we're clicking far to the right
+    const lastElement = allVisibleElements[allVisibleElements.length - 1] as HTMLElement;
+    const lastElementRect = lastElement.getBoundingClientRect();
+    
+    // If clicking far to the right of the last element (beyond its right edge + some margin),
+    // position at the end of the equation
+    if (clickX > lastElementRect.right + 10) {
+      return elements.length;
+    }
+    
+    // Find the closest insertion point based on visual position
+    for (let i = 0; i < allVisibleElements.length; i++) {
+      const element = allVisibleElements[i] as HTMLElement;
+      const elementRect = element.getBoundingClientRect();
+      
+      // For fine-grained positioning, check both left edge and center
+      const elementLeft = elementRect.left;
+      const elementCenter = elementRect.left + elementRect.width / 2;
+      const elementRight = elementRect.right;
+      
+      // If click is very close to the left edge, position before this element
+      if (clickX <= elementLeft + 2) {
+        const position = parseInt(element.dataset.position || '0', 10);
+        return Math.max(0, Math.min(position, elements.length));
+      }
+      
+      // If click is before the center, position before this element
+      if (clickX < elementCenter) {
+        const position = parseInt(element.dataset.position || '0', 10);
+        return Math.max(0, Math.min(position, elements.length));
+      }
+      
+      // If this is the last element and click is after its center, position after it
+      if (i === allVisibleElements.length - 1 && clickX >= elementCenter) {
+        const position = parseInt(element.dataset.position || '0', 10);
+        return Math.max(0, Math.min(position + 1, elements.length));
+      }
+    }
+    
+    // If we get here, click was after all elements
+    return elements.length;
   }
 
   private selectAll(): void {
