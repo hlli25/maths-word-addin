@@ -21,8 +21,8 @@ export interface EquationElement {
   scaleFactor?: number;
   nestingDepth?: number;
   // for large operators (sum, product, union, intersection, etc.)
-  operator?: string; // The operator symbol (∑, ∏, ∪, ∩, etc.)
-  displayMode?: "inline" | "display"; // inline or display style
+  operator?: string;
+  displayMode?: "inline" | "display";
   limitMode?: "default" | "nolimits" | "limits"; // how to position limits
   lowerLimit?: EquationElement[];
   upperLimit?: EquationElement[];

@@ -118,7 +118,7 @@ export class DisplayRenderer {
     const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
     const isVariable = /[a-zA-Z]/.test(value);
     const isNumber = /[0-9]/.test(value);
-    const isSymbol = /[^\w\s]/.test(value); // Any non-alphanumeric, non-whitespace character
+    const isSymbol = /[^\w\s]/.test(value);
     
     let tag = 'mi';
     if (isOperator) tag = 'mo';
@@ -262,14 +262,18 @@ export class DisplayRenderer {
     const classAttr = isActive ? 'class="active-element"' : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
     
-    // Add displaystyle attribute for display mode
-    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    // Add displaystyle attribute for display mode OR limits mode (to force proper limit positioning)
+    const displayStyle = (element.displayMode === 'display' || element.limitMode === 'limits') ? 'displaystyle="true"' : '';
     
     let operatorML = '';
     if (element.limitMode === 'limits') {
       const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
       const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
-      operatorML = `<munderover ${classAttr} ${dataAttrs}>
+      // Distinguish regular limits from display limits for sizing
+      const limitsClass = element.displayMode === 'display' ? 'display-limits' : 'inline-limits';
+      // Add data-operator attribute for operator-specific scaling
+      const operatorData = this.getOperatorDataAttribute(operator);
+      operatorML = `<munderover class="${limitsClass}" ${operatorData} ${classAttr} ${dataAttrs}>
         <mo>${operator}</mo>
         <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
         <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
@@ -289,6 +293,26 @@ export class DisplayRenderer {
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
     </mrow>`;
+  }
+
+  private getOperatorDataAttribute(operator: string): string {
+    // Map operator symbols to data attribute names
+    const operatorMap: { [key: string]: string } = {
+      "∑": "sum",
+      "∏": "prod",
+      "∐": "coprod",
+      "∪": "bigcup",
+      "∩": "bigcap",
+      "∨": "bigvee",
+      "∧": "bigwedge",
+      "⨁": "bigoplus",
+      "⨂": "bigotimes",
+      "⨀": "bigodot",
+      "⨄": "biguplus"
+    };
+    
+    const operatorName = operatorMap[operator] || 'unknown';
+    return `data-operator="${operatorName}"`;
   }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {

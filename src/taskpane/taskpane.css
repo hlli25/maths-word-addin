@@ -46,10 +46,6 @@ body {
   border-radius: 2px;
 }
 
-.equation-element.bold {
-  font-weight: bold;
-}
-
 /* Format button styles */
 .format-btn {
   min-width: 24px;
@@ -71,14 +67,6 @@ body {
   border-color: #a0a0a0;
 }
 
-.format-note {
-  font-size: 12px;
-  color: #666;
-  text-align: center;
-  margin-top: 8px;
-  font-style: italic;
-}
-
 /* Equation Editor Display Area */
 .equation-display {
   background-color: #ffffff;
@@ -97,20 +85,22 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
 }
 
 /* Visual Equation Container for MathML */
 .visual-equation-container {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-start;
   min-height: 100px;
   min-width: 100px;
   border: 2px solid transparent;
   border-radius: 4px;
   padding: 8px;
   transition: border-color 0.2s ease;
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
 }
 
 .visual-equation-container.active {
@@ -120,7 +110,7 @@ body {
 
 .visual-equation-container math {
   display: inline-block;
-  vertical-align: baseline;
+  vertical-align: middle; /* Changed from baseline to middle for proper alignment */
 }
 
 /* Style the horizontal scrollbar for the equation display */
@@ -145,7 +135,7 @@ body {
 .equation-container {
   display: inline-flex;
   flex-wrap: nowrap;
-  align-items: baseline;
+  align-items: center; /* Changed from baseline to center for proper vertical alignment */
   gap: 2px;
   min-height: 28px; /* Base height for an empty line */
   min-width: 15px; /* To make empty containers clickable */
@@ -261,7 +251,7 @@ mi.placeholder-square.active-context {
 
 /* MathML Element Styling */
 math, math * {
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
 }
 
 mi:empty {
@@ -279,39 +269,13 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   margin: 0 2px;
 }
 
-/* Force inline limits to display above/below (not on sides) */
-.equation-display munderover,
-.visual-equation-container munderover {
-  display: inline-flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  vertical-align: baseline !important;
-}
-
-.equation-display munderover > mo,
-.visual-equation-container munderover > mo {
-  order: 2 !important; /* operator in middle */
-}
-
-.equation-display munderover > mrow:first-child,
-.visual-equation-container munderover > mrow:first-child {
-  order: 1 !important; /* upper limit on top */
-  font-size: 0.8em !important;
-}
-
-.equation-display munderover > mrow:last-child,
-.visual-equation-container munderover > mrow:last-child {
-  order: 3 !important; /* lower limit on bottom */
-  font-size: 0.8em !important;
-}
-
 /* Keep button symbols centered and unaffected */
 .builder-btn math,
 .builder-btn math * {
-  vertical-align: middle !important;
-  position: static !important;
-  top: auto !important;
-  margin: 0 !important;
+  vertical-align: middle;
+  position: static;
+  top: auto;
+  margin: 0;
 }
 
 /* Empty state styling */
@@ -347,325 +311,6 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   font-size: 18px;
   font-weight: normal;
 }
-
-.operator {
-  margin: 0 4px;
-  font-size: 20px;
-}
-
-.parenthesis {
-  font-size: 24px;
-  transition: transform 0.2s ease-in-out;
-}
-
-.parenthesis.scaled {
-  transform: scaleY(var(--scale-factor, 1.5));
-  transform-origin: center;
-}
-
-/* Fraction Styling */
-.fraction {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  margin: 0 4px;
-  vertical-align: middle;
-}
-
-.fraction-bar {
-  height: 1.5px;
-  background-color: #333;
-  margin: 2px 0;
-  border-radius: 1px;
-  align-self: stretch;
-}
-
-.numerator-container,
-.denominator-container {
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 2px 4px;
-}
-
-.numerator-container:empty::before,
-.denominator-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-/* Square Root Styling */
-.sqrt {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin: 0 2px;
-}
-
-.sqrt-symbol {
-  font-size: 1.4em;
-  line-height: 1;
-  margin-right: 0px;
-  margin-top: -0.5em;
-}
-
-.sqrt-radicand {
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 2px 4px;
-  border-top: 1.5px solid #333; /* The overline */
-}
-
-.sqrt-radicand .equation-container {
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-}
-
-.sqrt-radicand .equation-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-/* N-th Root Styling */
-.nthroot {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin: 0 2px;
-  position: relative;
-}
-
-.nthroot-index {
-  display: inline-flex;
-  font-size: 0.7em;
-  position: absolute;
-  left: -0.8em;
-  top: -1.4em;
-}
-
-.nthroot-index .equation-container {
-  min-height: 12px;
-  min-width: 12px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 1px 2px;
-}
-
-.nthroot-index .equation-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-.nthroot-symbol {
-  font-size: 1.4em;
-  line-height: 1;
-  margin-right: 0px;
-  margin-top: -0.5em;
-}
-
-.nthroot-radicand {
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 2px 4px;
-  border-top: 1.5px solid #333; /* The overline */
-}
-
-.nthroot-radicand .equation-container {
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-}
-
-.nthroot-radicand .equation-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-/* Root button icon styling */
-.nthroot-icon {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-}
-
-.root-index {
-  font-size: 0.8em;
-  vertical-align: super;
-  margin-right: 1px;
-  position: relative;
-  top: -0.3em;
-}
-
-.root-radicand {
-  margin-left: 1px;
-}
-
-/* Script (Superscript/Subscript) Styling */
-.script-container {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: flex-end;
-  vertical-align: middle;
-  margin: 0 1px;
-  position: relative;
-}
-
-.base-container {
-  display: inline-flex;
-  align-items: center;
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-}
-
-.script-subsup {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.67em;
-  line-height: 1;
-  margin-left: 1px;
-  justify-content: space-between;
-  align-items: flex-start;
-  position: relative;
-  min-height: 1.5em;
-}
-
-.superscript-container {
-  min-height: 10px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  position: relative;
-  top: -1em;
-  margin-bottom: 0.1em;
-  font-size: 0.67em;
-}
-
-.subscript-container {
-  min-height: 10px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  position: relative;
-  bottom: -0.5em;
-  margin-top: 0.1em;
-  font-size: 0.67em;
-}
-
-.superscript-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-  font-size: 0.67em;
-  display: inline-block;
-  vertical-align: top;
-}
-
-.subscript-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-  font-size: 0.67em;
-  display: inline-block;
-  vertical-align: bottom;
-}
-
-.base-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-/* Combined Superscript-Subscript Styling (for "Superscript-subscript" button) */
-.combined-script {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: flex-end;
-  vertical-align: middle;
-  margin: 0 1px;
-  position: relative;
-}
-
-.combined-base {
-  display: inline-flex;
-  align-items: center;
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-}
-
-.combined-scripts {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.5em;
-  line-height: 1;
-  margin-left: 1px;
-  justify-content: space-between;
-  align-items: flex-start;
-  position: relative;
-  min-height: 1.5em;
-}
-
-.combined-superscript {
-  min-height: 10px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  position: relative;
-  top: 0em;
-  margin-bottom: 0;
-  font-size: 0.67em;
-}
-
-.combined-subscript {
-  min-height: 10px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  position: relative;
-  bottom: -1em;
-  margin-top: 0;
-  font-size: 0.67em;
-}
-
-.combined-superscript:empty::before {
-  content: "□";
-  color: #a0a0a0;
-  font-size: 0.67em;
-  display: inline-block;
-  vertical-align: top;
-}
-
-.combined-subscript:empty::before {
-  content: "□";
-  color: #a0a0a0;
-  font-size: 0.67em;
-  display: inline-block;
-  vertical-align: bottom;
-}
-
-.combined-base:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
 
 /* Tab Panel Styling */
 .tab-panel {
@@ -703,7 +348,6 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   font-size: 14px;
   color: #666;
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px; /* Aligns with the nav's bottom border */
 }
 
 .tab-btn:hover {
@@ -817,119 +461,6 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   width: 40px;
   height: 40px;
   padding: 0;
-}
-
-.sup-btn sup {
-  font-size: 0.8em;
-  vertical-align: super;
-  position: relative;
-}
-
-.sub-btn sub {
-  font-size: 0.8em;
-  vertical-align: sub;
-  position: relative;
-}
-
-/* Fraction Button Icon Styling */
-.fraction-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.fraction-numerator,
-.fraction-denominator {
-  font-size: 10px;
-  color: #666;
-  padding: 1px 0;
-}
-
-.fraction-line {
-  width: 16px;
-  height: 1px;
-  background-color: #666;
-  margin: 1px 0;
-}
-
-/* Bevelled Fraction Button Icon Styling */
-.bevelled-fraction-icon {
-  font-size: 12px;
-  color: #666;
-  font-style: italic;
-}
-
-/* Bevelled Fraction Display Styling */
-.bevelled-fraction {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 2px;
-  vertical-align: middle;
-}
-
-.bevelled-numerator-container,
-.bevelled-denominator-container {
-  min-height: 1.2em;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 1px 3px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.bevelled-numerator-container:empty::before,
-.bevelled-denominator-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-.bevelled-slash {
-  margin: 0 2px;
-  font-size: 1.1em;
-  color: #333;
-  font-style: italic;
-}
-
-/* Superscript-Subscript Button Icon Styling */
-.sup-sub-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: #666;
-  gap: 1px;
-}
-
-.sup-sub-base {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.sup-sub-scripts {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  font-size: 8px;
-  line-height: 0.8;
-  margin-left: 1px;
-}
-
-.sup-sub-super {
-  margin-bottom: -1px;
-  position: relative;
-  top: -1px;
-}
-
-.sup-sub-sub {
-  margin-top: -1px;
-  position: relative;
-  bottom: -1px;
 }
 
 /* Footer Styling */
@@ -1529,42 +1060,6 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   font-size: 12px;
 }
 
-/* Bracket Styling */
-.bracket-container {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin: 0 2px;
-}
-
-.bracket-left,
-.bracket-right {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #333;
-  display: flex;
-  align-items: center;
-  padding: 0 1px;
-  line-height: 1;
-}
-
-.bracket-content-container {
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 2px 4px;
-  margin: 0 2px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.bracket-content-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
 /* Bracket button styling */
 .bracket-btn {
   font-size: 14px;
@@ -1608,7 +1103,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   border-radius: 3px;
   background-color: white;
   font-size: 16px;
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
   min-width: 60px;
   text-align: center;
   cursor: pointer;
@@ -1630,7 +1125,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   border-radius: 4px;
   background-color: white;
   font-size: 16px;
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
   text-align: center;
   color: #333;
   min-height: 24px;
@@ -1683,132 +1178,6 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   left: -9999px;
 }
 
-/* Large Operator Styling */
-.large-operator-container {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin: 0 4px;
-}
-
-.operator-with-limits {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
-
-.operator-with-scripts {
-  display: inline-flex;
-  align-items: baseline;
-  position: relative;
-}
-
-.operator-symbol {
-  font-weight: bold;
-  color: #333;
-  line-height: 1;
-  padding: 2px 4px;
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
-}
-
-.operator-scripts {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-left: 2px;
-  font-size: 0.8em;
-}
-
-.upper-limit-container,
-.lower-limit-container {
-  font-size: 0.75em;
-  min-height: 12px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 1px 3px;
-  margin: 1px 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Limits mode positioning (above/below operator) */
-.limits-mode .upper-limit-container {
-  margin-top: 1px;
-  margin-bottom: 1px; 
-}
-
-.limits-mode .lower-limit-container {
-  margin-top: 2px;
-  margin-bottom: -1px; /* Move lower limit block lower */
-}
-
-/* Script mode positioning (superscript/subscript) */
-/* Inline nolimits mode */
-.inline-mode.script-mode .upper-script-container {
-  margin-top: -4px; /* Move upper script block higher for inline */
-  margin-bottom: 1px;
-}
-
-.inline-mode.script-mode .lower-script-container {
-  margin-top: 1px;
-  margin-bottom: 1px;
-}
-
-/* Display nolimits mode */
-.display-mode.script-mode .upper-script-container {
-  margin-top: -6px; /* Move upper script block even higher for display */
-  margin-bottom: 2px;
-}
-
-.display-mode.script-mode .lower-script-container {
-  margin-top: 2px;
-  margin-bottom: 1px;
-}
-
-.upper-script-container,
-.lower-script-container {
-  font-size: 0.75em;
-  min-height: 10px;
-  min-width: 12px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 1px 2px;
-  margin: 1px 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.operand-container {
-  min-height: 15px;
-  min-width: 15px;
-  border: 1px dashed #c8c8c8;
-  border-radius: 2px;
-  background-color: #f9f9f9;
-  padding: 2px 4px;
-  margin-left: 4px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.upper-limit-container:empty::before,
-.lower-limit-container:empty::before,
-.upper-script-container:empty::before,
-.lower-script-container:empty::before,
-.operand-container:empty::before {
-  content: "□";
-  color: #a0a0a0;
-}
-
-.empty-limit {
-  opacity: 0.5;
-}
-
 /* Large Operator Button Styling */
 .large-operator-btn {
   width: 72px !important;
@@ -1832,43 +1201,8 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
 }
 
 .large-operator-btn math mo {
-  font-size: 1.6em;
+  font-size: 1.5em;
   font-weight: bold;
-}
-
-.large-operator-btn math mi {
-  font-size: 0.8em;
-}
-
-/* Specific styling for limits vs nolimits display */
-.large-operator-btn math munderover {
-  /* Let MathML handle the natural positioning */
-  position: relative;
-}
-
-.large-operator-btn math munderover > mi:first-of-type {
-  order: 1; /* upper limit on top */
-  margin-bottom: 1px;
-}
-
-.large-operator-btn math munderover > mo {
-  order: 2; /* operator in middle */
-  margin: 1px 0;
-}
-
-.large-operator-btn math munderover > mi:last-of-type {
-  order: 3; /* lower limit on bottom */
-  margin-top: 1px;
-}
-
-.large-operator-btn math msubsup {
-  /* Let MathML handle the natural positioning */
-  position: relative;
-}
-
-.large-operator-btn math msubsup > mi {
-  font-size: 0.7em;
-  line-height: 1;
 }
 
 /* Adjust button row spacing for larger buttons */
@@ -1876,60 +1210,4 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   gap: 8px;
   justify-content: flex-start;
   margin-bottom: 8px;
-}
-
-/* Ensure proper alignment in limits mode */
-.limits-mode .upper-limit-container {
-  order: -1;
-}
-
-.limits-mode .lower-limit-container {
-  order: 1;
-}
-
-/* Visual improvements for active contexts */
-.upper-limit-container.active-context,
-.lower-limit-container.active-context,
-.upper-script-container.active-context,
-.lower-script-container.active-context,
-.operand-container.active-context,
-.numerator-container.active-context,
-.denominator-container.active-context,
-.radicand-container.active-context,
-.base-container.active-context,
-.superscript-container.active-context,
-.subscript-container.active-context,
-.bracket-content-container.active-context,
-.bevelled-numerator-container.active-context,
-.bevelled-denominator-container.active-context {
-  border-color: #0078d4 !important;
-  background-color: #f5f5f5 !important; /* Light grey background for better visibility */
-  box-shadow: 0 0 0 1px #0078d4; /* Subtle blue glow */
-}
-
-/* MathML sizing classes for button display */
-.large-operator-btn .sum-operator-inline {
-  font-size: 1.3em !important;
-  font-weight: bold;
-}
-
-.large-operator-btn .sum-operator-display {
-  font-size: 1.4em !important;
-  font-weight: bold;
-}
-
-.large-operator-btn .sum-limit-inline {
-  font-size: 1.0em !important;
-}
-
-.large-operator-btn .sum-limit-display {
-  font-size: 1.1em !important;
-}
-
-.large-operator-btn .sum-operand-inline {
-  font-size: 1.1em !important;
-}
-
-.large-operator-btn .sum-operand-display {
-  font-size: 1.2em !important;
 }

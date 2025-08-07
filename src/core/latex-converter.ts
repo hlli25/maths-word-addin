@@ -93,8 +93,6 @@ export class LatexConverter {
                elements[j].type === "text" && 
                this.hasEqualFormatting(elements[j], currentFormatting)) {
           let value = elements[j].value || "";
-          // Keep + and − as symbols - don't convert to LaTeX commands
-          // + and − (U+2212) work fine directly in LaTeX/MathJax
           if (value === "×") value = "\\times";
           if (value === "÷") value = "\\div";
           if (value === "±") value = "\\pm";
@@ -219,26 +217,20 @@ export class LatexConverter {
         
         let operatorLatex = operatorSymbol;
         
-        // Apply limit mode and display mode
         if (element.limitMode === "nolimits") {
           operatorLatex += "\\nolimits";
         } else if (element.limitMode === "limits") {
           operatorLatex += "\\limits";
         }
         
-        // Add limits
-        if (lowerLimit && upperLimit) {
-          if (element.displayMode === "display") {
-            latex += `\\displaystyle ${operatorLatex}_{${lowerLimit}}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
-          } else {
-            latex += `${operatorLatex}_{${lowerLimit}}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
-          }
-        } else if (lowerLimit) {
-          latex += `${operatorLatex}_{${lowerLimit}}${operand ? ` ${operand}` : ""}`;
-        } else if (upperLimit) {
-          latex += `${operatorLatex}^{${upperLimit}}${operand ? ` ${operand}` : ""}`;
+        // Wrap operand in braces for predictable parsing
+        const wrappedOperand = operand ? ` {${operand}}` : " {}";
+        const operatorWithLimits = `${operatorLatex}_{${lowerLimit || ""}}^{${upperLimit || ""}}${wrappedOperand}`;
+        
+        if (element.displayMode === "display") {
+          latex += `{\\displaystyle ${operatorWithLimits}}`;
         } else {
-          latex += `${operatorLatex}${operand ? ` ${operand}` : ""}`;
+          latex += `{\\textstyle ${operatorWithLimits}}`;
         }
       }
     }
@@ -250,7 +242,47 @@ export class LatexConverter {
     let i = 0;
 
     while (i < latex.length) {
-      if (latex.substr(i, 5) === "\\frac") {
+      if (latex.substr(i, 13) === "\\displaystyle") {
+        // Handle \displaystyle followed by large operators
+        i += 13;
+        // Skip whitespace after \displaystyle
+        while (i < latex.length && latex[i] === " ") i++;
+        
+        if (this.isLargeOperator(latex, i)) {
+          const operatorInfo = this.parseLargeOperator(latex, i, true); // true = display mode
+          if (operatorInfo) {
+            result.push(operatorInfo.element);
+            i = operatorInfo.endIndex;
+          } else {
+            i++;
+          }
+        } else {
+          // \displaystyle not followed by large operator
+          // Future: will support other expressions like \frac, \sqrt, etc.
+          // Now: treat as text
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "text",
+            value: "\\displaystyle"
+          });
+        }
+      } else if (latex.substr(i, 10) === "\\textstyle") {
+        // Handle \textstyle (inline mode) - just skip it as operators default to inline
+        i += 10;
+        // Skip whitespace after \textstyle
+        while (i < latex.length && latex[i] === " ") i++;
+        
+        if (this.isLargeOperator(latex, i)) {
+          const operatorInfo = this.parseLargeOperator(latex, i, false); // false = inline mode
+          if (operatorInfo) {
+            result.push(operatorInfo.element);
+            i = operatorInfo.endIndex;
+          } else {
+            i++;
+          }
+        }
+        // If not followed by large operator, just continue (skip the \textstyle)
+      } else if (latex.substr(i, 5) === "\\frac") {
         i += 5;
         const numerator = this.parseLatexGroup(latex, i);
         i = numerator.endIndex;
@@ -263,6 +295,15 @@ export class LatexConverter {
           numerator: this.parseLatexToEquation(numerator.content),
           denominator: this.parseLatexToEquation(denominator.content)
         });
+      } else if (this.isLargeOperator(latex, i)) {
+        // Parse large operators like \sum, \prod, \int, etc.
+        const operatorInfo = this.parseLargeOperator(latex, i, false); // false = inline mode
+        if (operatorInfo) {
+          result.push(operatorInfo.element);
+          i = operatorInfo.endIndex;
+        } else {
+          i++;
+        }
       } else if (latex.substr(i, 5) === "\\sqrt") {
         i += 5;
         
@@ -1336,6 +1377,146 @@ export class LatexConverter {
     };
     
     return operatorMap[operator] || operator;
+  }
+
+  private isLatexCommand(latex: string, index: number): boolean {
+    // Check if this is the start of a LaTeX command (backslash followed by letters)
+    if (latex[index] !== '\\') return false;
+    let pos = index + 1;
+    while (pos < latex.length && latex[pos].match(/[a-zA-Z]/)) {
+      pos++;
+    }
+    return pos > index + 1; // Must have at least one letter after backslash
+  }
+
+  private isLargeOperator(latex: string, index: number): boolean {
+    const operators = [
+      "\\sum",
+      "\\prod", 
+      "\\int",
+      "\\oint",
+      "\\coprod",
+      "\\bigcup",
+      "\\bigcap",
+      "\\bigvee",
+      "\\bigwedge",
+      "\\bigoplus",
+      "\\bigotimes",
+      "\\bigodot",
+      "\\biguplus"
+    ];
+    
+    // Check if any operator matches at this position
+    return operators.some(op => {
+      if (latex.substr(index, op.length) === op) {
+        // Make sure the next character is not a letter (to avoid partial matches)
+        const nextCharIndex = index + op.length;
+        if (nextCharIndex >= latex.length || 
+            !latex[nextCharIndex].match(/[a-zA-Z]/)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  private parseLargeOperator(latex: string, index: number, forceDisplayMode?: boolean): { element: EquationElement; endIndex: number } | null {
+    // Map LaTeX operators to symbols
+    const operatorMap: { [key: string]: string } = {
+      "\\sum": "∑",
+      "\\prod": "∏",
+      "\\int": "∫",
+      "\\oint": "∮",
+      "\\coprod": "∐",
+      "\\bigcup": "∪",
+      "\\bigcap": "∩",
+      "\\bigvee": "∨",
+      "\\bigwedge": "∧",
+      "\\bigoplus": "⨁",
+      "\\bigotimes": "⨂",
+      "\\bigodot": "⨀",
+      "\\biguplus": "⨄"
+    };
+    
+    // Find which operator matches
+    let operatorCommand = "";
+    let operatorSymbol = "";
+    
+    for (const [command, symbol] of Object.entries(operatorMap)) {
+      if (latex.substr(index, command.length) === command) {
+        operatorCommand = command;
+        operatorSymbol = symbol;
+        break;
+      }
+    }
+    
+    if (!operatorCommand) {
+      return null;
+    }
+    
+    let pos = index + operatorCommand.length;
+    let limitMode = "limits"; // default
+    let displayMode = forceDisplayMode ? "display" : "inline"; // Use forced display mode if provided
+    
+    // Check for \limits, \nolimits
+    if (latex.substr(pos, 7) === "\\limits") {
+      limitMode = "limits";
+      pos += 7;
+    } else if (latex.substr(pos, 9) === "\\nolimits") {
+      limitMode = "nolimits";
+      pos += 9;
+    }
+    
+    // Parse subscript and superscript (limits)
+    let lowerLimit: EquationElement[] = [];
+    let upperLimit: EquationElement[] = [];
+    let operand: EquationElement[] = [];
+    
+    // Skip whitespace
+    while (pos < latex.length && latex[pos] === " ") pos++;
+    
+    // Parse _ (subscript/lower limit)
+    if (pos < latex.length && latex[pos] === "_") {
+      pos++;
+      const limitGroup = this.parseLatexGroup(latex, pos);
+      lowerLimit = this.parseLatexToEquation(limitGroup.content);
+      pos = limitGroup.endIndex;
+    }
+    
+    // Skip whitespace
+    while (pos < latex.length && latex[pos] === " ") pos++;
+    
+    // Parse ^ (superscript/upper limit)
+    if (pos < latex.length && latex[pos] === "^") {
+      pos++;
+      const limitGroup = this.parseLatexGroup(latex, pos);
+      upperLimit = this.parseLatexToEquation(limitGroup.content);
+      pos = limitGroup.endIndex;
+    }
+    
+    // Parse operand (now wrapped in braces for predictable parsing)
+    // Skip whitespace
+    while (pos < latex.length && latex[pos] === " ") pos++;
+    
+    // The operand should be in braces after the limits
+    if (pos < latex.length && latex[pos] === "{") {
+      const operandGroup = this.parseLatexGroup(latex, pos);
+      operand = this.parseLatexToEquation(operandGroup.content);
+      pos = operandGroup.endIndex;
+    }
+    
+    const element: EquationElement = {
+      id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+      type: "large-operator",
+      operator: operatorSymbol,
+      limitMode,
+      displayMode,
+      lowerLimit,
+      upperLimit,
+      operand
+    };
+    
+    return { element, endIndex: pos };
   }
 
   private escapeLatexSpecialChars(text: string): string {

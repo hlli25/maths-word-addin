@@ -7,6 +7,7 @@
 import { EquationBuilder } from '../core/equation-builder';
 import { LatexConverter } from '../core/latex-converter';
 import { ContextManager } from '../core/context-manager';
+import { FontMeasurementService } from '../core/font-measurement';
 
 // UI modules
 import { DisplayRenderer } from '../ui/display-renderer';
@@ -29,6 +30,7 @@ class MathAddinApp {
   private mathJaxService: MathJaxService;
   private officeService: OfficeService;
   private svgProcessor: SvgProcessor;
+  private fontMeasurementService: FontMeasurementService;
   private currentColor: string = "#000000";
   private currentUnderlineStyle: string = "single";
 
@@ -41,6 +43,7 @@ class MathAddinApp {
     this.mathJaxService = new MathJaxService();
     this.officeService = new OfficeService(this.equationBuilder, this.latexConverter);
     this.svgProcessor = new SvgProcessor();
+    this.fontMeasurementService = new FontMeasurementService();
   }
 
   async initialize(): Promise<void> {
@@ -82,8 +85,19 @@ class MathAddinApp {
     this.updateHexColorPreview(this.currentColor);
     elements.hexInput.value = this.currentColor;
     
+    // Measure and set font scaling for inline-limits operators
+    try {
+      await this.fontMeasurementService.measureAndSetScaleRatios();
+      console.log('Font measurement completed');
+    } catch (error) {
+      console.error('Font measurement failed:', error);
+    }
+    
     // Expose debug functions to window for console testing
     (window as any).testMathJaxColors = () => this.mathJaxService.testColorRendering();
+    (window as any).remeasureFont = () => this.fontMeasurementService.measureAndSetScaleRatios();
+    (window as any).getCurrentFontRatios = () => this.fontMeasurementService.getCurrentRatios();
+    (window as any).getSumRatio = () => this.fontMeasurementService.getCurrentRatio('sum');
   }
 
   private getDOMElements() {

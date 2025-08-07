@@ -16,7 +16,12 @@ export class MathJaxService {
         throw new Error("MathJax renderer element not found.");
       }
 
-      tempDiv.innerHTML = `\\[${latex}\\]`;
+      // Detect if LaTeX contains \displaystyle operators
+      // If so, use display mode; otherwise, use inline mode
+      const hasDisplayStyle = latex.includes('\\displaystyle');
+      const mathMode = hasDisplayStyle ? `\\[${latex}\\]` : `\\(${latex}\\)`;
+
+      tempDiv.innerHTML = mathMode;
 
       MathJax.texReset();
       await MathJax.typesetPromise([tempDiv]);
