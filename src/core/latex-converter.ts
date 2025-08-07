@@ -39,8 +39,6 @@ export class LatexConverter {
   }
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
-    let maxDepth = 0;
-    
     const findMaxDepthRecursive = (elements: EquationElement[]): number => {
       let localMax = 0;
       
@@ -1125,7 +1123,7 @@ export class LatexConverter {
   }
 
   private parseBracketCommand(latex: string, startIndex: number): { leftSymbol: string; rightSymbol: string; content: string; endIndex: number; nestingDepth: number } | null {
-    // Extract the bracket command and determine nesting depth
+    // Extract the bracket command
     let leftCommand = "";
     let nestingDepth = 0;
     
@@ -1133,9 +1131,6 @@ export class LatexConverter {
     for (let i = 0; i < commands.length; i++) {
       if (latex.substr(startIndex, commands[i].length) === commands[i]) {
         leftCommand = commands[i];
-        if (i > 0) { // Not \left
-          nestingDepth = commands.length - i - 1; // Reverse mapping for proper sizing
-        }
         break;
       }
     }

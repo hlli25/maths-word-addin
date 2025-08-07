@@ -238,6 +238,9 @@ class MathAddinApp {
       this.inputHandler.insertScript("subscript");
     } else if (button.classList.contains("sup-sub-btn")) {
       this.inputHandler.insertSuperscriptSubscript();
+    } else if (button.classList.contains("bracket-preset-btn")) {
+      const bracketType = (button as HTMLElement).dataset.bracket || "";
+      this.handlePresetBracketInsertion(bracketType);
     } else if (button.classList.contains("custom-bracket-btn")) {
       this.handleCustomBracketInsertion();
     } else if (button.classList.contains("sum-nolimit-btn")) {
@@ -267,6 +270,50 @@ class MathAddinApp {
     const equationDisplay = document.getElementById("equationDisplay") as HTMLDivElement;
     if (equationDisplay) {
       this.displayRenderer.updateDisplay(equationDisplay, this.equationBuilder.getEquation());
+    }
+  }
+
+  private handlePresetBracketInsertion(bracketType: string): void {
+    let leftBracket = "";
+    let rightBracket = "";
+    
+    switch(bracketType) {
+      case "()":
+        leftBracket = "(";
+        rightBracket = ")";
+        break;
+      case "[]":
+        leftBracket = "[";
+        rightBracket = "]";
+        break;
+      case "{}":
+        leftBracket = "{";
+        rightBracket = "}";
+        break;
+      case "⌊⌋":
+        leftBracket = "⌊";
+        rightBracket = "⌋";
+        break;
+      case "⌈⌉":
+        leftBracket = "⌈";
+        rightBracket = "⌉";
+        break;
+      case "||":
+        leftBracket = "|";
+        rightBracket = "|";
+        break;
+      case "‖‖":
+        leftBracket = "‖";
+        rightBracket = "‖";
+        break;
+      case "⟨⟩":
+        leftBracket = "⟨";
+        rightBracket = "⟩";
+        break;
+    }
+    
+    if (leftBracket || rightBracket) {
+      this.inputHandler.insertCustomBrackets(leftBracket, rightBracket);
     }
   }
 
@@ -598,6 +645,9 @@ class MathAddinApp {
       // Clear current equation and load the parsed elements
       this.equationBuilder.clear();
       this.equationBuilder.setEquation(elements);
+      
+      // Update bracket nesting depths after loading from LaTeX
+      this.equationBuilder.updateBracketNesting();
       
       // Enter editing mode
       this.contextManager.enterRootContext();

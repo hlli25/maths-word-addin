@@ -1071,6 +1071,19 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
 }
 
 /* Bracket Builder Layout */
+.bracket-separator {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.bracket-preset-btn {
+  font-size: 16px;
+  padding: 8px 4px;
+  min-width: 50px;
+}
+
+
 .bracket-builder {
   display: flex;
   align-items: flex-end;

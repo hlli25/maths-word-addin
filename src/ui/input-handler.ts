@@ -481,17 +481,7 @@ export class InputHandler {
       this.contextManager.enterRootContext();
     }
 
-    // Handle different bracket insertion scenarios
-    if (!leftBracket && !rightBracket) {
-      return; // Nothing to insert
-    }
-
-    // Always create a bracket element when at least one side is specified
-    // Convert empty strings to "." for invisible brackets
-    const leftSymbol = leftBracket || ".";
-    const rightSymbol = rightBracket || ".";
-    
-    const bracketElement = this.equationBuilder.createBracketElement(leftSymbol, rightSymbol);
+    const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
     this.contextManager.insertElementAtCursor(bracketElement);
     
     // Update bracket nesting depths
@@ -549,6 +539,9 @@ export class InputHandler {
 
 
   private updateDisplay(): void {
+    // Recalculate bracket nesting depths before rendering to ensure visual sizing is correct
+    this.equationBuilder.updateBracketNesting();
+    
     this.displayRenderer.updateDisplay(this.displayElement, this.equationBuilder.getEquation());
     
     // Ensure the hidden input is focused if we are in an active context

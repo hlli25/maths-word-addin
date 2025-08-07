@@ -266,10 +266,20 @@
                     </div>
                 </div>
                 <div id="brackets" class="tab-pane">
+                    <div class="builder-grid">
+                        <button class="builder-btn bracket-preset-btn" data-bracket="()" title="Parentheses">(□)</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="[]" title="Square Brackets">[□]</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="{}" title="Curly Brackets">{□}</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="⌊⌋" title="Floor Brackets">⌊□⌋</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="⌈⌉" title="Ceiling Brackets">⌈□⌉</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="||" title="Absolute Value">|□|</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="‖‖" title="Norm">‖□‖</button>
+                        <button class="builder-btn bracket-preset-btn" data-bracket="⟨⟩" title="Angle Brackets">⟨□⟩</button>
+                    </div>
+                    <hr class="bracket-separator">
                     <div class="bracket-builder">
                         <div class="bracket-component">
                             <select id="leftBracketSelect" class="bracket-select">
-                                <option value=""></option>
                                 <option value="(" selected>(</option>
                                 <option value="[">[</option>
                                 <option value="{">{</option>
@@ -287,7 +297,6 @@
                         
                         <div class="bracket-component">
                             <select id="rightBracketSelect" class="bracket-select">
-                                <option value=""></option>
                                 <option value=")" selected>)</option>
                                 <option value="]">]</option>
                                 <option value="}">}</option>
