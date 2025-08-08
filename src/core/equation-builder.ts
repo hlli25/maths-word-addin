@@ -20,7 +20,7 @@ export interface EquationElement {
   rightBracketSymbol?: string;
   scaleFactor?: number;
   nestingDepth?: number;
-  // for large operators (sum, product, union, intersection, etc.)
+  // for large operators (sum, product, union, intersection, etc. & definite integral)
   operator?: string;
   displayMode?: "inline" | "display";
   limitMode?: "default" | "nolimits" | "limits"; // how to position limits
@@ -88,6 +88,16 @@ export class EquationBuilder {
       type: "fraction",
       numerator: [],
       denominator: [],
+    };
+  }
+
+  createDisplayFractionElement(): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "fraction",
+      numerator: [],
+      denominator: [],
+      displayMode: "display",
     };
   }
 

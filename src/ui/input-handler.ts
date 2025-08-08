@@ -1,6 +1,7 @@
 import { EquationBuilder } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
 import { DisplayRenderer } from './display-renderer';
+import { isIntegralOperator } from '../core/operator-config';
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -10,6 +11,7 @@ export class InputHandler {
   private isDragging = false;
   private dragStartPosition = 0;
   public onSelectionChange?: () => void;
+  private differentialStyle: "italic" | "roman" = "italic"; // Default to italic
 
   constructor(
     equationBuilder: EquationBuilder,
@@ -376,6 +378,23 @@ export class InputHandler {
     this.focusHiddenInput();
   }
 
+  insertDisplayFraction(): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    const displayFraction = this.equationBuilder.createDisplayFractionElement();
+    this.contextManager.insertElementAtCursor(displayFraction);
+
+    // Move context into the new display fraction's numerator
+    const numeratorPath = this.contextManager.getElementContextPath(displayFraction.id, "numerator");
+    this.contextManager.enterContextPath(numeratorPath, 0);
+
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
   insertBevelledFraction(): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
@@ -480,7 +499,7 @@ export class InputHandler {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }
-
+    
     const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
     this.contextManager.insertElementAtCursor(bracketElement);
     
@@ -527,11 +546,52 @@ export class InputHandler {
     }
 
     const largeOperatorElement = this.equationBuilder.createLargeOperatorElement(operator, displayMode, limitMode);
+    
+    // For integrals, add a differential "d" to the operand following the current style
+    if (isIntegralOperator(operator)) {
+      const d = this.equationBuilder.createTextElement("d");
+      if (this.differentialStyle === "roman") {
+        d.italic = false; // This signals to use \mathrm{d}
+      }
+      largeOperatorElement.operand = [d];
+    }
+    
     this.contextManager.insertElementAtCursor(largeOperatorElement);
 
-    // Move context into the lower limit first
-    const lowerLimitPath = this.contextManager.getElementContextPath(largeOperatorElement.id, "lowerLimit");
-    this.contextManager.enterContextPath(lowerLimitPath, 0);
+    // Move context into the operand first for better UX
+    const operandPath = this.contextManager.getElementContextPath(largeOperatorElement.id, "operand");
+    this.contextManager.enterContextPath(operandPath, 0);
+
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
+  insertIndefiniteIntegral(displayMode: "inline" | "display" = "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create a large-operator element with empty limits (indefinite integral)
+    const integralElement = this.equationBuilder.createLargeOperatorElement("∫", displayMode, "nolimits");
+    
+    // Clear the limits since this is an indefinite integral
+    integralElement.lowerLimit = [];
+    integralElement.upperLimit = [];
+    
+    (integralElement as any).isIndefiniteIntegral = true;
+    
+    // Add a differential "d" to the operand following the current style
+    const d = this.equationBuilder.createTextElement("d");
+    if (this.differentialStyle === "roman") {
+      d.italic = false; // This signals to use \mathrm{d}
+    }
+    integralElement.operand = [d];
+
+    this.contextManager.insertElementAtCursor(integralElement);
+
+    // Position cursor at beginning of operand (before "d") for better UX
+    const operandPath = this.contextManager.getElementContextPath(integralElement.id, "operand");
+    this.contextManager.enterContextPath(operandPath, 0);
 
     this.updateDisplay();
     this.focusHiddenInput();
@@ -858,5 +918,114 @@ export class InputHandler {
     // Allow all other characters including $ % ^ _ ~ # & { }
     // The LaTeX converter will handle proper escaping when converting to LaTeX
     return char;
+  }
+
+  setDifferentialStyle(style: "italic" | "roman"): void {
+    this.differentialStyle = style;
+  }
+
+  updateExistingDifferentialStyle(style: "italic" | "roman"): void {
+    // Find all existing 'd' elements in the equation and update their style
+    const equation = this.equationBuilder.getEquation();
+    this.updateDifferentialStyleRecursive(equation, style);
+    
+    // Refresh the display to show the changes
+    this.updateDisplay();
+  }
+
+  private updateDifferentialStyleRecursive(elements: EquationElement[], style: "italic" | "roman"): void {
+    elements.forEach(element => {
+      // Check if this is a 'd' text element
+      if (element.type === "text" && element.value === "d") {
+        if (style === "roman") {
+          element.italic = false;
+        } else {
+          // Remove the italic property to use default behavior
+          delete element.italic;
+        }
+      }
+      
+      // Recursively check child elements
+      if (element.numerator) this.updateDifferentialStyleRecursive(element.numerator, style);
+      if (element.denominator) this.updateDifferentialStyleRecursive(element.denominator, style);
+      if (element.radicand) this.updateDifferentialStyleRecursive(element.radicand, style);
+      if (element.index) this.updateDifferentialStyleRecursive(element.index, style);
+      if (element.base) this.updateDifferentialStyleRecursive(element.base, style);
+      if (element.superscript) this.updateDifferentialStyleRecursive(element.superscript, style);
+      if (element.subscript) this.updateDifferentialStyleRecursive(element.subscript, style);
+      if (element.content) this.updateDifferentialStyleRecursive(element.content, style);
+      if (element.lowerLimit) this.updateDifferentialStyleRecursive(element.lowerLimit, style);
+      if (element.upperLimit) this.updateDifferentialStyleRecursive(element.upperLimit, style);
+      if (element.operand) this.updateDifferentialStyleRecursive(element.operand, style);
+    });
+  }
+
+  insertDerivative(type: "first" | "second" | "nth", displayMode?: "display" | "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create a fraction for the derivative (display by default, inline if specified)
+    const fraction = displayMode === "inline" 
+      ? this.equationBuilder.createFractionElement()
+      : this.equationBuilder.createDisplayFractionElement();
+    
+    // Create differential elements based on style
+    const createDifferentialD = () => {
+      const d = this.equationBuilder.createTextElement("d");
+      // Mark the style for LaTeX conversion
+      if (this.differentialStyle === "roman") {
+        d.italic = false; // This signals to use \mathrm{d}
+      }
+      return d;
+    };
+
+    // Build numerator based on type
+    if (type === "first") {
+      fraction.numerator = [createDifferentialD()];
+    } else if (type === "second") {
+      const dElement = this.equationBuilder.createScriptElement();
+      dElement.base = [createDifferentialD()];
+      dElement.superscript = [this.equationBuilder.createTextElement("2")];
+      fraction.numerator = [dElement];
+    } else if (type === "nth") {
+      const dElement = this.equationBuilder.createScriptElement();
+      dElement.base = [createDifferentialD()];
+      dElement.superscript = [];
+      fraction.numerator = [dElement];
+    }
+
+    // Build denominator based on type
+    if (type === "first") {
+      fraction.denominator = [createDifferentialD()];
+    } else if (type === "second") {
+      const varElement = this.equationBuilder.createScriptElement();
+      varElement.base = [];
+      varElement.superscript = [this.equationBuilder.createTextElement("2")];
+      fraction.denominator = [createDifferentialD(), varElement];
+    } else if (type === "nth") {
+      const varElement = this.equationBuilder.createScriptElement();
+      varElement.base = [];
+      varElement.superscript = [];
+      fraction.denominator = [createDifferentialD(), varElement];
+    }
+
+    // Insert the derivative fraction
+    this.contextManager.insertElementAtCursor(fraction);
+
+    // Move cursor to appropriate position for user input
+    let targetPath: string;
+    if (type === "nth") {
+      // Move to the superscript of d in numerator (for the power n)
+      targetPath = this.contextManager.getElementContextPath(fraction.numerator![0].id, "superscript");
+      this.contextManager.enterContextPath(targetPath, 0);
+    } else {
+      // Move to after d in numerator for the function
+      targetPath = this.contextManager.getElementContextPath(fraction.id, "numerator");
+      this.contextManager.enterContextPath(targetPath, 1);
+    }
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
   }
 }

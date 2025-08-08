@@ -78,7 +78,6 @@ export class OfficeService {
         }
       });
     } catch (error) {
-      console.log("Selection change handler error:", error);
     }
   }
 

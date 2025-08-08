@@ -198,6 +198,7 @@
                     <button class="tab-btn" data-tab="brackets">Brackets</button>
                     <button class="tab-btn" data-tab="operators">Operators</button>
                     <button class="tab-btn" data-tab="larger-operators">Larger Operators</button>
+                    <button class="tab-btn" data-tab="calculus">Calculus</button>
                 </div>
                 <button class="tab-scroll-btn tab-scroll-right" id="tabScrollRight">
                     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -208,7 +209,15 @@
             <div class="tab-content">
                 <div id="structures" class="tab-pane active">
                     <div class="button-row">
-                        <button class="builder-btn fraction-btn" title="Fraction">
+                        <button class="builder-btn display-fraction-btn" title="Fraction">
+                            <math displaystyle="true">
+                                <mfrac>
+                                    <mi>□</mi>
+                                    <mi>□</mi>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn fraction-btn" title="Fraction (Small)">
                             <math>
                                 <mfrac>
                                     <mi>□</mi>
@@ -396,6 +405,30 @@
                 </div>
                 <div id="larger-operators" class="tab-pane">
                     <div class="button-row">
+                        <button class="builder-btn large-operator-btn sum-display-nolimit-btn" title="Display sum nolimits (large, side positioning)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-display">∑</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-display">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn large-operator-btn sum-display-limit-btn" title="Display sum limits (large, above/below positioning)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-display">∑</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-display">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
                         <button class="builder-btn large-operator-btn sum-nolimit-btn" title="Sum nolimits (side positioning)">
                             <math>
                                 <mrow>
@@ -420,11 +453,13 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn sum-display-nolimit-btn" title="Display sum nolimits (large, side positioning)">
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn large-operator-btn prod-display-nolimit-btn" title="Display product nolimits (large, side positioning)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
-                                        <mo class="sum-operator-display">∑</mo>
+                                        <mo class="sum-operator-display">∏</mo>
                                         <mi class="sum-limit-display">□</mi>
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
@@ -432,15 +467,251 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn sum-display-limit-btn" title="Display sum limits (large, above/below positioning)">
+                        <button class="builder-btn large-operator-btn prod-display-limit-btn" title="Display product limits (large, above/below positioning)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>
-                                        <mo class="sum-operator-display">∑</mo>
+                                        <mo class="sum-operator-display">∏</mo>
                                         <mi class="sum-limit-display">□</mi>
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn large-operator-btn prod-nolimit-btn" title="Product nolimits (side positioning)">
+                            <math>
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-inline">∏</mo>
+                                        <mi class="sum-limit-inline">□</mi>
+                                        <mi class="sum-limit-inline">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-inline">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn large-operator-btn prod-limit-btn" title="Product limits (above/below positioning)">
+                            <math>
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-inline" movablelimits="false">∏</mo>
+                                        <mi class="sum-limit-inline">□</mi>
+                                        <mi class="sum-limit-inline">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-inline">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                </div>
+                <div id="calculus" class="tab-pane">
+                    <!-- Differential style toggle buttons -->
+                    <div class="button-row differential-style-row">
+                        <button class="differential-style-btn active" id="differential-style-italic" title="Italic d (default)">
+                            <math>
+                                <mrow>
+                                    <mi>d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="differential-style-btn" id="differential-style-roman" title="Roman d (\mathrm{d})">
+                            <math>
+                                <mrow>
+                                    <mtext>d</mtext>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                    <!-- Derivative buttons -->
+                    <div class="button-row">
+                        <button class="builder-btn derivative-btn first-derivative-btn" title="First derivative">
+                            <math>
+                                <mfrac>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn second-derivative-btn" title="Second derivative">
+                            <math>
+                                <mfrac>
+                                    <mrow>
+                                        <msup>
+                                            <mi class="derivative-d">d</mi>
+                                            <mn>2</mn>
+                                        </msup>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <msup>
+                                            <mi>□</mi>
+                                            <mn>2</mn>
+                                        </msup>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn nth-derivative-btn" title="Higher derivative">
+                            <math>
+                                <mfrac>
+                                    <mrow>
+                                        <msup>
+                                            <mi class="derivative-d">d</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <msup>
+                                            <mi>□</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                    <!-- Small derivative buttons -->
+                        <button class="builder-btn derivative-btn first-derivative-small-btn" title="First derivative (Small)">
+                            <math>
+                                <mfrac displaystyle="false">
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn second-derivative-small-btn" title="Second derivative (Small)">
+                            <math>
+                                <mfrac displaystyle="false">
+                                    <mrow>
+                                        <msup>
+                                            <mi class="derivative-d">d</mi>
+                                            <mn>2</mn>
+                                        </msup>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <msup>
+                                            <mi>□</mi>
+                                            <mn>2</mn>
+                                        </msup>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn nth-derivative-small-btn" title="Higher derivative (Small)">
+                            <math>
+                                <mfrac displaystyle="false">
+                                    <mrow>
+                                        <msup>
+                                            <mi class="derivative-d">d</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">d</mi>
+                                        <msup>
+                                            <mi>□</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                    </div>
+                    <!-- Integration buttons -->
+                    <div class="button-row">
+                        <button class="builder-btn integral-btn int-indefinite-display-btn" title="Indefinite integral">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <mo class="sum-operator-display">∫</mo>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Integral (side)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-display-limit-btn" title="Integral (above/below)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-indefinite-small-btn" title="Indefinite integral (Small)">
+                            <math>
+                                <mrow>
+                                    <mo class="sum-operator-inline">∫</mo>
+                                    <mi class="sum-operand-inline">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-nolimit-btn" title="Integral (side) (Small)">
+                            <math>
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-inline">∫</mo>
+                                        <mi class="sum-limit-inline">□</mi>
+                                        <mi class="sum-limit-inline">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-inline">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-limit-btn" title="Integral (above/below) (Small)">
+                            <math>
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-inline" movablelimits="false">∫</mo>
+                                        <mi class="sum-limit-inline">□</mi>
+                                        <mi class="sum-limit-inline">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-inline">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>

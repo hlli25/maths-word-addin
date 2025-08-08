@@ -52,18 +52,9 @@ export class SvgProcessor {
       if (positionInfo.mainFractionBar) {    
         baselineOffsetPt = baselineOffsetPx * (72 / 96);
         
-        console.log("Fraction positioning (MathJax baseline method):");
-        console.log("  Font size:", targetPtSize + "pt");
-        console.log("  MathJax baseline (ex):", positionInfo.baseline);
-        console.log("  MathJax baseline (pt):", baselineOffsetPt.toFixed(2));
-        console.log("  Position half-points:", Math.round(baselineOffsetPt * 2));
-        
         const svgCenterY = minY + vbHeight / 2;
         const mainBarY = positionInfo.mainFractionBar.y;
         const fractionBarOffsetFromCenter = mainBarY + (positionInfo.mainFractionBar.height / 2) - svgCenterY;
-        console.log("  [Reference] Fraction bar center Y:", mainBarY + (positionInfo.mainFractionBar.height / 2));
-        console.log("  [Reference] SVG center Y:", svgCenterY);
-        console.log("  [Reference] Bar offset from center (SVG units):", fractionBarOffsetFromCenter.toFixed(1));
       } else {
         baselineOffsetPt = baselineOffsetPx * (72 / 96);
       }

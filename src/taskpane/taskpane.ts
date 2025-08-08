@@ -88,16 +88,9 @@ class MathAddinApp {
     // Measure and set font scaling for inline-limits operators
     try {
       await this.fontMeasurementService.measureAndSetScaleRatios();
-      console.log('Font measurement completed');
     } catch (error) {
       console.error('Font measurement failed:', error);
     }
-    
-    // Expose debug functions to window for console testing
-    (window as any).testMathJaxColors = () => this.mathJaxService.testColorRendering();
-    (window as any).remeasureFont = () => this.fontMeasurementService.measureAndSetScaleRatios();
-    (window as any).getCurrentFontRatios = () => this.fontMeasurementService.getCurrentRatios();
-    (window as any).getSumRatio = () => this.fontMeasurementService.getCurrentRatio('sum');
   }
 
   private getDOMElements() {
@@ -207,6 +200,19 @@ class MathAddinApp {
     // Format buttons (using event delegation)
     document.addEventListener("click", (e) => this.handleFormatButtonClick(e));
 
+    // Differential style toggle buttons (using event delegation)
+    elements.tabContent.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest("button.differential-style-btn");
+      if (button) {
+        if (button.id === "differential-style-italic") {
+          this.handleDifferentialStyleToggle("italic");
+        } else if (button.id === "differential-style-roman") {
+          this.handleDifferentialStyleToggle("roman");
+        }
+      }
+    });
+
     // Display click handling
     elements.equationDisplay.addEventListener("mousedown", (e) => this.inputHandler.handleMouseDown(e));
     elements.equationDisplay.addEventListener("mousemove", (e) => this.inputHandler.handleMouseMove(e));
@@ -221,7 +227,9 @@ class MathAddinApp {
     const button = target.closest("button.builder-btn");
     if (!button) return;
 
-    if (button.classList.contains("fraction-btn")) {
+    if (button.classList.contains("display-fraction-btn")) {
+      this.inputHandler.insertDisplayFraction();
+    } else if (button.classList.contains("fraction-btn")) {
       this.inputHandler.insertFraction();
     } else if (button.classList.contains("bevelled-fraction-btn")) {
       this.inputHandler.insertBevelledFraction();
@@ -251,6 +259,38 @@ class MathAddinApp {
       this.inputHandler.insertLargeOperator("∑", "display", "nolimits");
     } else if (button.classList.contains("sum-display-limit-btn")) {
       this.inputHandler.insertLargeOperator("∑", "display", "limits");
+    } else if (button.classList.contains("prod-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∏", "inline", "nolimits");
+    } else if (button.classList.contains("prod-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∏", "inline", "limits");
+    } else if (button.classList.contains("prod-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∏", "display", "nolimits");
+    } else if (button.classList.contains("prod-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∏", "display", "limits");
+    } else if (button.classList.contains("int-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∫", "inline", "nolimits");
+    } else if (button.classList.contains("int-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∫", "inline", "limits");
+    } else if (button.classList.contains("int-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∫", "display", "nolimits");
+    } else if (button.classList.contains("int-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∫", "display", "limits");
+    } else if (button.classList.contains("first-derivative-btn")) {
+      this.inputHandler.insertDerivative("first");
+    } else if (button.classList.contains("second-derivative-btn")) {
+      this.inputHandler.insertDerivative("second");
+    } else if (button.classList.contains("nth-derivative-btn")) {
+      this.inputHandler.insertDerivative("nth");
+    } else if (button.classList.contains("first-derivative-small-btn")) {
+      this.inputHandler.insertDerivative("first", "inline");
+    } else if (button.classList.contains("second-derivative-small-btn")) {
+      this.inputHandler.insertDerivative("second", "inline");
+    } else if (button.classList.contains("nth-derivative-small-btn")) {
+      this.inputHandler.insertDerivative("nth", "inline");
+    } else if (button.classList.contains("int-indefinite-small-btn")) {
+      this.inputHandler.insertIndefiniteIntegral("inline");
+    } else if (button.classList.contains("int-indefinite-display-btn")) {
+      this.inputHandler.insertIndefiniteIntegral("display");
     }
   }
 
@@ -545,6 +585,38 @@ class MathAddinApp {
     this.closeAllDropdowns();
   }
 
+  private handleDifferentialStyleToggle(style: "italic" | "roman"): void {
+    
+    // Update button active states
+    const italicBtn = document.getElementById("differential-style-italic");
+    const romanBtn = document.getElementById("differential-style-roman");
+    
+    if (style === "italic") {
+      italicBtn?.classList.add("active");
+      romanBtn?.classList.remove("active");
+      // Store preference in input handler
+      this.inputHandler.setDifferentialStyle("italic");
+    } else {
+      italicBtn?.classList.remove("active");
+      romanBtn?.classList.add("active");
+      // Store preference in input handler
+      this.inputHandler.setDifferentialStyle("roman");
+    }
+    
+    // Update the display of derivative buttons
+    const derivativeDElements = document.querySelectorAll(".derivative-d");
+    derivativeDElements.forEach(element => {
+      if (style === "roman") {
+        element.classList.add("roman");
+      } else {
+        element.classList.remove("roman");
+      }
+    });
+
+    // Update existing derivatives in the equation and refresh display
+    this.inputHandler.updateExistingDifferentialStyle(style);
+  }
+
   private handleHexInputChange(e: Event): void {
     const input = e.target as HTMLInputElement;
     let color = input.value.trim();
@@ -704,7 +776,6 @@ class MathAddinApp {
       if (!latex) {
         throw new Error("Equation is empty or invalid.");
       }
-      console.log("LaTeX:", latex);
 
       // Render LaTeX using MathJax
       statusDiv.textContent = "Rendering equation...";
@@ -712,7 +783,6 @@ class MathAddinApp {
 
       // Extract positioning information
       const positionInfo = this.mathJaxService.extractSvgPositionInfo(svgElement);
-      console.log("SVG Position Info:", positionInfo);
 
       // Prepare SVG for Office
       statusDiv.textContent = "Preparing for Word...";
@@ -722,7 +792,6 @@ class MathAddinApp {
         positionInfo
       );
       
-      console.log("Calculated baseline offset:", baselineOffsetPt, "pt");
 
       // Insert into Word
       statusDiv.textContent = "Inserting into Word...";
@@ -762,7 +831,6 @@ Office.onReady((info) => {
     
     app.initialize()
       .then(() => {
-        console.log("Math Add-in initialized successfully");
       })
       .catch((error) => {
         console.error("Math Add-in initialization failed:", error);

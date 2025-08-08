@@ -2,8 +2,8 @@ export class TabController {
   private tabNav: HTMLElement;
   private tabContent: HTMLElement;
   private tabNavContainer: HTMLElement;
-  private leftScrollBtn: HTMLElement;
-  private rightScrollBtn: HTMLElement;
+  private leftScrollBtn: HTMLButtonElement;
+  private rightScrollBtn: HTMLButtonElement;
   private isDragging: boolean = false;
   private startX: number = 0;
   private scrollLeft: number = 0;
@@ -12,8 +12,8 @@ export class TabController {
     this.tabNav = tabNav;
     this.tabContent = tabContent;
     this.tabNavContainer = tabNav.parentElement as HTMLElement;
-    this.leftScrollBtn = document.getElementById("tabScrollLeft") as HTMLElement;
-    this.rightScrollBtn = document.getElementById("tabScrollRight") as HTMLElement;
+    this.leftScrollBtn = document.getElementById("tabScrollLeft") as HTMLButtonElement;
+    this.rightScrollBtn = document.getElementById("tabScrollRight") as HTMLButtonElement;
     this.setupEventListeners();
     this.updateScrollButtons();
   }

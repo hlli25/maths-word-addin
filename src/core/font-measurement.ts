@@ -34,7 +34,6 @@ export class FontMeasurementService {
           // All measurements complete
           this.scaleRatios.set(fontKey, ratios);
           this.applyScaleRatios(ratios);
-          console.log('Font measurement completed:', Object.fromEntries(ratios));
           resolve(ratios);
           return;
         }
@@ -52,12 +51,6 @@ export class FontMeasurementService {
             // Calculate ratio
             const ratio = nolimitsSize.height / displaylimitsSize.height;
             
-            console.log(`Font measurement - ${operator.name} (${operator.symbol}):`, {
-              font: fontKey,
-              nolimitsSize: nolimitsSize.height + 'px',
-              displaylimitsSize: displaylimitsSize.height + 'px',
-              ratio: ratio.toFixed(3)
-            });
             
             // Store ratio
             ratios.set(operator.name, ratio);
@@ -70,7 +63,6 @@ export class FontMeasurementService {
             measureNext();
             
           } catch (error) {
-            console.error(`Error measuring ${operator.name}:`, error);
             // Use fallback ratio
             ratios.set(operator.name, 0.6);
             container.remove();

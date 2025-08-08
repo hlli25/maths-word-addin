@@ -1,4 +1,5 @@
 import { EquationElement, EquationBuilder } from './equation-builder';
+import { getLatexToSymbolMap } from './operator-config';
 
 export class LatexConverter {
   private equationBuilder: EquationBuilder | null = null;
@@ -176,7 +177,12 @@ export class LatexConverter {
       } else if (element.type === "fraction") {
         const num = this.toLatexRecursive(element.numerator!, maxDepth);
         const den = this.toLatexRecursive(element.denominator!, maxDepth);
-        latex += `\\frac{${num || " "}}{${den || " "}}`;
+        
+        if (element.displayMode === "display") {
+          latex += `\\dfrac{${num || " "}}{${den || " "}}`;
+        } else {
+          latex += `\\frac{${num || " "}}{${den || " "}}`;
+        }
       } else if (element.type === "bevelled-fraction") {
         const num = this.toLatexRecursive(element.numerator!, maxDepth);
         const den = this.toLatexRecursive(element.denominator!, maxDepth);
@@ -213,6 +219,9 @@ export class LatexConverter {
         const upperLimit = this.toLatexRecursive(element.upperLimit!, maxDepth);
         const operand = this.toLatexRecursive(element.operand!, maxDepth);
         
+        // Check if this is marked as an indefinite integral
+        const isIndefiniteIntegral = (element as any).isIndefiniteIntegral === true;
+        
         let operatorLatex = operatorSymbol;
         
         if (element.limitMode === "nolimits") {
@@ -223,12 +232,20 @@ export class LatexConverter {
         
         // Wrap operand in braces for predictable parsing
         const wrappedOperand = operand ? ` {${operand}}` : " {}";
-        const operatorWithLimits = `${operatorLatex}_{${lowerLimit || ""}}^{${upperLimit || ""}}${wrappedOperand}`;
+        
+        let finalLatex = '';
+        if (isIndefiniteIntegral) {
+          // Simple indefinite integral: no limits at all
+          finalLatex = `${operatorLatex}${wrappedOperand}`;
+        } else {
+          // Definite integral or other operators: always include limit structure
+          finalLatex = `${operatorLatex}_{${lowerLimit || ""}}^{${upperLimit || ""}}${wrappedOperand}`;
+        }
         
         if (element.displayMode === "display") {
-          latex += `{\\displaystyle ${operatorWithLimits}}`;
+          latex += `{\\displaystyle ${finalLatex}}`;
         } else {
-          latex += `{\\textstyle ${operatorWithLimits}}`;
+          latex += `{\\textstyle ${finalLatex}}`;
         }
       }
     }
@@ -280,6 +297,20 @@ export class LatexConverter {
           }
         }
         // If not followed by large operator, just continue (skip the \textstyle)
+      } else if (latex.substr(i, 6) === "\\dfrac") {
+        i += 6;
+        const numerator = this.parseLatexGroup(latex, i);
+        i = numerator.endIndex;
+        const denominator = this.parseLatexGroup(latex, i);
+        i = denominator.endIndex;
+
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "fraction",
+          displayMode: "display", // dfrac is display-style
+          numerator: this.parseLatexToEquation(numerator.content),
+          denominator: this.parseLatexToEquation(denominator.content)
+        });
       } else if (latex.substr(i, 5) === "\\frac") {
         i += 5;
         const numerator = this.parseLatexGroup(latex, i);
@@ -290,6 +321,7 @@ export class LatexConverter {
         result.push({
           id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
           type: "fraction",
+          displayMode: "inline", // frac is inline-style
           numerator: this.parseLatexToEquation(numerator.content),
           denominator: this.parseLatexToEquation(denominator.content)
         });
@@ -855,6 +887,17 @@ export class LatexConverter {
           }
         });
         result.push(...formattedElements);
+      } else if (latex.substr(i, 7) === "\\mathrm") {
+        i += 7;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const formattedElements = this.parseLatexToEquation(group.content);
+        formattedElements.forEach(element => {
+          if (element.type === "text") {
+            element.italic = false; // Explicitly roman style
+          }
+        });
+        result.push(...formattedElements);
       } else if (latex.substr(i, 7) === "\\textbf") {
         i += 7;
         const group = this.parseLatexGroup(latex, i);
@@ -1131,6 +1174,7 @@ export class LatexConverter {
     for (let i = 0; i < commands.length; i++) {
       if (latex.substr(startIndex, commands[i].length) === commands[i]) {
         leftCommand = commands[i];
+        // Don't try to infer nesting depth from command size
         break;
       }
     }
@@ -1317,19 +1361,27 @@ export class LatexConverter {
   private applyFormattingToLatex(text: string, formatting: any): string {
     let result = text;
     
-    // Apply formatting in the correct nesting order
-    // Bold and italic (innermost)
-    if (formatting.bold && formatting.italic) {
-      // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
-      if (/^\d+$/.test(text.trim())) {
-        result = `\\textit{\\textbf{${result}}}`;
-      } else {
-        result = `\\boldsymbol{${result}}`;
+    
+    // Special handling for differential 'd' when italic is explicitly false
+    if (text.trim() === "d" && formatting.italic === false) {
+      // Use \mathrm{d} for roman-style differential, preserving any spacing
+      result = text.replace("d", "\\mathrm{d}");
+      // Don't apply further italic formatting since we want roman style
+    } else {
+      // Apply formatting in the correct nesting order
+      // Bold and italic (innermost)
+      if (formatting.bold && formatting.italic) {
+        // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
+        if (/^\d+$/.test(text.trim())) {
+          result = `\\textit{\\textbf{${result}}}`;
+        } else {
+          result = `\\boldsymbol{${result}}`;
+        }
+      } else if (formatting.bold) {
+        result = `\\mathbf{${result}}`;
+      } else if (formatting.italic) {
+        result = `\\mathit{${result}}`;
       }
-    } else if (formatting.bold) {
-      result = `\\mathbf{${result}}`;
-    } else if (formatting.italic) {
-      result = `\\mathit{${result}}`;
     }
     
     // Underline
@@ -1368,7 +1420,9 @@ export class LatexConverter {
       "⨁": "\\bigoplus",
       "⨂": "\\bigotimes",
       "⨀": "\\bigodot",
-      "⨄": "\\biguplus"
+      "⨄": "\\biguplus",
+      "∫": "\\int",
+      "∮": "\\oint"
     };
     
     return operatorMap[operator] || operator;
@@ -1388,8 +1442,6 @@ export class LatexConverter {
     const operators = [
       "\\sum",
       "\\prod", 
-      "\\int",
-      "\\oint",
       "\\coprod",
       "\\bigcup",
       "\\bigcap",
@@ -1398,7 +1450,9 @@ export class LatexConverter {
       "\\bigoplus",
       "\\bigotimes",
       "\\bigodot",
-      "\\biguplus"
+      "\\biguplus",
+      "\\int",
+      "\\oint"
     ];
     
     // Check if any operator matches at this position
@@ -1416,22 +1470,7 @@ export class LatexConverter {
   }
 
   private parseLargeOperator(latex: string, index: number, forceDisplayMode?: boolean): { element: EquationElement; endIndex: number } | null {
-    // Map LaTeX operators to symbols
-    const operatorMap: { [key: string]: string } = {
-      "\\sum": "∑",
-      "\\prod": "∏",
-      "\\int": "∫",
-      "\\oint": "∮",
-      "\\coprod": "∐",
-      "\\bigcup": "∪",
-      "\\bigcap": "∩",
-      "\\bigvee": "∨",
-      "\\bigwedge": "∧",
-      "\\bigoplus": "⨁",
-      "\\bigotimes": "⨂",
-      "\\bigodot": "⨀",
-      "\\biguplus": "⨄"
-    };
+    const operatorMap = getLatexToSymbolMap();
     
     // Find which operator matches
     let operatorCommand = "";

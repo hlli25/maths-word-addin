@@ -1,5 +1,6 @@
 import { EquationElement } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
+import { getSymbolToNameMap } from '../core/operator-config';
 
 export class DisplayRenderer {
   private contextManager: ContextManager;
@@ -130,8 +131,12 @@ export class DisplayRenderer {
     
     // Only apply italic to variables (letters) and only if explicitly set or if it's a variable and not bold
     // Never apply italic to operators, numbers, or other symbols
-    if (!isSymbol && !isOperator && !isNumber && (element.italic || (isVariable && !element.bold))) {
-      style += 'font-style: italic;';
+    if (!isSymbol && !isOperator && !isNumber) {
+      if (element.italic === true || (element.italic === undefined && isVariable && !element.bold)) {
+        style += 'font-style: italic;';
+      } else if (element.italic === false) {
+        style += 'font-style: normal;';
+      }
     }
     
     // Add underline styling
@@ -171,8 +176,11 @@ export class DisplayRenderer {
     const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
     const classAttr = isActive ? 'class="active-element"' : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    
+    // Add displaystyle attribute for display mode fractions
+    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
 
-    return `<mfrac ${classAttr} ${dataAttrs}>
+    return `<mfrac ${displayStyle} ${classAttr} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
       <mrow data-context-path="${elementPath}/denominator">${denominatorML}</mrow>
     </mfrac>`;
@@ -281,17 +289,24 @@ export class DisplayRenderer {
     const classAttr = isActive ? 'class="active-element"' : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
     
+    // Check if this is marked as an indefinite integral
+    const isIndefiniteIntegral = (element as any).isIndefiniteIntegral === true;
+    
     // Add displaystyle attribute for display mode OR limits mode (to force proper limit positioning)
     const displayStyle = (element.displayMode === 'display' || element.limitMode === 'limits') ? 'displaystyle="true"' : '';
     
+    // Get data-operator attribute for all operator types
+    const operatorData = this.getOperatorDataAttribute(operator);
+    
     let operatorML = '';
-    if (element.limitMode === 'limits') {
+    if (isIndefiniteIntegral) {
+      // Simple indefinite integral without limits
+      operatorML = `<mo ${classAttr} ${dataAttrs}>${operator}</mo>`;
+    } else if (element.limitMode === 'limits') {
       const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
       const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
       // Distinguish regular limits from display limits for sizing
       const limitsClass = element.displayMode === 'display' ? 'display-limits' : 'inline-limits';
-      // Add data-operator attribute for operator-specific scaling
-      const operatorData = this.getOperatorDataAttribute(operator);
       operatorML = `<munderover class="${limitsClass}" ${operatorData} ${classAttr} ${dataAttrs}>
         <mo>${operator}</mo>
         <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
@@ -308,27 +323,15 @@ export class DisplayRenderer {
     }
     
     // Wrap everything in mrow with displaystyle and include operand
-    return `<mrow ${displayStyle}>
+    // Add data-operator to the wrapper so CSS can target cursors within any integral
+    return `<mrow ${displayStyle} ${operatorData}>
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
     </mrow>`;
   }
 
   private getOperatorDataAttribute(operator: string): string {
-    // Map operator symbols to data attribute names
-    const operatorMap: { [key: string]: string } = {
-      "∑": "sum",
-      "∏": "prod",
-      "∐": "coprod",
-      "∪": "bigcup",
-      "∩": "bigcap",
-      "∨": "bigvee",
-      "∧": "bigwedge",
-      "⨁": "bigoplus",
-      "⨂": "bigotimes",
-      "⨀": "bigodot",
-      "⨄": "biguplus"
-    };
+    const operatorMap = getSymbolToNameMap();
     
     const operatorName = operatorMap[operator] || 'unknown';
     return `data-operator="${operatorName}"`;

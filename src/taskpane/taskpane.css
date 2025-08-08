@@ -208,6 +208,12 @@ body {
   transform: translateY(0.2em);
 }
 
+/* Thicker cursor for integral operands to improve visibility */
+[data-operator*="int"] .cursor {
+  width: 1.5px;
+  background-color: #005a9e;
+}
+
 @keyframes blink {
   from,
   to {
@@ -1193,10 +1199,10 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
 
 /* Large Operator Button Styling */
 .large-operator-btn {
-  width: 72px !important;
-  height: 56px !important;
+  width: 72px;
+  height: 68px;
   font-size: 12px;
-  padding: 6px !important;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1224,3 +1230,105 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   justify-content: flex-start;
   margin-bottom: 8px;
 }
+
+/* Calculus tab styles */
+.differential-style-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+}
+
+.differential-style-btn {
+  padding: 4px 12px;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+.differential-style-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+.differential-style-btn.active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.differential-style-btn.active math {
+  color: white;
+}
+
+.derivative-btn {
+  width: 60px;
+  height: 60px;
+  font-size: 20px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+/* Style for derivative d that will be updated based on style selection */
+.derivative-d {
+  font-style: italic; /* Default style */
+}
+
+.derivative-d.roman {
+  font-style: normal;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+}
+
+/* Derivative buttons styling */
+.derivative-btn[class*="derivative"]:not([class*="small"]) math {
+  font-size: 20px !important;
+}
+
+.derivative-btn[class*="derivative"][class*="small"] math {
+  font-size: 16px !important;
+}
+
+.derivative-btn mfrac {
+  font-size: 1em;
+}
+
+.derivative-btn mi,
+.derivative-btn mn,
+.derivative-btn mo {
+  font-size: 0.9em;
+}
+
+/* Integral buttons styling */
+.integral-btn {
+  width: 66px !important;
+  height: 68px !important;
+  font-size: 12px;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.integral-btn math {
+  font-size: 12px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
