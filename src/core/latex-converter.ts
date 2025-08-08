@@ -1,5 +1,5 @@
 import { EquationElement, EquationBuilder } from './equation-builder';
-import { getLatexToSymbolMap } from './operator-config';
+import { getLatexToSymbolMap, UNICODE_TO_LATEX, LATEX_TO_UNICODE, getLatexCommandLength } from './symbol-config';
 
 export class LatexConverter {
   private equationBuilder: EquationBuilder | null = null;
@@ -15,28 +15,6 @@ export class LatexConverter {
 
   parseFromLatex(latex: string): EquationElement[] {
     return this.parseLatexToEquation(latex);
-  }
-
-  isValidLatex(text: string): boolean {
-    // Check for LaTeX commands
-    if (text.includes("\\") || text.includes("{") || text.includes("}")) {
-      return true;
-    }
-    
-    // For simple mathematical expressions, be more specific:
-    // Must contain at least one operator or variable pattern
-    const trimmed = text.trim();
-    
-    // Check if it contains operators
-    const hasMathOperators = /[+\-=×÷]/.test(trimmed);
-    
-    // Check if it has variable patterns (letter followed by number, or standalone variables)
-    const hasVariables = /[a-zA-Z][0-9]|[a-zA-Z]\s*[+\-=×÷]|[+\-=×÷]\s*[a-zA-Z]/.test(trimmed);
-    
-    // Only accept if it looks like a mathematical expression and contains only valid characters
-    const hasValidCharsOnly = /^[a-zA-Z0-9+\-=×÷\s\(\)\.]+$/.test(trimmed);
-    
-    return hasValidCharsOnly && (hasMathOperators || hasVariables) && trimmed.length > 0;
   }
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
@@ -92,69 +70,12 @@ export class LatexConverter {
                elements[j].type === "text" && 
                this.hasEqualFormatting(elements[j], currentFormatting)) {
           let value = elements[j].value || "";
-          if (value === "×") value = "\\times";
-          if (value === "÷") value = "\\div";
-          if (value === "±") value = "\\pm";
-          if (value === "∓") value = "\\mp";
-          if (value === "·") value = "\\cdot";
-          if (value === "∗") value = "\\ast";
-          if (value === "⋆") value = "\\star";
-          if (value === "∘") value = "\\circ";
-          if (value === "•") value = "\\bullet";
-          if (value === "≠") value = "\\neq";
-          if (value === "∼") value = "\\sim";
-          if (value === "≃") value = "\\simeq";
-          if (value === "≈") value = "\\approx";
-          if (value === "≡") value = "\\equiv";
-          if (value === "≅") value = "\\cong";
-          if (value === "≇") value = "\\ncong";
-          if (value === "∝") value = "\\propto";
-          if (value === "≤") value = "\\leq";
-          if (value === "≥") value = "\\geq";
-          if (value === "≮") value = "\\nless";
-          if (value === "≯") value = "\\ngtr";
-          if (value === "≰") value = "\\nleq";
-          if (value === "≱") value = "\\ngeq";
-          if (value === "≺") value = "\\prec";
-          if (value === "≻") value = "\\succ";
-          if (value === "⪯") value = "\\preceq";
-          if (value === "⪰") value = "\\succeq";
-          if (value === "≪") value = "\\ll";
-          if (value === "≫") value = "\\gg";
-          if (value === "∩") value = "\\cap";
-          if (value === "∪") value = "\\cup";
-          if (value === "∖") value = "\\setminus";
-          if (value === "∈") value = "\\in";
-          if (value === "∋") value = "\\ni";
-          if (value === "∉") value = "\\notin";
-          if (value === "⊂") value = "\\subset";
-          if (value === "⊃") value = "\\supset";
-          if (value === "⊆") value = "\\subseteq";
-          if (value === "⊇") value = "\\supseteq";
-          if (value === "⊈") value = "\\nsubseteq";
-          if (value === "⊉") value = "\\nsupseteq";
-          if (value === "⊊") value = "\\subsetneq";
-          if (value === "⊋") value = "\\supsetneq";
-          if (value === "⊕") value = "\\oplus";
-          if (value === "⊖") value = "\\ominus";
-          if (value === "⊗") value = "\\otimes";
-          if (value === "⊘") value = "\\oslash";
-          if (value === "⊙") value = "\\odot";
-          if (value === "◁") value = "\\triangleleft";
-          if (value === "▷") value = "\\triangleright";
-          if (value === "≀") value = "\\wr";
-          if (value === "∧") value = "\\wedge";
-          if (value === "∨") value = "\\vee";
-          if (value === "⊢") value = "\\vdash";
-          if (value === "⊨") value = "\\models";
-          if (value === "⊤") value = "\\top";
-          if (value === "⊥") value = "\\bot";
-          if (value === "⋈") value = "\\bowtie";
-          if (value === "⋄") value = "\\diamond";
-          if (value === "≍") value = "\\asymp";
-          if (value === "≜") value = "\\triangleq";
-          if (value === "∴") value = "\\therefore";
-          if (value === "∵") value = "\\because";
+          
+          // Convert Unicode symbols to LaTeX commands
+          const latexCommand = UNICODE_TO_LATEX[value];
+          if (latexCommand) {
+            value = latexCommand;
+          }
           
           // Escape LaTeX special characters that could break parsing
           value = this.escapeLatexSpecialChars(value);
@@ -412,448 +333,13 @@ export class LatexConverter {
         result.push(...this.parseLatexToEquation(group.content));
       } else if (latex[i] === " ") {
         i++;
-      } else if (latex.substr(i, 6) === "\\times") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "×"
-        });
-        i += 6;
-      } else if (latex.substr(i, 4) === "\\div") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "÷"
-        });
-        i += 4;
-      } else if (latex.substr(i, 3) === "\\pm") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "±"
-        });
-        i += 3;
-      } else if (latex.substr(i, 3) === "\\mp") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∓"
-        });
-        i += 3;
-      } else if (latex.substr(i, 5) === "\\cdot") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "·"
-        });
-        i += 5;
-      } else if (latex.substr(i, 4) === "\\ast") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∗"
-        });
-        i += 4;
-      } else if (latex.substr(i, 5) === "\\star") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⋆"
-        });
-        i += 5;
-      } else if (latex.substr(i, 5) === "\\circ") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∘"
-        });
-        i += 5;
-      } else if (latex.substr(i, 7) === "\\bullet") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "•"
-        });
-        i += 7;
-      } else if (latex.substr(i, 4) === "\\neq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≠"
-        });
-        i += 4;
-      } else if (latex.substr(i, 4) === "\\sim") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∼"
-        });
-        i += 4;
-      } else if (latex.substr(i, 6) === "\\simeq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≃"
-        });
-        i += 6;
-      } else if (latex.substr(i, 7) === "\\approx") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≈"
-        });
-        i += 7;
-      } else if (latex.substr(i, 6) === "\\equiv") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≡"
-        });
-        i += 6;
-      } else if (latex.substr(i, 5) === "\\cong") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≅"
-        });
-        i += 5;
-      } else if (latex.substr(i, 6) === "\\ncong") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≇"
-        });
-        i += 6;
-      } else if (latex.substr(i, 7) === "\\propto") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∝"
-        });
-        i += 7;
-      } else if (latex.substr(i, 4) === "\\leq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≤"
-        });
-        i += 4;
-      } else if (latex.substr(i, 4) === "\\geq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≥"
-        });
-        i += 4;
-      } else if (latex.substr(i, 6) === "\\nless") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≮"
-        });
-        i += 6;
-      } else if (latex.substr(i, 5) === "\\ngtr") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≯"
-        });
-        i += 5;
-      } else if (latex.substr(i, 5) === "\\nleq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≰"
-        });
-        i += 5;
-      } else if (latex.substr(i, 5) === "\\ngeq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≱"
-        });
-        i += 5;
-      } else if (latex.substr(i, 5) === "\\prec") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≺"
-        });
-        i += 5;
-      } else if (latex.substr(i, 5) === "\\succ") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≻"
-        });
-        i += 5;
-      } else if (latex.substr(i, 7) === "\\preceq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⪯"
-        });
-        i += 7;
-      } else if (latex.substr(i, 7) === "\\succeq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⪰"
-        });
-        i += 7;
-      } else if (latex.substr(i, 3) === "\\ll") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≪"
-        });
-        i += 3;
-      } else if (latex.substr(i, 3) === "\\gg") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≫"
-        });
-        i += 3;
-      } else if (latex.substr(i, 4) === "\\cap") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∩"
-        });
-        i += 4;
-      } else if (latex.substr(i, 4) === "\\cup") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∪"
-        });
-        i += 4;
-      } else if (latex.substr(i, 9) === "\\setminus") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∖"
-        });
-        i += 9;
-      } else if (latex.substr(i, 3) === "\\in") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∈"
-        });
-        i += 3;
-      } else if (latex.substr(i, 3) === "\\ni") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∋"
-        });
-        i += 3;
-      } else if (latex.substr(i, 6) === "\\notin") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∉"
-        });
-        i += 6;
-      } else if (latex.substr(i, 7) === "\\subset") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊂"
-        });
-        i += 7;
-      } else if (latex.substr(i, 7) === "\\supset") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊃"
-        });
-        i += 7;
-      } else if (latex.substr(i, 9) === "\\subseteq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊆"
-        });
-        i += 9;
-      } else if (latex.substr(i, 9) === "\\supseteq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊇"
-        });
-        i += 9;
-      } else if (latex.substr(i, 11) === "\\nsubseteq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊈"
-        });
-        i += 11;
-      } else if (latex.substr(i, 11) === "\\nsupseteq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊉"
-        });
-        i += 11;
-      } else if (latex.substr(i, 10) === "\\subsetneq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊊"
-        });
-        i += 10;
-      } else if (latex.substr(i, 10) === "\\supsetneq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊋"
-        });
-        i += 10;
-      } else if (latex.substr(i, 6) === "\\oplus") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊕"
-        });
-        i += 6;
-      } else if (latex.substr(i, 7) === "\\ominus") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊖"
-        });
-        i += 7;
-      } else if (latex.substr(i, 7) === "\\otimes") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊗"
-        });
-        i += 7;
-      } else if (latex.substr(i, 7) === "\\oslash") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊘"
-        });
-        i += 7;
-      } else if (latex.substr(i, 5) === "\\odot") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊙"
-        });
-        i += 5;
-      } else if (latex.substr(i, 12) === "\\triangleleft") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "◁"
-        });
-        i += 12;
-      } else if (latex.substr(i, 13) === "\\triangleright") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "▷"
-        });
-        i += 13;
-      } else if (latex.substr(i, 3) === "\\wr") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≀"
-        });
-        i += 3;
-      } else if (latex.substr(i, 6) === "\\wedge") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∧"
-        });
-        i += 6;
-      } else if (latex.substr(i, 4) === "\\vee") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∨"
-        });
-        i += 4;
-      } else if (latex.substr(i, 6) === "\\vdash") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊢"
-        });
-        i += 6;
-      } else if (latex.substr(i, 7) === "\\models") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊨"
-        });
-        i += 7;
-      } else if (latex.substr(i, 4) === "\\top") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊤"
-        });
-        i += 4;
-      } else if (latex.substr(i, 4) === "\\bot") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⊥"
-        });
-        i += 4;
-      } else if (latex.substr(i, 7) === "\\bowtie") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⋈"
-        });
-        i += 7;
-      } else if (latex.substr(i, 8) === "\\diamond") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "⋄"
-        });
-        i += 8;
-      } else if (latex.substr(i, 6) === "\\asymp") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≍"
-        });
-        i += 6;
-      } else if (latex.substr(i, 10) === "\\triangleq") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "≜"
-        });
-        i += 10;
-      } else if (latex.substr(i, 10) === "\\therefore") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∴"
-        });
-        i += 10;
-      } else if (latex.substr(i, 8) === "\\because") {
-        result.push({
-          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-          type: "text",
-          value: "∵"
-        });
-        i += 8;
-      } else if (latex.substr(i, 11) === "\\boldsymbol") {
+      // Check for LaTeX symbol commands
+      } else if (latex[i] === "\\" && !this.isBracketCommand(latex, i) && !this.isLargeOperator(latex, i)) {
+        // Try to parse as a LaTeX symbol command
+        const newIndex = this.tryParseLatexSymbol(latex, i, result);
+        if (newIndex !== null) {
+          i = newIndex;
+        } else if (latex.substr(i, 11) === "\\boldsymbol") {
         i += 11;
         const group = this.parseLatexGroup(latex, i);
         i = group.endIndex;
@@ -985,6 +471,9 @@ export class LatexConverter {
           }
         });
         result.push(...formattedElements);
+        } else {
+          i++; // Unknown command, skip it
+        }
       } else if (latex.substr(i, 10) === "{\\text{^}}") {
         result.push({
           id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
@@ -1409,23 +898,16 @@ export class LatexConverter {
   }
 
   private convertOperatorToLatex(operator: string): string {
-    const operatorMap: { [key: string]: string } = {
-      "∑": "\\sum",
-      "∏": "\\prod",
-      "∐": "\\coprod",
-      "∪": "\\bigcup",
-      "∩": "\\bigcap",
-      "∨": "\\bigvee",
-      "∧": "\\bigwedge",
-      "⨁": "\\bigoplus",
-      "⨂": "\\bigotimes",
-      "⨀": "\\bigodot",
-      "⨄": "\\biguplus",
-      "∫": "\\int",
-      "∮": "\\oint"
-    };
+    const operatorMap = getLatexToSymbolMap();
     
-    return operatorMap[operator] || operator;
+    // Find LaTeX command for the given symbol
+    for (const [command, symbol] of Object.entries(operatorMap)) {
+      if (symbol === operator) {
+        return command;
+      }
+    }
+    
+    return operator; // Return as-is if not found
   }
 
   private isLatexCommand(latex: string, index: number): boolean {
@@ -1439,21 +921,7 @@ export class LatexConverter {
   }
 
   private isLargeOperator(latex: string, index: number): boolean {
-    const operators = [
-      "\\sum",
-      "\\prod", 
-      "\\coprod",
-      "\\bigcup",
-      "\\bigcap",
-      "\\bigvee",
-      "\\bigwedge",
-      "\\bigoplus",
-      "\\bigotimes",
-      "\\bigodot",
-      "\\biguplus",
-      "\\int",
-      "\\oint"
-    ];
+    const operators = Object.keys(getLatexToSymbolMap());
     
     // Check if any operator matches at this position
     return operators.some(op => {
@@ -1579,6 +1047,24 @@ export class LatexConverter {
     result = result.replace(/_/g, '{\\_}');        // Underscore escaped in math mode
     
     return result;
+  }
+
+  private tryParseLatexSymbol(latex: string, index: number, result: EquationElement[]): number | null {
+    // Check if we have a LaTeX symbol command at this position
+    const commandLength = getLatexCommandLength(latex, index);
+    if (commandLength > 0) {
+      const command = latex.substr(index, commandLength);
+      const unicode = LATEX_TO_UNICODE[command];
+      if (unicode) {
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "text",
+          value: unicode
+        });
+        return index + commandLength;
+      }
+    }
+    return null;
   }
 
 }

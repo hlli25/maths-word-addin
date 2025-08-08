@@ -15,7 +15,6 @@ export class OfficeService {
     this.onEquationLoadedCallback = callback;
   }
 
-
   async insertEquationToWord(
     svgString: string,
     width: number,

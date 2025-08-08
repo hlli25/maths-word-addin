@@ -1,7 +1,7 @@
 import { EquationBuilder } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
 import { DisplayRenderer } from './display-renderer';
-import { isIntegralOperator } from '../core/operator-config';
+import { isIntegralOperator, LATEX_TO_UNICODE } from '../core/symbol-config';
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -289,76 +289,7 @@ export class InputHandler {
   }
 
   private convertLatexToUnicode(latex: string): string {
-    const latexToUnicodeMap: { [key: string]: string } = {
-      "\\plus": "+",
-      "\\minus": "−",
-      "\\times": "×",
-      "\\div": "÷",
-      "\\pm": "±",
-      "\\mp": "∓",
-      "\\cdot": "·",
-      "\\ast": "∗",
-      "\\star": "⋆",
-      "\\circ": "∘",
-      "\\bullet": "•",
-      "\\neq": "≠",
-      "\\sim": "∼",
-      "\\simeq": "≃",
-      "\\approx": "≈",
-      "\\equiv": "≡",
-      "\\cong": "≅",
-      "\\ncong": "≇",
-      "\\propto": "∝",
-      "\\leq": "≤",
-      "\\geq": "≥",
-      "\\nless": "≮",
-      "\\ngtr": "≯",
-      "\\nleq": "≰",
-      "\\ngeq": "≱",
-      "\\prec": "≺",
-      "\\succ": "≻",
-      "\\preceq": "⪯",
-      "\\succeq": "⪰",
-      "\\ll": "≪",
-      "\\gg": "≫",
-      "\\cap": "∩",
-      "\\cup": "∪",
-      "\\setminus": "∖",
-      "\\in": "∈",
-      "\\ni": "∋",
-      "\\notin": "∉",
-      "\\subset": "⊂",
-      "\\supset": "⊃",
-      "\\subseteq": "⊆",
-      "\\supseteq": "⊇",
-      "\\nsubseteq": "⊈",
-      "\\nsupseteq": "⊉",
-      "\\subsetneq": "⊊",
-      "\\supsetneq": "⊋",
-      "\\oplus": "⊕",
-      "\\ominus": "⊖",
-      "\\otimes": "⊗",
-      "\\oslash": "⊘",
-      "\\odot": "⊙",
-      "\\triangleleft": "◁",
-      "\\triangleright": "▷",
-      "\\wr": "≀",
-      "\\wedge": "∧",
-      "\\vee": "∨",
-      "\\vdash": "⊢",
-      "\\models": "⊨",
-      "\\top": "⊤",
-      "\\bot": "⊥",
-      "\\bowtie": "⋈",
-      "\\diamond": "⋄",
-      "\\asymp": "≍",
-      "\\triangleq": "≜",
-      "\\therefore": "∴",
-      "\\because": "∵",
-      "\\sum": "∑"
-    };
-
-    return latexToUnicodeMap[latex] || latex;
+    return LATEX_TO_UNICODE[latex] || latex;
   }
 
   insertFraction(): void {

@@ -1,6 +1,6 @@
 import { EquationElement } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
-import { getSymbolToNameMap } from '../core/operator-config';
+import { getSymbolToNameMap } from '../core/symbol-config';
 
 export class DisplayRenderer {
   private contextManager: ContextManager;
