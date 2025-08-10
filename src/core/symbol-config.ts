@@ -5,7 +5,7 @@
 export const LATEX_TO_UNICODE: { [key: string]: string } = {
   // Basic arithmetic operators
   "\\times": "×",
-  "\\div": "÷",
+  "\\divsymbol": "÷",  // Division symbol (Physics package)
   "\\pm": "±",
   "\\mp": "∓",
   "\\cdot": "·",
@@ -61,6 +61,12 @@ export const LATEX_TO_UNICODE: { [key: string]: string } = {
   "\\triangleleft": "◁",
   "\\triangleright": "▷",
   "\\wr": "≀",
+
+  // Calculus operators
+  "\\partial": "∂",
+  "\\infty": "∞",
+  // Physics package symbols
+  "\\div": "∇",
   
   // Logic operators
   "\\wedge": "∧",
@@ -92,6 +98,50 @@ export const LATEX_TO_UNICODE: { [key: string]: string } = {
   "\\biguplus": "⨄",
   "\\int": "∫",
   "\\oint": "∮",
+  
+  // Greek letters - lowercase
+  "\\alpha": "α",
+  "\\beta": "β",
+  "\\gamma": "γ",
+  "\\delta": "δ",
+  "\\epsilon": "ϵ",
+  "\\varepsilon": "ε",
+  "\\zeta": "ζ",
+  "\\eta": "η",
+  "\\theta": "θ",
+  "\\vartheta": "ϑ",
+  "\\iota": "ι",
+  "\\kappa": "κ",
+  "\\lambda": "λ",
+  "\\mu": "μ",
+  "\\nu": "ν",
+  "\\xi": "ξ",
+  "\\omicron": "ο",
+  "\\pi": "π",
+  "\\varpi": "ϖ",
+  "\\rho": "ρ",
+  "\\varrho": "ϱ",
+  "\\sigma": "σ",
+  "\\varsigma": "ς",
+  "\\tau": "τ",
+  "\\upsilon": "υ",
+  "\\phi": "ϕ",
+  "\\varphi": "φ",
+  "\\chi": "χ",
+  "\\psi": "ψ",
+  "\\omega": "ω",
+  
+  // Greek letters - uppercase
+  "\\Gamma": "Γ",
+  "\\Delta": "Δ",
+  "\\Theta": "Θ",
+  "\\Lambda": "Λ",
+  "\\Pi": "Π",
+  "\\Sigma": "Σ",
+  "\\Upsilon": "Υ",
+  "\\Phi": "Φ",
+  "\\Psi": "Ψ",
+  "\\Omega": "Ω",
 };
 
 // Reverse mapping: Unicode to LaTeX
@@ -195,7 +245,7 @@ export function hasMixedBrackets(text: string): boolean {
 // Get the length of the longest LaTeX command that matches at a position
 export function getLatexCommandLength(text: string, startIndex: number): number {
   // Check for matches starting with the longest possible commands
-  const maxLength = 15; // Longest command is about 13 chars (\\triangleright)
+  const maxLength = 20;
   for (let len = Math.min(maxLength, text.length - startIndex); len >= 2; len--) {
     const substr = text.substr(startIndex, len);
     if (LATEX_TO_UNICODE[substr]) {

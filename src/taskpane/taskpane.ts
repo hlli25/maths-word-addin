@@ -249,6 +249,9 @@ class MathAddinApp {
     } else if (button.classList.contains("operator-btn")) {
       const operator = (button as HTMLElement).dataset.operator || "";
       this.inputHandler.insertOperator(operator);
+    } else if (button.classList.contains("greek-letter-btn" || "greek-letter-capital-btn")) {
+      const greekLetter = (button as HTMLElement).dataset.greek || "";
+      this.inputHandler.insertOperator(greekLetter);
     } else if (button.classList.contains("sqrt-btn")) {
       this.inputHandler.insertSquareRoot();
     } else if (button.classList.contains("nthroot-btn")) {

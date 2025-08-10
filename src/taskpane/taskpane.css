@@ -1115,6 +1115,21 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   border-top: 1px solid #e5e5e5;
 }
 
+.greek-letter-btn {
+  font-size: 16px;
+  font-style: italic;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+/* Greek Letters Layout */
+.greek-separator {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
 .bracket-preset-btn {
   font-size: 16px;
   padding: 8px 4px;

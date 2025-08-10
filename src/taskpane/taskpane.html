@@ -256,6 +256,7 @@
                     <button class="tab-btn" data-tab="operators">Operators</button>
                     <button class="tab-btn" data-tab="larger-operators">Larger Operators</button>
                     <button class="tab-btn" data-tab="calculus">Calculus</button>
+                    <button class="tab-btn" data-tab="greek-letters">Greek Letters</button>
                 </div>
                 <button class="tab-scroll-btn tab-scroll-right" id="tabScrollRight">
                     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -382,7 +383,7 @@
                 <div id="operators" class="tab-pane">
                     <div class="button-row">
                         <button class="builder-btn operator-btn" data-operator="\times"><math><mo>×</mo></math></button>
-                        <button class="builder-btn operator-btn" data-operator="\div"><math><mo>÷</mo></math></button>
+                        <button class="builder-btn operator-btn" data-operator="\divsymbol"><math><mo>÷</mo></math></button>
                         <button class="builder-btn operator-btn" data-operator="\pm"><math><mo>±</mo></math></button>
                         <button class="builder-btn operator-btn" data-operator="\mp"><math><mo>∓</mo></math></button>
                         <button class="builder-btn operator-btn" data-operator="\cdot"><math><mo>·</mo></math></button>
@@ -462,7 +463,7 @@
                 </div>
                 <div id="larger-operators" class="tab-pane">
                     <div class="button-row">
-                        <button class="builder-btn large-operator-btn sum-display-nolimit-btn" title="Display sum nolimits (large, side positioning)">
+                        <button class="builder-btn large-operator-btn sum-display-nolimit-btn" title="Summation (Side limits) (Large)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
@@ -474,7 +475,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn sum-display-limit-btn" title="Display sum limits (large, above/below positioning)">
+                        <button class="builder-btn large-operator-btn sum-display-limit-btn" title="Summation (Above/Below limits) (Large)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>
@@ -486,7 +487,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn sum-nolimit-btn" title="Sum nolimits (side positioning)">
+                        <button class="builder-btn large-operator-btn sum-nolimit-btn" title="Summation (Side limits) (Small)">
                             <math>
                                 <mrow>
                                     <msubsup>
@@ -498,7 +499,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn sum-limit-btn" title="Sum limits (above/below positioning)">
+                        <button class="builder-btn large-operator-btn sum-limit-btn" title="Summation (Above/Below limits) (Small)">
                             <math>
                                 <mrow>
                                     <munderover>
@@ -512,7 +513,7 @@
                         </button>
                     </div>
                     <div class="button-row">
-                        <button class="builder-btn large-operator-btn prod-display-nolimit-btn" title="Display product nolimits (large, side positioning)">
+                        <button class="builder-btn large-operator-btn prod-display-nolimit-btn" title="Product (Side limits) (Large)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
@@ -524,7 +525,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn prod-display-limit-btn" title="Display product limits (large, above/below positioning)">
+                        <button class="builder-btn large-operator-btn prod-display-limit-btn" title="Product (Above/Below limits) (Large)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>
@@ -536,7 +537,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn prod-nolimit-btn" title="Product nolimits (side positioning)">
+                        <button class="builder-btn large-operator-btn prod-nolimit-btn" title="Product (Side limits) (Samll)">
                             <math>
                                 <mrow>
                                     <msubsup>
@@ -548,7 +549,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn large-operator-btn prod-limit-btn" title="Product limits (above/below positioning)">
+                        <button class="builder-btn large-operator-btn prod-limit-btn" title="Product (Above/Below limits) (Small)">
                             <math>
                                 <mrow>
                                     <munderover>
@@ -675,7 +676,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Definite integral (Side)">
+                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Definite integral (Side limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
@@ -689,7 +690,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-limit-btn" title="Definite integral (Above/Below)">
+                        <button class="builder-btn integral-btn int-display-limit-btn" title="Definite integral (Above/Below limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>
@@ -703,6 +704,63 @@
                                 </mrow>
                             </math>
                         </button>
+                    </div>
+                </div>
+                <div id="greek-letters" class="tab-pane">
+                    <!-- Small Greek Letters -->
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-btn" data-greek="\alpha" title="Alpha">α</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\beta" title="Beta">β</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\gamma" title="Gamma">γ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\delta" title="Delta">δ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\epsilon" title="Epsilon">ϵ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\varepsilon" title="Epsilon variant">ε</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\zeta" title="Zeta">ζ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\eta" title="Eta">η</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-btn" data-greek="\theta" title="Theta">θ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\vartheta" title="Theta variant">ϑ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\iota" title="Iota">ι</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\kappa" title="Kappa">κ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\lambda" title="Lambda">λ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\mu" title="Mu">μ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\nu" title="Nu">ν</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\xi" title="Xi">ξ</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-btn" data-greek="\omicron" title="Omicron">ο</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\pi" title="Pi">π</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\varpi" title="Pi variant">ϖ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\rho" title="Rho">ρ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\varrho" title="Rho variant">ϱ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\sigma" title="Sigma">σ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\varsigma" title="Sigma variant">ς</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\tau" title="Tau">τ</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-btn" data-greek="\upsilon" title="Upsilon">υ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\phi" title="Phi">ϕ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\varphi" title="Phi variant">φ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\chi" title="Chi">χ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\psi" title="Psi">ψ</button>
+                        <button class="builder-btn greek-letter-btn" data-greek="\omega" title="Omega">ω</button>
+                    </div>
+                    <hr class="greek-separator">
+                    <!-- Capital Greek Letters -->
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Gamma" title="Capital Gamma">Γ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Delta" title="Capital Delta">Δ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Theta" title="Capital Theta">Θ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Lambda" title="Capital Lambda">Λ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Pi" title="Capital Pi">Π</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Sigma" title="Capital Sigma">Σ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Upsilon" title="Capital Upsilon">Υ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Phi" title="Capital Phi">Φ</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Psi" title="Capital Psi">Ψ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Omega" title="Capital Omega">Ω</button>
                     </div>
                 </div>
             </div>
