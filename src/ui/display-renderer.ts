@@ -138,19 +138,9 @@ export class DisplayRenderer {
     if (element.color) style += `color: ${element.color};`;
     if (element.bold) style += 'font-weight: bold;';
     
-    // Only apply italic to variables (letters) and only if explicitly set or if it's a variable and not bold
-    // Never apply italic to operators, numbers, or other symbols
-    if (!isSymbol && !isOperator && !isNumber) {
-      if (element.italic === true || (element.italic === undefined && isVariable && !element.bold)) {
-        style += 'font-style: italic;';
-      } else if (element.italic === false) {
-        style += 'font-style: normal;';
-      }
-    }
-    
     // Add underline styling
     if (element.underline) {
-      if (element.underlineStyle === 'double') {
+      if (element.underline === 'double') {
         style += 'text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;';
       } else {
         style += 'text-decoration: underline;';
@@ -163,6 +153,39 @@ export class DisplayRenderer {
     }
     
     const styleAttr = style ? `style="${style}"` : '';
+    
+    // Handle italic styling using mathvariant attribute for mi elements, inline styles for others
+    let mathVariantAttr = '';
+    if (tag === 'mi') {
+      // For <mi> elements, use mathvariant attribute to control italic behavior
+      let shouldBeItalic = false;
+      
+      if (element.italic === true) {
+        shouldBeItalic = true;
+      } else if (element.italic === false) {
+        shouldBeItalic = false;
+      } else if (isVariable && !element.bold && element.italic !== false) {
+        // Variables default to italic unless bold or explicitly set to normal
+        shouldBeItalic = true;
+      }
+      
+      // Set mathvariant to "normal" to override default italic behavior of <mi>
+      if (!shouldBeItalic) {
+        mathVariantAttr = 'mathvariant="normal"';
+      }
+      // If shouldBeItalic is true, we don't set mathvariant and let <mi> use its default italic
+    } else {
+      // For non-mi elements (mo, mn), use inline styles as before
+      if (element.italic === true) {
+        style += 'font-style: italic;';
+      } else if (element.italic === false) {
+        style += 'font-style: normal;';
+      } else if (isVariable && !element.bold && element.italic !== false) {
+        // Variables default to italic unless bold or explicitly set to normal
+        style += 'font-style: italic;';
+      }
+    }
+    
     const classNames = [];
     if (isActive) classNames.push('active-element');
     if (isSelected) classNames.push('selected');
@@ -176,26 +199,41 @@ export class DisplayRenderer {
     
     const classAttr = classNames.length > 0 ? `class="${classNames.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${contextPath}" data-position="${position}"`;
+    
+    // Update styleAttr if we modified style for non-mi elements
+    const finalStyleAttr = style ? `style="${style}"` : '';
 
-    return `<${tag} ${styleAttr} ${classAttr} ${dataAttrs}>${value}</${tag}>`;
+    return `<${tag} ${finalStyleAttr} ${mathVariantAttr} ${classAttr} ${dataAttrs}>${value}</${tag}>`;
   }
 
   private fractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
     const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
     
-    // Add classes for active element and display mode
+    // Add classes for active element, selection, and display mode
     const classes = [];
     if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
     if (element.displayMode === 'display') classes.push('display-fraction');
+    if (element.underline) classes.push('underlined-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    // Add style for underline
+    let style = '';
+    if (element.underline) {
+      if (element.underline === 'double') {
+        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
+      } else {
+        style = 'style="text-decoration: underline;"';
+      }
+    }
+    
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
     
     // Add displaystyle attribute for display mode fractions
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
 
-    return `<mfrac ${displayStyle} ${classAttr} ${dataAttrs}>
+    return `<mfrac ${displayStyle} ${classAttr} ${style} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
       <mrow data-context-path="${elementPath}/denominator">${denominatorML}</mrow>
     </mfrac>`;
@@ -216,10 +254,25 @@ export class DisplayRenderer {
 
   private sqrtToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
-    const classAttr = isActive ? 'class="active-element"' : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    if (element.underline) classes.push('underlined-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    
+    // Add style for underline
+    let style = '';
+    if (element.underline) {
+      if (element.underline === 'double') {
+        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
+      } else {
+        style = 'style="text-decoration: underline;"';
+      }
+    }
+    
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
-    return `<msqrt ${classAttr} ${dataAttrs}>
+    return `<msqrt ${classAttr} ${style} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
     </msqrt>`;
   }
@@ -227,8 +280,11 @@ export class DisplayRenderer {
   private nthRootToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const indexML = this.generateMathMLContent(`${elementPath}/index`, element.index);
     const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
-    const classAttr = isActive ? 'class="active-element"' : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     return `<mroot ${classAttr} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
@@ -238,26 +294,41 @@ export class DisplayRenderer {
 
   private scriptToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const baseML = this.generateMathMLContent(`${elementPath}/base`, element.base);
-    const classAttr = isActive ? 'class="active-element"' : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    if (element.underline) classes.push('underlined-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    
+    // Add style for underline
+    let style = '';
+    if (element.underline) {
+      if (element.underline === 'double') {
+        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
+      } else {
+        style = 'style="text-decoration: underline;"';
+      }
+    }
+    
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     if (element.superscript && element.subscript) {
       const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
       const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
-      return `<msubsup ${classAttr} ${dataAttrs}>
+      return `<msubsup ${classAttr} ${style} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
         <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
       </msubsup>`;
     } else if (element.superscript) {
       const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
-      return `<msup ${classAttr} ${dataAttrs}>
+      return `<msup ${classAttr} ${style} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
       </msup>`;
     } else if (element.subscript) {
       const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
-      return `<msub ${classAttr} ${dataAttrs}>
+      return `<msub ${classAttr} ${style} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
       </msub>`;
@@ -361,11 +432,11 @@ export class DisplayRenderer {
     
     // Check current differential style preference from context manager
     const isDifferentialItalic = this.getDifferentialStylePreference();
-    const dClass = isDifferentialItalic ? 'derivative-d italic' : 'derivative-d roman';
+    const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
     
     // Check if this is long form derivative
     if (element.isLongForm) {
-      return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, dClass);
+      return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, mathVariantAttr);
     }
     
     // Generate content for each part (standard form)
@@ -378,14 +449,14 @@ export class DisplayRenderer {
     if (typeof element.order === 'number') {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
-        numeratorContent = `<mi class="${dClass}">d</mi>${functionML}`;
-        denominatorContent = `<mi class="${dClass}">d</mi>${variableML}`;
+        numeratorContent = `<mi ${mathVariantAttr}>d</mi>${functionML}`;
+        denominatorContent = `<mi ${mathVariantAttr}>d</mi>${variableML}`;
       } else {
         numeratorContent = `<msup>
-          <mi class="${dClass}">d</mi>
+          <mi ${mathVariantAttr}>d</mi>
           <mn>${element.order}</mn>
         </msup>${functionML}`;
-        denominatorContent = `<mi class="${dClass}">d</mi><msup>
+        denominatorContent = `<mi ${mathVariantAttr}>d</mi><msup>
           ${variableML}
           <mn>${element.order}</mn>
         </msup>`;
@@ -394,14 +465,14 @@ export class DisplayRenderer {
       // nth order with custom expression
       const orderML = this.generateMathMLContent(`${elementPath}/order`, element.order);
       numeratorContent = `<msup>
-        <mi class="${dClass}">d</mi>
+        <mi ${mathVariantAttr}>d</mi>
         <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
       </msup>${functionML}`;
       
       // For denominator, create a read-only copy without editable context
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
-      denominatorContent = `<mi class="${dClass}">d</mi><msup>
+      denominatorContent = `<mi ${mathVariantAttr}>d</mi><msup>
         ${variableML}
         <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
       </msup>`;
@@ -423,7 +494,7 @@ export class DisplayRenderer {
     return true; // Default to italic if no input handler
   }
 
-  private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, dClass: string): string {
+  private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string): string {
     const classAttr = isActive ? 'class="active-element"' : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
     
@@ -438,9 +509,9 @@ export class DisplayRenderer {
       if (element.order === 1) {
         // d/dx format
         fractionContent = `<mfrac ${displayStyle}>
-          <mi class="${dClass}">d</mi>
+          <mi ${mathVariantAttr}>d</mi>
           <mrow data-context-path="${elementPath}/variable">
-            <mi class="${dClass}">d</mi>
+            <mi ${mathVariantAttr}>d</mi>
             ${variableML}
           </mrow>
         </mfrac>`;
@@ -448,11 +519,11 @@ export class DisplayRenderer {
         // d^n/dx^n format
         fractionContent = `<mfrac ${displayStyle}>
           <msup>
-            <mi class="${dClass}">d</mi>
+            <mi ${mathVariantAttr}>d</mi>
             <mn>${element.order}</mn>
           </msup>
           <mrow data-context-path="${elementPath}/variable">
-            <mi class="${dClass}">d</mi>
+            <mi ${mathVariantAttr}>d</mi>
             <msup>
               ${variableML}
               <mn>${element.order}</mn>
@@ -470,11 +541,11 @@ export class DisplayRenderer {
         
       fractionContent = `<mfrac ${displayStyle}>
         <msup>
-          <mi class="${dClass}">d</mi>
+          <mi ${mathVariantAttr}>d</mi>
           <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
         </msup>
         <mrow data-context-path="${elementPath}/variable">
-          <mi class="${dClass}">d</mi>
+          <mi ${mathVariantAttr}>d</mi>
           <msup>
             ${variableML}
             <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
@@ -502,7 +573,7 @@ export class DisplayRenderer {
     
     // Check differential style preference
     const isDifferentialItalic = element.integralStyle === 'italic';
-    const dClass = isDifferentialItalic ? 'derivative-d italic' : 'derivative-d roman';
+    const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
     
     // Generate content for integrand and differential variable
     const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
@@ -543,7 +614,7 @@ export class DisplayRenderer {
       ${integralOperatorML}
       <mrow data-context-path="${elementPath}/integrand">${integrandML}</mrow>
       <mspace width="0.2em"/>
-      <mi class="${dClass}">d</mi>
+      <mi ${mathVariantAttr}>d</mi>
       <mrow data-context-path="${elementPath}/differentialVariable">${differentialVariableML}</mrow>
     </mrow>`;
   }

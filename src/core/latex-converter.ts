@@ -1525,12 +1525,9 @@ export class LatexConverter {
     // Apply formatting in the correct nesting order
     // Bold and italic (innermost)
     if (formatting.bold && formatting.italic) {
-      // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
-      if (/^\d+$/.test(text.trim())) {
-        result = `\\textit{\\textbf{${result}}}`;
-      } else {
-        result = `\\boldsymbol{${result}}`;
-      }
+      // Use \boldsymbol for both letters and numbers when both bold and italic - no italic for numbers
+      // since MathJax 3.x does not process macros in text-mode. It only handles math-mode macros
+      result = `\\boldsymbol{${result}}`;
     } else if (formatting.bold) {
       result = `\\mathbf{${result}}`;
     } else if (formatting.italic) {

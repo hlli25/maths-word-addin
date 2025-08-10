@@ -46,6 +46,57 @@ body {
   border-radius: 2px;
 }
 
+/* Selected structure highlighting*/
+.selected-structure {
+  background-color: #0078d4;
+  color: white;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Selected structure in MathML elements */
+math .selected-structure {
+  background-color: #0078d4;
+  color: white;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Ensure all text within selected structures is white */
+.selected-structure mi,
+.selected-structure mo,
+.selected-structure mn,
+.selected-structure mtext {
+  color: white !important;
+}
+
+/* Highlight selected text within equations */
+math mi.selected,
+math mo.selected,
+math mn.selected {
+  background-color: #0078d4;
+  color: white;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Underlined structures */
+.underlined-structure {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* MathML structure underline styling */
+math mfrac.underlined-structure,
+math msqrt.underlined-structure,
+math mroot.underlined-structure,
+math msup.underlined-structure,
+math msub.underlined-structure,
+math msubsup.underlined-structure {
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 2px;
+}
+
 /* Format button styles */
 .format-btn {
   min-width: 24px;
@@ -275,22 +326,6 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   margin: 0 2px;
 }
 
-/* Add spacing for superscripts (3rd child) and subscripts */
-msup > mn:last-child,
-msup > mrow:last-child,
-msubsup > mn:nth-child(3),
-msubsup > mrow:nth-child(3) {
-  padding-left: 0.15em;
-}
-
-/* Add spacing for subscripts (2nd child) */
-msub > mn:last-child,
-msub > mrow:last-child,
-msubsup > mn:nth-child(2),
-msubsup > mrow:nth-child(2) {
-  padding-left: 0.1em;
-}
-
 /* Display fractions should appear larger even when nested */
 mfrac.display-fraction {
   font-size: 1.2em;
@@ -344,7 +379,7 @@ mfrac mfrac mfrac.display-fraction {
 }
 
 .equation-element.text-element {
-  font-family: "STIX Two Math", "Times New Roman", "Cambria Math", "Latin Modern Math", "Computer Modern", serif !important;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
   font-size: 18px;
   font-weight: normal;
 }
@@ -1115,12 +1150,20 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   border-top: 1px solid #e5e5e5;
 }
 
-.greek-letter-btn {
+.greek-letter-btn
+.greek-letter-capital-btn {
   font-size: 16px;
-  font-style: italic;
   width: 40px;
   height: 40px;
   padding: 0;
+}
+
+.greek-letter-btn {
+  font-style: italic;
+}
+
+.greek-letter-capbtn {
+  font-style: italic;
 }
 
 /* Greek Letters Layout */

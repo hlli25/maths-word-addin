@@ -393,6 +393,122 @@ export class ContextManager {
     return this.selection.isActive && this.selection.startPosition !== this.selection.endPosition;
   }
 
+  // Select entire structure at cursor position
+  selectStructureAtCursor(): boolean {
+    if (!this.activeContextPath) return false;
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Find the element at or before cursor position
+    if (this.cursorPosition > 0 && this.cursorPosition <= context.array.length) {
+      const element = context.array[this.cursorPosition - 1];
+      if (element && element.type !== 'text') {
+        // Select the entire structure
+        this.setSelection(this.cursorPosition - 1, this.cursorPosition);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Select entire current context (e.g., entire numerator, denominator, etc.)
+  selectCurrentContext(): boolean {
+    if (!this.activeContextPath) return false;
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    this.setSelection(0, context.array.length);
+    return true;
+  }
+
+  // Select parent structure containing current context
+  selectParentStructure(): boolean {
+    if (!this.activeContextPath || this.activeContextPath === "root") return false;
+
+    const parts = this.activeContextPath.split("/");
+    parts.pop(); // remove part name (numerator/denominator/etc.)
+    const elementId = parts.pop();
+    const parentPath = parts.join("/");
+
+    const parentContext = this.getContext(parentPath);
+    if (!parentContext || !elementId) return false;
+
+    const elementIndex = parentContext.array.findIndex((el) => el.id === elementId);
+    if (elementIndex === -1) return false;
+
+    // Move to parent context and select the structure
+    this.activeContextPath = parentPath;
+    this.setSelection(elementIndex, elementIndex + 1);
+    this.cursorPosition = elementIndex + 1;
+    return true;
+  }
+
+  // Extend selection to include whole structures
+  extendSelectionToStructure(direction: number): void {
+    if (!this.activeContextPath) return;
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return;
+
+    if (!this.selection.isActive) {
+      // Start new selection
+      if (direction > 0 && this.cursorPosition < context.array.length) {
+        const element = context.array[this.cursorPosition];
+        if (element && element.type !== 'text') {
+          // Select entire structure forward
+          this.setSelection(this.cursorPosition, this.cursorPosition + 1);
+          this.cursorPosition = this.cursorPosition + 1;
+        } else {
+          // Regular character selection
+          this.extendSelection(direction);
+        }
+      } else if (direction < 0 && this.cursorPosition > 0) {
+        const element = context.array[this.cursorPosition - 1];
+        if (element && element.type !== 'text') {
+          // Select entire structure backward
+          this.setSelection(this.cursorPosition - 1, this.cursorPosition);
+          this.cursorPosition = this.cursorPosition - 1;
+        } else {
+          // Regular character selection
+          this.extendSelection(direction);
+        }
+      }
+    } else {
+      // Extend existing selection
+      let newPosition = this.cursorPosition;
+      
+      if (direction > 0 && this.cursorPosition < context.array.length) {
+        const element = context.array[this.cursorPosition];
+        newPosition = element && element.type !== 'text' ? 
+          this.cursorPosition + 1 : this.cursorPosition + direction;
+      } else if (direction < 0 && this.cursorPosition > 0) {
+        const checkPos = Math.max(0, this.cursorPosition + direction);
+        const element = context.array[checkPos];
+        newPosition = element && element.type !== 'text' ? 
+          checkPos : this.cursorPosition + direction;
+      }
+
+      // Update selection boundaries
+      if (this.cursorPosition === this.selection.endPosition) {
+        this.selection.endPosition = Math.max(0, Math.min(context.array.length, newPosition));
+      } else if (this.cursorPosition === this.selection.startPosition) {
+        this.selection.startPosition = Math.max(0, Math.min(context.array.length, newPosition));
+      }
+
+      this.cursorPosition = newPosition;
+
+      // Normalize selection
+      if (this.selection.startPosition > this.selection.endPosition) {
+        const temp = this.selection.startPosition;
+        this.selection.startPosition = this.selection.endPosition;
+        this.selection.endPosition = temp;
+      }
+
+      if (this.selection.startPosition === this.selection.endPosition) {
+        this.clearSelection();
+      }
+    }
+  }
+
   extendSelection(direction: number): void {
     if (!this.selection.isActive) {
       // Start new selection from cursor position
@@ -492,8 +608,7 @@ export class ContextManager {
           
           // Count underline
           const underline = element.underline || 'none';
-          const underlineKey = underline === true ? 'single' : (underline === false ? 'none' : underline);
-          formattingCounts.underline[underlineKey] = (formattingCounts.underline[underlineKey] || 0) + 1;
+          formattingCounts.underline[underline] = (formattingCounts.underline[underline] || 0) + 1;
           
           // Count cancel
           const cancel = element.cancel || false;
@@ -538,7 +653,7 @@ export class ContextManager {
     return result;
   }
 
-  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'underline' | 'cancel' | 'color' | 'underlineStyle'>>): boolean {
+  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'underline' | 'cancel' | 'color'>>): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
     }
@@ -554,9 +669,8 @@ export class ContextManager {
       if (i < context.array.length) {
         const element = context.array[i];
         
-        // Only apply formatting to text elements
         if (element.type === 'text') {
-          // Restrict bold formatting for operators
+          // For text elements, apply all formatting normally
           const isOperator = /[+\-×÷=<>≤≥≠]/.test(element.value || "");
           
           if (isOperator && (formatting.bold !== undefined)) {
@@ -568,6 +682,22 @@ export class ContextManager {
             this.applyFormattingToElement(element, formatting);
           }
           elementsModified++;
+        } else {
+          // For structures (fraction, sqrt, etc.), handle formatting differently
+          if (formatting.underline !== undefined) {
+            // For underline, apply only to the structure itself
+            this.applyStructureUnderline(element, formatting.underline);
+            elementsModified++;
+          }
+          
+          // For other formatting (bold, italic, color), apply recursively to all text within
+          const recursiveFormatting = { ...formatting };
+          delete recursiveFormatting.underline;
+          
+          if (Object.keys(recursiveFormatting).length > 0) {
+            this.applyFormattingToStructureContents(element, recursiveFormatting);
+            elementsModified++;
+          }
         }
       }
     }
@@ -589,14 +719,6 @@ export class ContextManager {
       }
     });
 
-    // Special handling for underlineStyle - map to underline property
-    if (formatting.underlineStyle !== undefined) {
-      if (formatting.underlineStyle === null) {
-        delete element.underline;
-      } else {
-        element.underline = formatting.underlineStyle;
-      }
-    }
   }
 
   isSelectionBold(): boolean {
@@ -677,5 +799,57 @@ export class ContextManager {
       return `root/${elementId}/${containerName}`;
     }
     return `${this.activeContextPath}/${elementId}/${containerName}`;
+  }
+
+  private applyStructureUnderline(element: EquationElement, underline?: "single" | "double"): void {
+    // Apply underline to the structure element itself
+    if (underline !== undefined) {
+      element.underline = underline;
+    }
+  }
+
+  private applyFormattingToStructureContents(
+    element: EquationElement, 
+    formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'cancel' | 'color'>>
+  ): void {
+    // Recursively apply formatting to all text elements within the structure
+    const applyToArray = (array?: EquationElement[]) => {
+      if (!array) return;
+      array.forEach(el => {
+        if (el.type === 'text') {
+          const isOperator = /[+\-×÷=<>≤≥≠]/.test(el.value || "");
+          if (isOperator && formatting.bold !== undefined) {
+            const filteredFormatting = { ...formatting };
+            delete filteredFormatting.bold;
+            this.applyFormattingToElement(el, filteredFormatting);
+          } else {
+            this.applyFormattingToElement(el, formatting);
+          }
+        } else {
+          // Recursively apply to nested structures
+          this.applyFormattingToStructureContents(el, formatting);
+        }
+      });
+    };
+
+    // Apply to all nested arrays in the structure
+    applyToArray(element.numerator);
+    applyToArray(element.denominator);
+    applyToArray(element.radicand);
+    applyToArray(element.index);
+    applyToArray(element.base);
+    applyToArray(element.superscript);
+    applyToArray(element.subscript);
+    applyToArray(element.content);
+    applyToArray(element.upperLimit);
+    applyToArray(element.lowerLimit);
+    applyToArray(element.operand);
+    applyToArray(element.function);
+    applyToArray(element.variable);
+    if (Array.isArray(element.order)) {
+      applyToArray(element.order);
+    }
+    applyToArray(element.integrand);
+    applyToArray(element.differentialVariable);
   }
 }

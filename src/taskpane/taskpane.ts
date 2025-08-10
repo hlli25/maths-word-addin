@@ -32,7 +32,7 @@ class MathAddinApp {
   private svgProcessor: SvgProcessor;
   private fontMeasurementService: FontMeasurementService;
   private currentColor: string = "#000000";
-  private currentUnderlineStyle: string = "single";
+  private currentUnderlineStyle: "single" | "double" = "single";
   private isInlineStyle: boolean = false; // Default is display style
 
   constructor() {
@@ -248,10 +248,10 @@ class MathAddinApp {
       this.inputHandler.insertBevelledFraction();
     } else if (button.classList.contains("operator-btn")) {
       const operator = (button as HTMLElement).dataset.operator || "";
-      this.inputHandler.insertOperator(operator);
-    } else if (button.classList.contains("greek-letter-btn" || "greek-letter-capital-btn")) {
+      this.inputHandler.insertSymbol(operator);
+    } else if (button.classList.contains("greek-letter-btn") || button.classList.contains("greek-letter-capital-btn")) {
       const greekLetter = (button as HTMLElement).dataset.greek || "";
-      this.inputHandler.insertOperator(greekLetter);
+      this.inputHandler.insertSymbol(greekLetter);
     } else if (button.classList.contains("sqrt-btn")) {
       this.inputHandler.insertSquareRoot();
     } else if (button.classList.contains("nthroot-btn")) {
@@ -463,8 +463,8 @@ class MathAddinApp {
     const underlineType = optionElement.dataset.underline;
     if (underlineType) {
       // Update current underline style and apply immediately
-      this.currentUnderlineStyle = underlineType;
-      this.inputHandler.setUnderlineStyle(underlineType);
+      this.currentUnderlineStyle = underlineType as "single" | "double";
+      this.inputHandler.setUnderlineStyle(underlineType as "none" | "single" | "double");
       
       // Update UI
       this.updateUnderlineUI(underlineType);
@@ -503,7 +503,7 @@ class MathAddinApp {
                              formatting.underline;
         
         this.updateUnderlineUI(underlineType);
-        this.currentUnderlineStyle = underlineType === 'none' ? 'single' : underlineType;
+        this.currentUnderlineStyle = underlineType === 'none' ? 'single' : (underlineType as "single" | "double");
       } else {
         // Mixed underline types - show none selected
         this.updateUnderlineUI('none');

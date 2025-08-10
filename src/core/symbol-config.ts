@@ -1,153 +1,181 @@
 // Centralized configuration for all mathematical symbols and operators
 
-// LaTeX to Unicode symbol mappings
-// Includes all mathematical symbols, operators, relations, etc.
-export const LATEX_TO_UNICODE: { [key: string]: string } = {
-  // Basic arithmetic operators
-  "\\times": "×",
-  "\\divsymbol": "÷",  // Division symbol (Physics package)
-  "\\pm": "±",
-  "\\mp": "∓",
-  "\\cdot": "·",
-  "\\ast": "∗",
-  "\\star": "⋆",
-  "\\circ": "∘",
-  "\\bullet": "•",
-  
-  // Comparison and relations
-  "\\neq": "≠",
-  "\\sim": "∼",
-  "\\simeq": "≃",
-  "\\approx": "≈",
-  "\\equiv": "≡",
-  "\\cong": "≅",
-  "\\ncong": "≇",
-  "\\propto": "∝",
-  "\\leq": "≤",
-  "\\geq": "≥",
-  "\\nless": "≮",
-  "\\ngtr": "≯",
-  "\\nleq": "≰",
-  "\\ngeq": "≱",
-  "\\prec": "≺",
-  "\\succ": "≻",
-  "\\preceq": "⪯",
-  "\\succeq": "⪰",
-  "\\ll": "≪",
-  "\\gg": "≫",
-  
-  // Set operations
-  "\\cap": "∩",
-  "\\cup": "∪",
-  "\\setminus": "∖",
-  "\\in": "∈",
-  "\\ni": "∋",
-  "\\notin": "∉",
-  "\\subset": "⊂",
-  "\\supset": "⊃",
-  "\\subseteq": "⊆",
-  "\\supseteq": "⊇",
-  "\\nsubseteq": "⊈",
-  "\\nsupseteq": "⊉",
-  "\\subsetneq": "⊊",
-  "\\supsetneq": "⊋",
-  
-  // Binary operators
-  "\\oplus": "⊕",
-  "\\ominus": "⊖",
-  "\\otimes": "⊗",
-  "\\oslash": "⊘",
-  "\\odot": "⊙",
-  "\\triangleleft": "◁",
-  "\\triangleright": "▷",
-  "\\wr": "≀",
+// Symbol information with Unicode mapping and default styling
+export interface SymbolInfo {
+  unicode: string;
+  defaultItalic: boolean; // true = italic by default (variables), false = upright by default (operators)
+}
 
-  // Calculus operators
-  "\\partial": "∂",
-  "\\infty": "∞",
-  // Physics package symbols
-  "\\div": "∇",
+// Symbol mappings with styling information
+export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
+  // Greek lowercase letters (italic by default)
+  "\\alpha": { unicode: "α", defaultItalic: true },
+  "\\beta": { unicode: "β", defaultItalic: true },
+  "\\gamma": { unicode: "γ", defaultItalic: true },
+  "\\delta": { unicode: "δ", defaultItalic: true },
+  "\\epsilon": { unicode: "ε", defaultItalic: true },
+  "\\varepsilon": { unicode: "ε", defaultItalic: true },
+  "\\zeta": { unicode: "ζ", defaultItalic: true },
+  "\\eta": { unicode: "η", defaultItalic: true },
+  "\\theta": { unicode: "θ", defaultItalic: true },
+  "\\vartheta": { unicode: "ϑ", defaultItalic: true },
+  "\\iota": { unicode: "ι", defaultItalic: true },
+  "\\kappa": { unicode: "κ", defaultItalic: true },
+  "\\lambda": { unicode: "λ", defaultItalic: true },
+  "\\mu": { unicode: "μ", defaultItalic: true },
+  "\\nu": { unicode: "ν", defaultItalic: true },
+  "\\xi": { unicode: "ξ", defaultItalic: true },
+  "\\omicron": { unicode: "ο", defaultItalic: true },
+  "\\pi": { unicode: "π", defaultItalic: true },
+  "\\varpi": { unicode: "ϖ", defaultItalic: true },
+  "\\rho": { unicode: "ρ", defaultItalic: true },
+  "\\varrho": { unicode: "ϱ", defaultItalic: true },
+  "\\sigma": { unicode: "σ", defaultItalic: true },
+  "\\varsigma": { unicode: "ς", defaultItalic: true },
+  "\\tau": { unicode: "τ", defaultItalic: true },
+  "\\upsilon": { unicode: "υ", defaultItalic: true },
+  "\\phi": { unicode: "φ", defaultItalic: true },
+  "\\varphi": { unicode: "φ", defaultItalic: true },
+  "\\chi": { unicode: "χ", defaultItalic: true },
+  "\\psi": { unicode: "ψ", defaultItalic: true },
+  "\\omega": { unicode: "ω", defaultItalic: true },
   
-  // Logic operators
-  "\\wedge": "∧",
-  "\\vee": "∨",
-  "\\vdash": "⊢",
-  "\\models": "⊨",
-  "\\top": "⊤",
-  "\\bot": "⊥",
+  // Greek uppercase letters (upright by default)
+  "\\Gamma": { unicode: "Γ", defaultItalic: false },
+  "\\Delta": { unicode: "Δ", defaultItalic: false },
+  "\\Theta": { unicode: "Θ", defaultItalic: false },
+  "\\Lambda": { unicode: "Λ", defaultItalic: false },
+  "\\Pi": { unicode: "Π", defaultItalic: false },
+  "\\Sigma": { unicode: "Σ", defaultItalic: false },
+  "\\Upsilon": { unicode: "Υ", defaultItalic: false },
+  "\\Phi": { unicode: "Φ", defaultItalic: false },
+  "\\Chi": { unicode: "Χ", defaultItalic: false },
+  "\\Psi": { unicode: "Ψ", defaultItalic: false },
+  "\\Omega": { unicode: "Ω", defaultItalic: false },
+
+  // Calculus symbols
+  "\\partial": { unicode: "∂", defaultItalic: true },
+  "\\nabla": { unicode: "∇", defaultItalic: false },
+  "\\infty": { unicode: "∞", defaultItalic: false },
   
-  // Miscellaneous symbols
-  "\\bowtie": "⋈",
-  "\\diamond": "⋄",
-  "\\asymp": "≍",
-  "\\triangleq": "≜",
-  "\\therefore": "∴",
-  "\\because": "∵",
+  // Arithmetic operators (upright by default)
+  "\\times": { unicode: "×", defaultItalic: false },
+  "\\divsymbol": { unicode: "÷", defaultItalic: false },  // Division symbol (Physics package - MathJax 3.0)
+  "\\pm": { unicode: "±", defaultItalic: false },
+  "\\mp": { unicode: "∓", defaultItalic: false },
+  "\\cdot": { unicode: "·", defaultItalic: false },
+  "\\ast": { unicode: "∗", defaultItalic: false },
+  "\\star": { unicode: "⋆", defaultItalic: false },
+  "\\circ": { unicode: "∘", defaultItalic: false },
+  "\\bullet": { unicode: "•", defaultItalic: false },
   
-  // Large operators
-  "\\sum": "∑",
-  "\\prod": "∏",
-  "\\coprod": "∐",
-  "\\bigcup": "∪",
-  "\\bigcap": "∩",
-  "\\bigvee": "∨",
-  "\\bigwedge": "∧",
-  "\\bigoplus": "⨁",
-  "\\bigotimes": "⨂",
-  "\\bigodot": "⨀",
-  "\\biguplus": "⨄",
-  "\\int": "∫",
-  "\\oint": "∮",
+  // Comparison and relations (upright by default)
+  "\\neq": { unicode: "≠", defaultItalic: false },
+  "\\sim": { unicode: "∼", defaultItalic: false },
+  "\\simeq": { unicode: "≃", defaultItalic: false },
+  "\\approx": { unicode: "≈", defaultItalic: false },
+  "\\equiv": { unicode: "≡", defaultItalic: false },
+  "\\cong": { unicode: "≅", defaultItalic: false },
+  "\\ncong": { unicode: "≇", defaultItalic: false },
+  "\\propto": { unicode: "∝", defaultItalic: false },
+  "\\leq": { unicode: "≤", defaultItalic: false },
+  "\\geq": { unicode: "≥", defaultItalic: false },
+  "\\nless": { unicode: "≮", defaultItalic: false },
+  "\\ngtr": { unicode: "≯", defaultItalic: false },
+  "\\nleq": { unicode: "≰", defaultItalic: false },
+  "\\ngeq": { unicode: "≱", defaultItalic: false },
+  "\\prec": { unicode: "≺", defaultItalic: false },
+  "\\succ": { unicode: "≻", defaultItalic: false },
+  "\\preceq": { unicode: "⪯", defaultItalic: false },
+  "\\succeq": { unicode: "⪰", defaultItalic: false },
+  "\\ll": { unicode: "≪", defaultItalic: false },
+  "\\gg": { unicode: "≫", defaultItalic: false },
   
-  // Greek letters - lowercase
-  "\\alpha": "α",
-  "\\beta": "β",
-  "\\gamma": "γ",
-  "\\delta": "δ",
-  "\\epsilon": "ϵ",
-  "\\varepsilon": "ε",
-  "\\zeta": "ζ",
-  "\\eta": "η",
-  "\\theta": "θ",
-  "\\vartheta": "ϑ",
-  "\\iota": "ι",
-  "\\kappa": "κ",
-  "\\lambda": "λ",
-  "\\mu": "μ",
-  "\\nu": "ν",
-  "\\xi": "ξ",
-  "\\omicron": "ο",
-  "\\pi": "π",
-  "\\varpi": "ϖ",
-  "\\rho": "ρ",
-  "\\varrho": "ϱ",
-  "\\sigma": "σ",
-  "\\varsigma": "ς",
-  "\\tau": "τ",
-  "\\upsilon": "υ",
-  "\\phi": "ϕ",
-  "\\varphi": "φ",
-  "\\chi": "χ",
-  "\\psi": "ψ",
-  "\\omega": "ω",
+  // Set operations (upright by default)
+  "\\cap": { unicode: "∩", defaultItalic: false },
+  "\\cup": { unicode: "∪", defaultItalic: false },
+  "\\setminus": { unicode: "∖", defaultItalic: false },
+  "\\in": { unicode: "∈", defaultItalic: false },
+  "\\ni": { unicode: "∋", defaultItalic: false },
+  "\\notin": { unicode: "∉", defaultItalic: false },
+  "\\subset": { unicode: "⊂", defaultItalic: false },
+  "\\supset": { unicode: "⊃", defaultItalic: false },
+  "\\subseteq": { unicode: "⊆", defaultItalic: false },
+  "\\supseteq": { unicode: "⊇", defaultItalic: false },
+  "\\nsubseteq": { unicode: "⊈", defaultItalic: false },
+  "\\nsupseteq": { unicode: "⊉", defaultItalic: false },
+  "\\subsetneq": { unicode: "⊊", defaultItalic: false },
+  "\\supsetneq": { unicode: "⊋", defaultItalic: false },
   
-  // Greek letters - uppercase
-  "\\Gamma": "Γ",
-  "\\Delta": "Δ",
-  "\\Theta": "Θ",
-  "\\Lambda": "Λ",
-  "\\Pi": "Π",
-  "\\Sigma": "Σ",
-  "\\Upsilon": "Υ",
-  "\\Phi": "Φ",
-  "\\Psi": "Ψ",
-  "\\Omega": "Ω",
+  // Binary operators (upright by default)
+  "\\oplus": { unicode: "⊕", defaultItalic: false },
+  "\\ominus": { unicode: "⊖", defaultItalic: false },
+  "\\otimes": { unicode: "⊗", defaultItalic: false },
+  "\\oslash": { unicode: "⊘", defaultItalic: false },
+  "\\odot": { unicode: "⊙", defaultItalic: false },
+  "\\triangleleft": { unicode: "◁", defaultItalic: false },
+  "\\triangleright": { unicode: "▷", defaultItalic: false },
+  "\\wr": { unicode: "≀", defaultItalic: false },
+  
+  // Logic operators (upright by default)
+  "\\wedge": { unicode: "∧", defaultItalic: false },
+  "\\vee": { unicode: "∨", defaultItalic: false },
+  "\\vdash": { unicode: "⊢", defaultItalic: false },
+  "\\models": { unicode: "⊨", defaultItalic: false },
+  "\\top": { unicode: "⊤", defaultItalic: false },
+  "\\bot": { unicode: "⊥", defaultItalic: false },
+  
+  // Miscellaneous symbols (upright by default)
+  "\\bowtie": { unicode: "⋈", defaultItalic: false },
+  "\\diamond": { unicode: "⋄", defaultItalic: false },
+  "\\asymp": { unicode: "≍", defaultItalic: false },
+  "\\triangleq": { unicode: "≜", defaultItalic: false },
+  "\\therefore": { unicode: "∴", defaultItalic: false },
+  "\\because": { unicode: "∵", defaultItalic: false },
+  
+  // Large operators (upright by default)
+  "\\sum": { unicode: "∑", defaultItalic: false },
+  "\\prod": { unicode: "∏", defaultItalic: false },
+  "\\coprod": { unicode: "∐", defaultItalic: false },
+  "\\bigcup": { unicode: "∪", defaultItalic: false },
+  "\\bigcap": { unicode: "∩", defaultItalic: false },
+  "\\bigvee": { unicode: "∨", defaultItalic: false },
+  "\\bigwedge": { unicode: "∧", defaultItalic: false },
+  "\\bigoplus": { unicode: "⨁", defaultItalic: false },
+  "\\bigotimes": { unicode: "⨂", defaultItalic: false },
+  "\\bigodot": { unicode: "⨀", defaultItalic: false },
+  "\\biguplus": { unicode: "⨄", defaultItalic: false },
+  "\\int": { unicode: "∫", defaultItalic: false },
+  "\\oint": { unicode: "∮", defaultItalic: false },
+  
 };
 
+// Map LaTeX commands to Unicode symbols for easy lookup
+const configMappings = Object.entries(SYMBOL_CONFIG).reduce(
+  (acc, [latex, info]) => {
+    acc[latex] = info.unicode;
+    return acc;
+  },
+  {} as { [key: string]: string }
+);
+
+export const LATEX_TO_UNICODE: { [key: string]: string } = configMappings;
+
+// Function to get symbol info with default styling
+export function getSymbolInfo(latex: string): SymbolInfo | undefined {
+  return SYMBOL_CONFIG[latex];
+}
+
+// Function to check if a symbol should be italic by default
+export function isSymbolDefaultItalic(latex: string): boolean {
+  const info = SYMBOL_CONFIG[latex];
+  return info ? info.defaultItalic : false;
+}
+
 // Reverse mapping: Unicode to LaTeX
-export const UNICODE_TO_LATEX: { [key: string]: string } = Object.entries(LATEX_TO_UNICODE).reduce(
-  (acc, [latex, unicode]) => {
-    acc[unicode] = latex;
+export const UNICODE_TO_LATEX: { [key: string]: string } = Object.entries(SYMBOL_CONFIG).reduce(
+  (acc, [latex, info]) => {
+    acc[info.unicode] = latex;
     return acc;
   },
   {} as { [key: string]: string }

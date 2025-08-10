@@ -1,7 +1,7 @@
 import { EquationBuilder, EquationElement } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
 import { DisplayRenderer } from './display-renderer';
-import { LATEX_TO_UNICODE, hasMixedBrackets } from '../core/symbol-config';
+import { LATEX_TO_UNICODE, getSymbolInfo, isSymbolDefaultItalic, hasMixedBrackets } from '../core/symbol-config';
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -37,28 +37,56 @@ export class InputHandler {
       this.handleDelete();
     } else if (key === "ArrowLeft") {
       e.preventDefault();
-      if (e.shiftKey) {
+      if (e.ctrlKey && e.shiftKey) {
+        // Ctrl+Shift+Left: Extend selection by whole structure
+        this.contextManager.extendSelectionToStructure(-1);
+      } else if (e.shiftKey) {
+        // Shift+Left: Extend selection by character
         this.contextManager.extendSelection(-1);
+      } else if (e.ctrlKey) {
+        // Ctrl+Left: Move cursor over whole structure
+        this.contextManager.clearSelection();
+        this.moveOverStructure(-1);
       } else {
+        // Left: Move cursor by character
         this.contextManager.clearSelection();
         this.contextManager.moveCursor(-1);
       }
       this.updateDisplay();
     } else if (key === "ArrowRight") {
       e.preventDefault();
-      if (e.shiftKey) {
+      if (e.ctrlKey && e.shiftKey) {
+        // Ctrl+Shift+Right: Extend selection by whole structure
+        this.contextManager.extendSelectionToStructure(1);
+      } else if (e.shiftKey) {
+        // Shift+Right: Extend selection by character
         this.contextManager.extendSelection(1);
+      } else if (e.ctrlKey) {
+        // Ctrl+Right: Move cursor over whole structure
+        this.contextManager.clearSelection();
+        this.moveOverStructure(1);
       } else {
+        // Right: Move cursor by character
         this.contextManager.clearSelection();
         this.contextManager.moveCursor(1);
       }
       this.updateDisplay();
     } else if (key === "ArrowUp" || key === "ArrowDown") {
       e.preventDefault();
-      if (!e.shiftKey) {
+      if (e.ctrlKey && e.shiftKey) {
+        // Ctrl+Shift+Up/Down: Select parent structure or current context
+        if (key === "ArrowUp") {
+          this.contextManager.selectParentStructure();
+        } else {
+          this.contextManager.selectCurrentContext();
+        }
+      } else if (!e.shiftKey) {
         this.contextManager.clearSelection();
+        this.contextManager.navigateUpDown(key);
+      } else {
+        // With shift, maintain selection while navigating
+        this.contextManager.navigateUpDown(key);
       }
-      this.contextManager.navigateUpDown(key);
       this.updateDisplay();
     } else if (key === "Tab") {
       e.preventDefault();
@@ -73,6 +101,42 @@ export class InputHandler {
     } else if (e.ctrlKey && key.toLowerCase() === 'b') {
       e.preventDefault();
       this.toggleBold();
+    } else if (e.ctrlKey && key === ' ') {
+      // Ctrl+Space: Select structure at cursor
+      e.preventDefault();
+      if (this.contextManager.selectStructureAtCursor()) {
+        this.updateDisplay();
+      }
+    }
+  }
+
+  private moveOverStructure(direction: number): void {
+    const context = this.contextManager.getCurrentContext();
+    if (!context) return;
+
+    const currentPos = this.contextManager.getCursorPosition();
+    
+    if (direction > 0 && currentPos < context.array.length) {
+      const element = context.array[currentPos];
+      if (element && element.type !== 'text') {
+        // Skip over entire structure
+        this.contextManager.setCursorPosition(currentPos + 1);
+      } else {
+        // Regular character movement
+        this.contextManager.moveCursor(1);
+      }
+    } else if (direction < 0 && currentPos > 0) {
+      const element = context.array[currentPos - 1];
+      if (element && element.type !== 'text') {
+        // Skip over entire structure
+        this.contextManager.setCursorPosition(currentPos - 1);
+      } else {
+        // Regular character movement
+        this.contextManager.moveCursor(-1);
+      }
+    } else {
+      // Regular movement at boundaries
+      this.contextManager.moveCursor(direction);
     }
   }
 
@@ -93,7 +157,17 @@ export class InputHandler {
       // Sanitize the character before inserting
       const sanitizedChar = this.sanitizeInputChar(processedChar);
       if (sanitizedChar) {
-        this.contextManager.insertTextAtCursor(sanitizedChar);
+        // Create text element with default styling
+        const element = this.equationBuilder.createTextElement(sanitizedChar);
+        
+        // Apply default italic styling based on character type
+        const shouldBeItalic = this.getDefaultItalicForSymbol(sanitizedChar, sanitizedChar);
+        if (shouldBeItalic !== undefined) {
+          element.italic = shouldBeItalic;
+        }
+        
+        // Insert the element instead of just the text
+        this.contextManager.insertElementAtCursor(element);
         this.updateDisplay();
       }
     }
@@ -282,16 +356,54 @@ export class InputHandler {
     }
   }
 
-  insertOperator(operator: string): void {
+  insertSymbol(symbol: string): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }
 
     // Convert LaTeX commands to Unicode symbols for display
-    const unicodeSymbol = this.convertLatexToUnicode(operator);
-    this.contextManager.insertTextAtCursor(unicodeSymbol);
+    const unicodeSymbol = this.convertLatexToUnicode(symbol);
+    
+    // Create text element with default styling based on symbol type
+    const element = this.equationBuilder.createTextElement(unicodeSymbol);
+    
+    // Apply default italic styling based on symbol configuration
+    const shouldBeItalic = this.getDefaultItalicForSymbol(symbol, unicodeSymbol);
+    if (shouldBeItalic !== undefined) {
+      element.italic = shouldBeItalic;
+    }
+    
+    // Insert the element instead of just the text
+    this.contextManager.insertElementAtCursor(element);
     this.updateDisplay();
     this.focusHiddenInput();
+  }
+
+  private getDefaultItalicForSymbol(originalSymbol: string, unicodeSymbol: string): boolean | undefined {
+    // Check if we have explicit configuration for this LaTeX symbol
+    const symbolInfo = getSymbolInfo(originalSymbol);
+    if (symbolInfo) {
+      return symbolInfo.defaultItalic;
+    }
+    
+    // Handle direct text input (English letters)
+    if (originalSymbol === unicodeSymbol) {
+      // English lowercase and uppercase letters should be italic by default (variables)
+      if (/^[a-zA-Z]$/.test(unicodeSymbol)) {
+        return true;
+      }
+      // Numbers should not be italic by default unless explicitly set
+      if (/^[0-9]$/.test(unicodeSymbol)) {
+        return false;
+      }
+      // Basic operators should not be italic
+      if (/^[+\-=<>(){}[\]|]$/.test(unicodeSymbol)) {
+        return false;
+      }
+    }
+    
+    // No default - let normal rendering logic decide
+    return undefined;
   }
 
   private convertLatexToUnicode(latex: string): string {
@@ -615,8 +727,10 @@ export class InputHandler {
 
   handleMouseDown(e: MouseEvent): void {
     this.isDragging = false;
+    
     this.handleDisplayClick(e);
   }
+
 
   handleMouseMove(e: MouseEvent): void {
     if (e.buttons === 1 && this.contextManager.isActive()) { // Left mouse button is down
@@ -818,15 +932,15 @@ export class InputHandler {
     this.updateDisplay();
   }
 
-  setUnderlineStyle(underlineType: string): void {
+  setUnderlineStyle(underlineType: "none" | "single" | "double"): void {
     if (!this.contextManager.hasSelection()) {
       return;
     }
     
     if (underlineType === "none") {
-      this.contextManager.applyFormattingToSelection({ underline: false, underlineStyle: null });
+      this.contextManager.applyFormattingToSelection({ underline: undefined });
     } else {
-      this.contextManager.applyFormattingToSelection({ underline: true, underlineStyle: underlineType });
+      this.contextManager.applyFormattingToSelection({ underline: underlineType as "single" | "double" });
     }
     
     this.contextManager.clearSelection(); // Clear selection after formatting
