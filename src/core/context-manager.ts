@@ -1,4 +1,5 @@
 import { EquationElement, EquationBuilder } from './equation-builder';
+import { hasMixedBrackets } from './symbol-config';
 
 export interface ContextInfo {
   array: EquationElement[];
@@ -72,6 +73,33 @@ export class ContextManager {
     const element = this.equationBuilder.findElementById(this.equationBuilder.getEquation(), elementId);
     if (!element) return null;
 
+    // Handle derivative element containers
+    if (element.type === "derivative") {
+      if (containerName === "function") {
+        return { array: element.function || [], parent: element };
+      } else if (containerName === "variable") {
+        return { array: element.variable || [], parent: element };
+      } else if (containerName === "order" && Array.isArray(element.order)) {
+        return { array: element.order, parent: element };
+      }
+      return null;
+    }
+
+    // Handle integral element containers
+    if (element.type === "integral") {
+      if (containerName === "integrand") {
+        return { array: element.integrand || [], parent: element };
+      } else if (containerName === "differentialVariable") {
+        return { array: element.differentialVariable || [], parent: element };
+      } else if (containerName === "lowerLimit") {
+        return { array: element.lowerLimit || [], parent: element };
+      } else if (containerName === "upperLimit") {
+        return { array: element.upperLimit || [], parent: element };
+      }
+      return null;
+    }
+
+    // Handle other element types
     const array = element[containerName as keyof EquationElement] as EquationElement[] | undefined;
     return array ? { array, parent: element } : null;
   }
@@ -118,6 +146,65 @@ export class ContextManager {
       } else if (direction === "ArrowUp" && currentPart === "denominator") {
         this.activeContextPath = `${parentPath}/${elementId}/numerator`;
         this.cursorPosition = 0;
+      } else {
+        this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
+      }
+    } else if (parentElement.type === "integral") {
+      // Navigation for integral elements
+      if (direction === "ArrowDown") {
+        if (parentElement.hasLimits && currentPart === "upperLimit") {
+          this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
+          this.cursorPosition = 0;
+        } else if (parentElement.hasLimits && currentPart === "lowerLimit") {
+          this.activeContextPath = `${parentPath}/${elementId}/integrand`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "integrand") {
+          this.activeContextPath = `${parentPath}/${elementId}/differentialVariable`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("forward");
+        }
+      } else if (direction === "ArrowUp") {
+        if (currentPart === "differentialVariable") {
+          this.activeContextPath = `${parentPath}/${elementId}/integrand`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "integrand" && parentElement.hasLimits) {
+          this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
+          this.cursorPosition = 0;
+        } else if (parentElement.hasLimits && currentPart === "lowerLimit") {
+          this.activeContextPath = `${parentPath}/${elementId}/upperLimit`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("backward");
+        }
+      } else {
+        this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
+      }
+    } else if (parentElement.type === "derivative") {
+      if (direction === "ArrowDown") {
+        if (currentPart === "function") {
+          this.activeContextPath = `${parentPath}/${elementId}/variable`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "order") {
+          this.activeContextPath = `${parentPath}/${elementId}/function`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("forward");
+        }
+      } else if (direction === "ArrowUp") {
+        if (currentPart === "variable") {
+          this.activeContextPath = `${parentPath}/${elementId}/function`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "function") {
+          if (Array.isArray(parentElement.order)) {
+            this.activeContextPath = `${parentPath}/${elementId}/order`;
+            this.cursorPosition = 0;
+          } else {
+            this.navigateOutOfContext("backward");
+          }
+        } else {
+          this.navigateOutOfContext("backward");
+        }
       } else {
         this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
       }
@@ -221,10 +308,57 @@ export class ContextManager {
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
-    const element = this.equationBuilder.createTextElement(text);
-    this.equationBuilder.insertElement(element, context.array, this.cursorPosition);
-    this.cursorPosition++;
-    return true;
+    try {
+      // Check if we're in a derivative function context
+      if (this.activeContextPath.includes('function') && context.parent?.type === 'derivative') {
+        const currentContent = this.getContextText(context.array);
+        const newContent = currentContent.slice(0, this.cursorPosition) + text + currentContent.slice(this.cursorPosition);
+        
+        // Check for mixed brackets
+        if (hasMixedBrackets(newContent)) {
+          this.showMixedBracketsError();
+          return false;
+        }
+      }
+
+      const element = this.equationBuilder.createTextElement(text);
+      this.equationBuilder.insertElement(element, context.array, this.cursorPosition);
+      this.cursorPosition++;
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private getContextText(elements: EquationElement[]): string {
+    return elements.map(el => el.value || '').join('');
+  }
+
+  showMixedBracketsError(): void {
+    const errorDiv = document.createElement('div');
+    errorDiv.textContent = 'Mixed brackets are not supported for derivatives.';
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f44336;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 4px;
+      z-index: 10000;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif;
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+      if (errorDiv.parentNode) {
+        errorDiv.parentNode.removeChild(errorDiv);
+      }
+    }, 3000);
   }
 
   insertElementAtCursor(element: EquationElement): boolean {

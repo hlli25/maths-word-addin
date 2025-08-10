@@ -1,13 +1,18 @@
 import { EquationElement } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
-import { getSymbolToNameMap } from '../core/symbol-config';
+import { getIntegralSymbol, UNICODE_TO_LATEX } from '../core/symbol-config';
 
 export class DisplayRenderer {
   private contextManager: ContextManager;
   private globalFontSize: number = 12;
+  private inputHandler: any = null;
 
   constructor(contextManager: ContextManager) {
     this.contextManager = contextManager;
+  }
+
+  setInputHandler(inputHandler: any): void {
+    this.inputHandler = inputHandler;
   }
 
   setGlobalFontSize(size: number): void {
@@ -109,6 +114,10 @@ export class DisplayRenderer {
         return this.bracketToMathML(element, contextPath, isActive, position, isSelected);
       case 'large-operator':
         return this.largeOperatorToMathML(element, contextPath, isActive, position, isSelected);
+      case 'derivative':
+        return this.derivativeToMathML(element, contextPath, isActive, position, isSelected);
+      case 'integral':
+        return this.integralToMathML(element, contextPath, isActive, position, isSelected);
       default:
         return '';
     }
@@ -174,7 +183,13 @@ export class DisplayRenderer {
   private fractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
     const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
-    const classAttr = isActive ? 'class="active-element"' : '';
+    
+    // Add classes for active element and display mode
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (element.displayMode === 'display') classes.push('display-fraction');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
     
     // Add displaystyle attribute for display mode fractions
@@ -331,10 +346,206 @@ export class DisplayRenderer {
   }
 
   private getOperatorDataAttribute(operator: string): string {
-    const operatorMap = getSymbolToNameMap();
-    
-    const operatorName = operatorMap[operator] || 'unknown';
+    // Convert operator symbol to LaTeX command, then use that as the name
+    const latexCommand = UNICODE_TO_LATEX[operator];
+    const operatorName = latexCommand ? latexCommand.substring(1) : 'unknown'; // Remove the backslash
     return `data-operator="${operatorName}"`;
+  }
+
+  private derivativeToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    
+    // Add displaystyle attribute for display mode derivatives
+    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    
+    // Check current differential style preference from context manager
+    const isDifferentialItalic = this.getDifferentialStylePreference();
+    const dClass = isDifferentialItalic ? 'derivative-d italic' : 'derivative-d roman';
+    
+    // Check if this is long form derivative
+    if (element.isLongForm) {
+      return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, dClass);
+    }
+    
+    // Generate content for each part (standard form)
+    const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+    
+    let numeratorContent = '';
+    let denominatorContent = '';
+    
+    if (typeof element.order === 'number') {
+      // Numeric order (1, 2, 3, ...)
+      if (element.order === 1) {
+        numeratorContent = `<mi class="${dClass}">d</mi>${functionML}`;
+        denominatorContent = `<mi class="${dClass}">d</mi>${variableML}`;
+      } else {
+        numeratorContent = `<msup>
+          <mi class="${dClass}">d</mi>
+          <mn>${element.order}</mn>
+        </msup>${functionML}`;
+        denominatorContent = `<mi class="${dClass}">d</mi><msup>
+          ${variableML}
+          <mn>${element.order}</mn>
+        </msup>`;
+      }
+    } else {
+      // nth order with custom expression
+      const orderML = this.generateMathMLContent(`${elementPath}/order`, element.order);
+      numeratorContent = `<msup>
+        <mi class="${dClass}">d</mi>
+        <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+      </msup>${functionML}`;
+      
+      // For denominator, create a read-only copy without editable context
+      const readOnlyOrderML = element.order && element.order.length > 0 ? 
+        element.order.map(el => el.value || '').join('') : '';
+      denominatorContent = `<mi class="${dClass}">d</mi><msup>
+        ${variableML}
+        <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
+      </msup>`;
+    }
+
+    return `<mfrac ${displayStyle} ${classAttr} ${dataAttrs}>
+      <mrow data-context-path="${elementPath}/function">${numeratorContent}</mrow>
+      <mrow data-context-path="${elementPath}/variable">${denominatorContent}</mrow>
+    </mfrac>`;
+  }
+
+  private getDifferentialStylePreference(): boolean {
+    // Get differential style from input handler (true = italic, false = roman)
+    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === 'function') {
+      // Invert the logic since getDifferentialStyleForLatex returns true for roman (physics package)
+      // but we need true for italic display
+      return !this.inputHandler.getDifferentialStyleForLatex();
+    }
+    return true; // Default to italic if no input handler
+  }
+
+  private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, dClass: string): string {
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    
+    // Generate content for each part
+    const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+    
+    let fractionContent = '';
+    
+    if (typeof element.order === 'number') {
+      // Numeric order (1, 2, 3, ...)
+      if (element.order === 1) {
+        // d/dx format
+        fractionContent = `<mfrac ${displayStyle}>
+          <mi class="${dClass}">d</mi>
+          <mrow data-context-path="${elementPath}/variable">
+            <mi class="${dClass}">d</mi>
+            ${variableML}
+          </mrow>
+        </mfrac>`;
+      } else {
+        // d^n/dx^n format
+        fractionContent = `<mfrac ${displayStyle}>
+          <msup>
+            <mi class="${dClass}">d</mi>
+            <mn>${element.order}</mn>
+          </msup>
+          <mrow data-context-path="${elementPath}/variable">
+            <mi class="${dClass}">d</mi>
+            <msup>
+              ${variableML}
+              <mn>${element.order}</mn>
+            </msup>
+          </mrow>
+        </mfrac>`;
+      }
+    } else {
+      // nth order with custom expression
+      const orderML = this.generateMathMLContent(`${elementPath}/order`, element.order);
+      
+      // For denominator, create a read-only copy without editable context to prevent shared input
+      const readOnlyOrderML = element.order && element.order.length > 0 ? 
+        element.order.map(el => el.value || '').join('') : '';
+        
+      fractionContent = `<mfrac ${displayStyle}>
+        <msup>
+          <mi class="${dClass}">d</mi>
+          <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+        </msup>
+        <mrow data-context-path="${elementPath}/variable">
+          <mi class="${dClass}">d</mi>
+          <msup>
+            ${variableML}
+            <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
+          </msup>
+        </mrow>
+      </mfrac>`;
+    }
+    
+    // Long form
+    return `<mrow ${classAttr} ${dataAttrs}>
+      ${fractionContent}
+      <mrow data-context-path="${elementPath}/function">${functionML}</mrow>
+    </mrow>`;
+  }
+
+  private integralToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classAttr = isActive ? 'class="active-element"' : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    
+    // Add displaystyle attribute for display mode integrals
+    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    
+    // Get the integral symbol based on type
+    const integralSymbol = getIntegralSymbol(element.integralType || 'single');
+    
+    // Check differential style preference
+    const isDifferentialItalic = element.integralStyle === 'italic';
+    const dClass = isDifferentialItalic ? 'derivative-d italic' : 'derivative-d roman';
+    
+    // Generate content for integrand and differential variable
+    const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
+    const differentialVariableML = this.generateMathMLContent(`${elementPath}/differentialVariable`, element.differentialVariable);
+    
+    let integralOperatorML = '';
+    
+    if (element.hasLimits) {
+      // Definite integral with limits
+      const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
+      const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
+      
+      // Use limitMode to determine positioning: "limits" = above/below, "nolimits" = side
+      const useAboveBelow = element.limitMode === "limits" || (element.limitMode === "default" && element.displayMode === "display");
+      
+      if (useAboveBelow) {
+        // Limits above and below
+        integralOperatorML = `<munderover>
+          <mo>${integralSymbol}</mo>
+          <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+          <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+        </munderover>`;
+      } else {
+        // Limits as subscript and superscript (side)
+        integralOperatorML = `<msubsup>
+          <mo>${integralSymbol}</mo>
+          <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+          <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+        </msubsup>`;
+      }
+    } else {
+      // Indefinite integral without limits
+      integralOperatorML = `<mo>${integralSymbol}</mo>`;
+    }
+    
+    // Combine all parts: integral symbol, integrand, space, d, variable
+    return `<mrow ${displayStyle} ${classAttr} ${dataAttrs}>
+      ${integralOperatorML}
+      <mrow data-context-path="${elementPath}/integrand">${integrandML}</mrow>
+      <mspace width="0.2em"/>
+      <mi class="${dClass}">d</mi>
+      <mrow data-context-path="${elementPath}/differentialVariable">${differentialVariableML}</mrow>
+    </mrow>`;
   }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {

@@ -1,7 +1,7 @@
-import { EquationBuilder } from '../core/equation-builder';
+import { EquationBuilder, EquationElement } from '../core/equation-builder';
 import { ContextManager } from '../core/context-manager';
 import { DisplayRenderer } from './display-renderer';
-import { isIntegralOperator, LATEX_TO_UNICODE } from '../core/symbol-config';
+import { LATEX_TO_UNICODE, hasMixedBrackets } from '../core/symbol-config';
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -12,6 +12,7 @@ export class InputHandler {
   private dragStartPosition = 0;
   public onSelectionChange?: () => void;
   private differentialStyle: "italic" | "roman" = "italic"; // Default to italic
+  private isInlineStyle: boolean = false; // Default to display style
 
   constructor(
     equationBuilder: EquationBuilder,
@@ -142,7 +143,12 @@ export class InputHandler {
             contextPath.endsWith('/content') ||
             contextPath.endsWith('/lowerLimit') ||
             contextPath.endsWith('/upperLimit') ||
-            contextPath.endsWith('/operand')) {
+            contextPath.endsWith('/operand') ||
+            contextPath.endsWith('/function') ||
+            contextPath.endsWith('/variable') ||
+            contextPath.endsWith('/order') ||
+            contextPath.endsWith('/integrand') ||
+            contextPath.endsWith('/differentialVariable')) {
           contextElement = currentElement;
           break;
         }
@@ -431,6 +437,21 @@ export class InputHandler {
       this.contextManager.enterRootContext();
     }
     
+    // Check if we're in a derivative function context and validate brackets
+    const activeContextPath = this.contextManager.getActiveContextPath();
+    if (activeContextPath && activeContextPath.includes('function')) {
+      const context = this.contextManager.getContext(activeContextPath);
+      if (context && context.parent?.type === 'derivative') {
+        // Check if this creates mixed brackets
+        const currentText = context.array.map((el: any) => el.value || '').join('');
+        const newText = currentText + leftBracket + rightBracket;
+        if (hasMixedBrackets(newText)) {
+          this.contextManager.showMixedBracketsError();
+          return;
+        }
+      }
+    }
+    
     const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
     this.contextManager.insertElementAtCursor(bracketElement);
     
@@ -478,15 +499,6 @@ export class InputHandler {
 
     const largeOperatorElement = this.equationBuilder.createLargeOperatorElement(operator, displayMode, limitMode);
     
-    // For integrals, add a differential "d" to the operand following the current style
-    if (isIntegralOperator(operator)) {
-      const d = this.equationBuilder.createTextElement("d");
-      if (this.differentialStyle === "roman") {
-        d.italic = false; // This signals to use \mathrm{d}
-      }
-      largeOperatorElement.operand = [d];
-    }
-    
     this.contextManager.insertElementAtCursor(largeOperatorElement);
 
     // Move context into the operand first for better UX
@@ -497,35 +509,65 @@ export class InputHandler {
     this.focusHiddenInput();
   }
 
-  insertIndefiniteIntegral(displayMode: "inline" | "display" = "inline"): void {
+  // Integral insertion methods
+  insertIntegral(
+    integralType: "single" | "double" | "triple" | "contour" = "single",
+    displayMode: "inline" | "display" = "inline",
+    hasLimits: boolean = false,
+    limitMode: "default" | "nolimits" | "limits" = "default"
+  ): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }
 
-    // Create a large-operator element with empty limits (indefinite integral)
-    const integralElement = this.equationBuilder.createLargeOperatorElement("∫", displayMode, "nolimits");
-    
-    // Clear the limits since this is an indefinite integral
-    integralElement.lowerLimit = [];
-    integralElement.upperLimit = [];
-    
-    (integralElement as any).isIndefiniteIntegral = true;
-    
-    // Add a differential "d" to the operand following the current style
-    const d = this.equationBuilder.createTextElement("d");
-    if (this.differentialStyle === "roman") {
-      d.italic = false; // This signals to use \mathrm{d}
-    }
-    integralElement.operand = [d];
+    // Create integral element with the current differential style
+    const integralElement = this.equationBuilder.createIntegralElement(
+      integralType,
+      displayMode,
+      this.differentialStyle === "roman" ? "roman" : "italic",
+      hasLimits,
+      limitMode
+    );
 
     this.contextManager.insertElementAtCursor(integralElement);
 
-    // Position cursor at beginning of operand (before "d") for better UX
-    const operandPath = this.contextManager.getElementContextPath(integralElement.id, "operand");
-    this.contextManager.enterContextPath(operandPath, 0);
+    // Move context into the integrand (first input block)
+    const integrandPath = this.contextManager.getElementContextPath(integralElement.id, "integrand");
+    this.contextManager.enterContextPath(integrandPath, 0);
 
     this.updateDisplay();
     this.focusHiddenInput();
+  }
+
+  // Convenience methods for specific integral types
+  insertSingleIntegral(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("single", displayMode, false);
+  }
+
+  insertDoubleIntegral(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("double", displayMode, false);
+  }
+
+  insertTripleIntegral(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("triple", displayMode, false);
+  }
+
+  insertContourIntegral(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("contour", displayMode, false);
+  }
+
+  insertDefiniteIntegral(
+    integralType: "single" | "double" | "triple" | "contour" = "single",
+    displayMode: "inline" | "display" = "inline",
+    limitMode: "nolimits" | "limits" = "nolimits"
+  ): void {
+    this.insertIntegral(integralType, displayMode, true, limitMode);
+  }
+
+  // Legacy method - redirects to new implementation
+  insertIndefiniteIntegral(displayMode: "inline" | "display" = "inline"): void {
+    // Use the new integral method
+    this.insertSingleIntegral(displayMode);
   }
 
 
@@ -855,6 +897,16 @@ export class InputHandler {
     this.differentialStyle = style;
   }
 
+  setInlineStyle(isInline: boolean): void {
+    this.isInlineStyle = isInline;
+  }
+
+  updateExistingEquationStyle(isInline: boolean): void {
+    // This would update existing equations to reflect the new style
+    // For now, new equations will use the selected style
+    this.updateDisplay();
+  }
+
   updateExistingDifferentialStyle(style: "italic" | "roman"): void {
     // Find all existing 'd' elements in the equation and update their style
     const equation = this.equationBuilder.getEquation();
@@ -958,5 +1010,89 @@ export class InputHandler {
     this.updateDisplay();
     this.equationBuilder.updateParenthesesScaling();
     this.focusHiddenInput();
+  }
+
+  insertDerivativeNew(type: "first" | "second" | "nth", displayMode?: "display" | "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create derivative element with appropriate order
+    let order: number | EquationElement[];
+    if (type === "first") {
+      order = 1;
+    } else if (type === "second") {
+      order = 2;
+    } else {
+      // nth derivative
+      order = [];
+    }
+
+    const derivative = this.equationBuilder.createDerivativeElement(
+      order,
+      displayMode === "inline" ? "inline" : "display"
+    );
+
+    // Insert the derivative element
+    this.contextManager.insertElementAtCursor(derivative);
+
+    // Move cursor to appropriate position for user input
+    let targetPath: string;
+    if (type === "nth") {
+      // Move to the order input for nth derivative
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "order");
+      this.contextManager.enterContextPath(targetPath, 0);
+    } else {
+      // Move to function input
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "function");
+      this.contextManager.enterContextPath(targetPath, 0);
+    }
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  insertDerivativeLongForm(type: "first" | "nth", displayMode?: "display" | "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create derivative element with appropriate order and long form flag
+    let order: number | EquationElement[];
+    if (type === "first") {
+      order = 1;
+    } else {
+      // nth derivative
+      order = [];
+    }
+
+    const derivative = this.equationBuilder.createDerivativeElement(
+      order,
+      displayMode === "inline" ? "inline" : "display",
+      true // isLongForm flag
+    );
+
+    // Insert the derivative element
+    this.contextManager.insertElementAtCursor(derivative);
+
+    // Move cursor to appropriate position for user input
+    let targetPath: string;
+    if (type === "nth") {
+      // Move to the order input for nth derivative
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "order");
+      this.contextManager.enterContextPath(targetPath, 0);
+    } else {
+      // Move to the variable input first (the d/dx part)
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "variable");
+      this.contextManager.enterContextPath(targetPath, 0);
+    }
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  getDifferentialStyleForLatex(): boolean {
+    // Return true if roman style should use physics package, false for italic/standard LaTeX
+    return this.differentialStyle === "roman";
   }
 }

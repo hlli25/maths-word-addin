@@ -77,31 +77,21 @@ export const LATEX_TO_UNICODE: { [key: string]: string } = {
   "\\triangleq": "≜",
   "\\therefore": "∴",
   "\\because": "∵",
-};
-
-// Configuration for large operators (sum, integral, etc.)
-export interface OperatorInfo {
-  symbol: string;
-  name: string;
-  isIntegral: boolean;
-}
-
-// Map of LaTeX commands to operator info
-export const OPERATOR_CONFIG: { [key: string]: OperatorInfo } = {
-  "\\sum": { symbol: "∑", name: "sum", isIntegral: false },
-  "\\prod": { symbol: "∏", name: "prod", isIntegral: false },
-  "\\coprod": { symbol: "∐", name: "coprod", isIntegral: false },
-  "\\bigcup": { symbol: "∪", name: "bigcup", isIntegral: false },
-  "\\bigcap": { symbol: "∩", name: "bigcap", isIntegral: false },
-  "\\bigvee": { symbol: "∨", name: "bigvee", isIntegral: false },
-  "\\bigwedge": { symbol: "∧", name: "bigwedge", isIntegral: false },
-  "\\bigoplus": { symbol: "⨁", name: "bigoplus", isIntegral: false },
-  "\\bigotimes": { symbol: "⨂", name: "bigotimes", isIntegral: false },
-  "\\bigodot": { symbol: "⨀", name: "bigodot", isIntegral: false },
-  "\\biguplus": { symbol: "⨄", name: "biguplus", isIntegral: false },
-  "\\int": { symbol: "∫", name: "int", isIntegral: true },
-  "\\oint": { symbol: "∮", name: "oint", isIntegral: true },
-  // Future integral operators can be added here with isIntegral: true
+  
+  // Large operators
+  "\\sum": "∑",
+  "\\prod": "∏",
+  "\\coprod": "∐",
+  "\\bigcup": "∪",
+  "\\bigcap": "∩",
+  "\\bigvee": "∨",
+  "\\bigwedge": "∧",
+  "\\bigoplus": "⨁",
+  "\\bigotimes": "⨂",
+  "\\bigodot": "⨀",
+  "\\biguplus": "⨄",
+  "\\int": "∫",
+  "\\oint": "∮",
 };
 
 // Reverse mapping: Unicode to LaTeX
@@ -113,43 +103,14 @@ export const UNICODE_TO_LATEX: { [key: string]: string } = Object.entries(LATEX_
   {} as { [key: string]: string }
 );
 
-// Get operator map for LaTeX converter (LaTeX command -> symbol)
-export function getLatexToSymbolMap(): { [key: string]: string } {
-  const map: { [key: string]: string } = {};
-  for (const [command, info] of Object.entries(OPERATOR_CONFIG)) {
-    map[command] = info.symbol;
-  }
-  return map;
-}
+// Helper functions for common operations
 
-// Get operator map for display renderer (symbol -> name)
-export function getSymbolToNameMap(): { [key: string]: string } {
-  const map: { [key: string]: string } = {};
-  for (const info of Object.values(OPERATOR_CONFIG)) {
-    map[info.symbol] = info.name;
-  }
-  return map;
-}
-
-// Check if an operator is an integral type
-export function isIntegralOperator(symbol: string): boolean {
-  for (const info of Object.values(OPERATOR_CONFIG)) {
-    if (info.symbol === symbol) {
-      return info.isIntegral;
-    }
-  }
-  return false;
-}
-
-// Get operator name from symbol
-export function getOperatorName(symbol: string): string {
-  for (const info of Object.values(OPERATOR_CONFIG)) {
-    if (info.symbol === symbol) {
-      return info.name;
-    }
-  }
-  return 'unknown';
-}
+// Centralized list of large operators for easy maintenance
+export const LARGE_OPERATORS = [
+  "\\sum", "\\prod", "\\coprod", "\\bigcup", "\\bigcap", 
+  "\\bigvee", "\\bigwedge", "\\bigoplus", "\\bigotimes", 
+  "\\bigodot", "\\biguplus", "\\int", "\\oint"
+];
 
 // Convert LaTeX command to Unicode symbol
 export function latexToUnicode(latex: string): string | undefined {
@@ -164,6 +125,71 @@ export function unicodeToLatex(unicode: string): string | undefined {
 // Check if a string is a LaTeX command that maps to a symbol
 export function isLatexSymbolCommand(latex: string): boolean {
   return latex in LATEX_TO_UNICODE;
+}
+
+// Map integral types to their corresponding Unicode symbols
+export function getIntegralSymbol(integralType: "single" | "double" | "triple" | "contour"): string {
+  switch (integralType) {
+    case "single":
+      return "∫";
+    case "double":
+      return "∬";
+    case "triple":
+      return "∭";
+    case "contour":
+      return "∮";
+    default:
+      return "∫";
+  }
+}
+
+// Bracket pairs configuration for LaTeX processing
+export interface BracketPair {
+  left: string;
+  right: string;
+}
+
+export const BRACKET_PAIRS: BracketPair[] = [
+  { left: "(", right: ")" },
+  { left: "[", right: "]" },
+  { left: "{", right: "}" },
+  { left: "\\{", right: "\\}" },
+  { left: "\\langle", right: "\\rangle" },
+  { left: "\\lfloor", right: "\\rfloor" },
+  { left: "\\lceil", right: "\\rceil" },
+  { left: "\\lvert", right: "\\rvert" },
+  { left: "\\lVert", right: "\\rVert" },
+  { left: "|", right: "|" },
+  { left: "\\|", right: "\\|" }
+];
+
+// Integral commands for LaTeX processing
+export const INTEGRAL_COMMANDS = [
+  '\\inti', '\\intd',
+  '\\iinti', '\\iintd', 
+  '\\iiinti', '\\iiintd',
+  '\\ointi', '\\ointd',
+  '\\intil', '\\intdl',
+  '\\iintil', '\\iintdl',
+  '\\iiintil', '\\iiintdl', 
+  '\\ointil', '\\ointdl'
+];
+
+// Validate brackets in text for mixed bracket pairs
+export function hasMixedBrackets(text: string): boolean {
+  if (!text || text.length === 0) return false;
+  
+  const foundBracketTypes = new Set<string>();
+  
+  // Check which bracket types are present in the text
+  for (const pair of BRACKET_PAIRS) {
+    if (text.includes(pair.left) || text.includes(pair.right)) {
+      foundBracketTypes.add(`${pair.left}-${pair.right}`);
+    }
+  }
+  
+  // If more than one bracket type is found, it's mixed
+  return foundBracketTypes.size > 1;
 }
 
 // Get the length of the longest LaTeX command that matches at a position

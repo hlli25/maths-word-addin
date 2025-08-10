@@ -1,7 +1,7 @@
 // Equation element types and builder functionality
 export interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator" | "derivative" | "integral";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -32,7 +32,19 @@ export interface EquationElement {
   italic?: boolean;
   underline?: "single" | "double";
   strikethrough?: boolean;
+  cancel?: boolean;
   color?: string;
+  // for derivative (df/dx)
+  order?: number | EquationElement[]; // derivative order (1 or n for nth)
+  function?: EquationElement[]; // f in df/dx
+  variable?: EquationElement[]; // x in df/dx
+  isLongForm?: boolean; // true for \dv{x}(\grande{f}) format
+  // for integral (custom format: ∫ f(x) dx)
+  integrand?: EquationElement[]; // f(x)
+  differentialVariable?: EquationElement[]; // x in dx
+  integralStyle?: "italic" | "roman"; // style for d
+  hasLimits?: boolean; // whether this is a definite integral
+  integralType?: "single" | "double" | "triple" | "contour"; // type of integral (may extend in future)
 }
 
 export class EquationBuilder {
@@ -165,6 +177,44 @@ export class EquationBuilder {
     };
   }
 
+  createDerivativeElement(
+    order: number | EquationElement[] = 1,
+    displayMode: "inline" | "display" = "inline",
+    isLongForm: boolean = false
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "derivative",
+      order: order,
+      displayMode: displayMode,
+      function: [],
+      variable: [],
+      isLongForm: isLongForm
+    };
+  }
+
+  createIntegralElement(
+    integralType: "single" | "double" | "triple" | "contour" = "single",
+    displayMode: "inline" | "display" = "inline",
+    integralStyle: "italic" | "roman" = "italic",
+    hasLimits: boolean = false,
+    limitMode: "default" | "nolimits" | "limits" = "default"
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "integral",
+      integralType: integralType,
+      displayMode: displayMode,
+      integralStyle: integralStyle,
+      hasLimits: hasLimits,
+      limitMode: limitMode,
+      integrand: [],
+      differentialVariable: [],
+      lowerLimit: hasLimits ? [] : undefined,
+      upperLimit: hasLimits ? [] : undefined
+    };
+  }
+
   findElementById(elements: EquationElement[], id: string): EquationElement | null {
     for (const el of elements) {
       if (el.id === id) return el;
@@ -196,6 +246,21 @@ export class EquationBuilder {
           this.findElementById(el.lowerLimit || [], id) ||
           this.findElementById(el.upperLimit || [], id) ||
           this.findElementById(el.operand || [], id);
+        if (found) return found;
+      }
+      if (el.type === "derivative") {
+        const found =
+          this.findElementById(el.function || [], id) ||
+          this.findElementById(el.variable || [], id) ||
+          (Array.isArray(el.order) ? this.findElementById(el.order, id) : null);
+        if (found) return found;
+      }
+      if (el.type === "integral") {
+        const found =
+          this.findElementById(el.integrand || [], id) ||
+          this.findElementById(el.differentialVariable || [], id) ||
+          this.findElementById(el.lowerLimit || [], id) ||
+          this.findElementById(el.upperLimit || [], id);
         if (found) return found;
       }
     }
@@ -283,6 +348,15 @@ export class EquationBuilder {
         if (element.lowerLimit) this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
         if (element.upperLimit) this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
         if (element.operand) this.updateBracketNestingRecursive(element.operand, currentDepth);
+      } else if (element.type === "integral") {
+        if (element.integrand) this.updateBracketNestingRecursive(element.integrand, currentDepth);
+        if (element.differentialVariable) this.updateBracketNestingRecursive(element.differentialVariable, currentDepth);
+        if (element.lowerLimit) this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
+        if (element.upperLimit) this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
+      } else if (element.type === "derivative") {
+        if (element.function) this.updateBracketNestingRecursive(element.function, currentDepth);
+        if (element.variable) this.updateBracketNestingRecursive(element.variable, currentDepth);
+        if (Array.isArray(element.order)) this.updateBracketNestingRecursive(element.order, currentDepth);
       }
     });
   }

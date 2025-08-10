@@ -1,11 +1,16 @@
 import { EquationElement, EquationBuilder } from './equation-builder';
-import { getLatexToSymbolMap, UNICODE_TO_LATEX, LATEX_TO_UNICODE, getLatexCommandLength } from './symbol-config';
+import { UNICODE_TO_LATEX, LATEX_TO_UNICODE, getLatexCommandLength, LARGE_OPERATORS, BRACKET_PAIRS, INTEGRAL_COMMANDS } from './symbol-config';
 
 export class LatexConverter {
   private equationBuilder: EquationBuilder | null = null;
+  private inputHandler: any = null; // Will be properly typed later
 
   setEquationBuilder(equationBuilder: EquationBuilder): void {
     this.equationBuilder = equationBuilder;
+  }
+
+  setInputHandler(inputHandler: any): void {
+    this.inputHandler = inputHandler;
   }
 
   convertToLatex(elements: EquationElement[]): string {
@@ -16,6 +21,7 @@ export class LatexConverter {
   parseFromLatex(latex: string): EquationElement[] {
     return this.parseLatexToEquation(latex);
   }
+
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
     const findMaxDepthRecursive = (elements: EquationElement[]): number => {
@@ -102,7 +108,7 @@ export class LatexConverter {
         if (element.displayMode === "display") {
           latex += `\\dfrac{${num || " "}}{${den || " "}}`;
         } else {
-          latex += `\\frac{${num || " "}}{${den || " "}}`;
+          latex += `{\\textstyle \\frac{${num || " "}}{${den || " "}}}`;
         }
       } else if (element.type === "bevelled-fraction") {
         const num = this.toLatexRecursive(element.numerator!, maxDepth);
@@ -168,9 +174,215 @@ export class LatexConverter {
         } else {
           latex += `{\\textstyle ${finalLatex}}`;
         }
+      } else if (element.type === "integral") {
+        // Custom integral format with integrand and differential variable blocks
+        const integrandLatex = this.toLatexRecursive(element.integrand!, maxDepth);
+        const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth);
+        
+        // Determine the command based on integral type, style, and whether it has limits
+        let integralCommand = '';
+        const useRomanD = element.integralStyle === 'roman';
+        const isDefinite = element.hasLimits;
+        
+        switch (element.integralType) {
+          case 'double':
+            if (isDefinite) {
+              integralCommand = useRomanD ? '\\iintdl' : '\\iintil';
+            } else {
+              integralCommand = useRomanD ? '\\iintd' : '\\iinti';
+            }
+            break;
+          case 'triple':
+            if (isDefinite) {
+              integralCommand = useRomanD ? '\\iiintdl' : '\\iiintil';
+            } else {
+              integralCommand = useRomanD ? '\\iiintd' : '\\iiinti';
+            }
+            break;
+          case 'contour':
+            if (isDefinite) {
+              integralCommand = useRomanD ? '\\ointdl' : '\\ointil';
+            } else {
+              integralCommand = useRomanD ? '\\ointd' : '\\ointi';
+            }
+            break;
+          case 'single':
+          default:
+            if (isDefinite) {
+              integralCommand = useRomanD ? '\\intdl' : '\\intil';
+            } else {
+              integralCommand = useRomanD ? '\\intd' : '\\inti';
+            }
+            break;
+        }
+        
+        // Build the integral LaTeX command
+        let finalLatex = '';
+        if (isDefinite) {
+          // For definite integrals: \intil{integrand}{variable}{lower}{upper}
+          const lowerLatex = this.toLatexRecursive(element.lowerLimit!, maxDepth);
+          const upperLatex = this.toLatexRecursive(element.upperLimit!, maxDepth);
+          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
+        } else {
+          // For indefinite integrals: \inti{integrand}{variable}
+          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}`;
+        }
+        
+        // Wrap with appropriate style like large operators do
+        if (element.displayMode === "display") {
+          latex += `{\\displaystyle ${finalLatex}}`;
+        } else {
+          latex += `{\\textstyle ${finalLatex}}`;
+        }
+      } else if (element.type === "derivative") {
+        const functionLatex = this.toLatexRecursive(element.function!, maxDepth);
+        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth);
+        
+        // Check if this is long form derivative
+        if (element.isLongForm) {
+          // Long form: \dv[n]{x}(\grande{f}) or \dv{x}(\grande{f})
+          // The function part is wrapped with \grande and can have optional brackets
+          const usePhysicsPackage = this.shouldUsePhysicsPackageForDerivative();
+          
+          if (usePhysicsPackage) {
+            let dvCommand = '';
+            if (typeof element.order === 'number') {
+              if (element.order === 1) {
+                dvCommand = `\\dv{${variableLatex || "x"}}`;
+              } else {
+                dvCommand = `\\dv[${element.order}]{${variableLatex || "x"}}`;
+              }
+            } else {
+              // nth order with custom expression
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
+              dvCommand = `\\dv[${orderLatex || "n"}]{${variableLatex || "x"}}`;
+            }
+            
+            // Add the function part with \grande
+            // If function starts with brackets, put \grande inside them
+            let functionPart = functionLatex || "";
+            
+            // Check if functionPart starts and ends with any bracket pair
+            let bracketFound = false;
+            for (const pair of BRACKET_PAIRS) {
+              if (functionPart.startsWith(pair.left) && functionPart.endsWith(pair.right)) {
+                // Put \grande inside the brackets
+                const innerContent = functionPart.slice(pair.left.length, -pair.right.length);
+                functionPart = `${pair.left}\\grande{${innerContent}}${pair.right}`;
+                bracketFound = true;
+                break;
+              }
+            }
+            
+            if (!bracketFound) {
+              if (functionPart) {
+                // No brackets or other format, just add \grande
+                functionPart = `\\grande{${functionPart}}`;
+              } else {
+                // Empty function
+                functionPart = `\\grande{ }`;
+              }
+            }
+            
+            // Combine the parts
+            if (element.displayMode === "display") {
+              latex += `{\\displaystyle ${dvCommand}${functionPart}}`;
+            } else {
+              latex += `${dvCommand}${functionPart}`;
+            }
+          } else {
+            // For non-physics package (italic d), use custom long form commands
+            let numerator = '';
+            let denominator = '';
+            
+            if (typeof element.order === 'number') {
+              if (element.order === 1) {
+                numerator = 'd';
+                denominator = `d${variableLatex || "x"}`;
+              } else {
+                numerator = `d^{${element.order}}`;
+                denominator = `d${variableLatex || "x"}^{${element.order}}`;
+              }
+            } else {
+              // nth order with custom expression
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
+              numerator = `d^{${orderLatex || "n"}}`;
+              denominator = `d${variableLatex || "x"}^{${orderLatex || "n"}}`;
+            }
+            
+            // Use custom long form commands for italic d
+            if (element.displayMode === "display") {
+              latex += `\\derivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+            } else {
+              latex += `\\derivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+            }
+          }
+        } else {
+          // Standard form derivative handling
+          // Check if we should use physics package based on differential style
+          const usePhysicsPackage = this.shouldUsePhysicsPackageForDerivative();
+          
+          if (usePhysicsPackage) {
+            // Use physics package \dv command (always renders with roman 'd' based on italicdiff setting)
+            let dvCommand = '';
+            if (typeof element.order === 'number') {
+              if (element.order === 1) {
+                dvCommand = `\\dv{${functionLatex || " "}}{${variableLatex || " "}}`;
+              } else {
+                dvCommand = `\\dv[${element.order}]{${functionLatex || " "}}{${variableLatex || " "}}`;
+              }
+            } else {
+              // nth order with custom expression
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
+              dvCommand = `\\dv[${orderLatex || "n"}]{${functionLatex || " "}}{${variableLatex || " "}}`;
+            }
+            
+            // Add displaystyle if needed for display mode
+            if (element.displayMode === "display") {
+              latex += `{\\displaystyle ${dvCommand}}`;
+            } else {
+              latex += dvCommand;
+            }
+          } else {
+            // Use custom derivative commands for standard LaTeX (allows italic 'd')
+            let numerator = '';
+            let denominator = '';
+            
+            if (typeof element.order === 'number') {
+              if (element.order === 1) {
+                numerator = `d${functionLatex || " "}`;
+                denominator = `d${variableLatex || " "}`;
+              } else {
+                numerator = `d^{${element.order}}${functionLatex || " "}`;
+                denominator = `d${variableLatex || " "}^{${element.order}}`;
+              }
+            } else {
+              // nth order with custom expression
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
+              numerator = `d^{${orderLatex || "n"}}${functionLatex || " "}`;
+              denominator = `d${variableLatex || " "}^{${orderLatex || "n"}}`;
+            }
+            
+            // Use custom \derivfrac or \derivdfrac command instead of \frac/\dfrac
+            if (element.displayMode === "display") {
+              latex += `\\derivdfrac{${numerator}}{${denominator}}`;
+            } else {
+              latex += `\\derivfrac{${numerator}}{${denominator}}`;
+            }
+          }
+        }
       }
     }
     return latex;
+  }
+
+  private shouldUsePhysicsPackageForDerivative(): boolean {
+    // Determine whether to use physics package based on current differential style
+    // Use physics package for roman style differentials
+    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === 'function') {
+      return this.inputHandler.getDifferentialStyleForLatex();
+    }
+    return false; // Default to standard LaTeX if no input handler
   }
 
   private parseLatexToEquation(latex: string): EquationElement[] {
@@ -192,15 +404,66 @@ export class LatexConverter {
           } else {
             i++;
           }
-        } else {
-          // \displaystyle not followed by large operator
-          // Future: will support other expressions like \frac, \sqrt, etc.
-          // Now: treat as text
+        } else if (latex.substr(i, 3) === "\\dv") {
+          // Handle \displaystyle \dv{f}{x} (unbraced form)
+          i += 3; // Skip "\dv"
+          
+          let order: number | EquationElement[] = 1;
+          // Check for optional order parameter [n]
+          if (i < latex.length && latex[i] === "[") {
+            const orderStart = i + 1;
+            let orderEnd = orderStart;
+            let bracketCount = 1;
+            
+            while (orderEnd < latex.length && bracketCount > 0) {
+              if (latex[orderEnd] === "[") bracketCount++;
+              else if (latex[orderEnd] === "]") bracketCount--;
+              orderEnd++;
+            }
+            
+            const orderContent = latex.substring(orderStart, orderEnd - 1);
+            const parsedOrder = parseInt(orderContent);
+            if (!isNaN(parsedOrder)) {
+              order = parsedOrder;
+            } else {
+              order = this.parseLatexToEquation(orderContent);
+            }
+            i = orderEnd;
+          }
+          
+          // Parse function {f}
+          const functionGroup = this.parseLatexGroup(latex, i);
+          i = functionGroup.endIndex;
+          
+          // Parse variable {x}
+          const variableGroup = this.parseLatexGroup(latex, i);
+          i = variableGroup.endIndex;
+          
           result.push({
             id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
-            type: "text",
-            value: "\\displaystyle"
+            type: "derivative",
+            order: order,
+            function: this.parseLatexToEquation(functionGroup.content),
+            variable: this.parseLatexToEquation(variableGroup.content),
+            displayMode: "display" // This was preceded by \displaystyle
           });
+        } else {
+          // Check if this is followed by an integral command
+          const integralResult = this.parseCustomIntegral(latex, i);
+          if (integralResult) {
+            integralResult.element.displayMode = "display"; // This was preceded by \displaystyle
+            result.push(integralResult.element);
+            i = integralResult.endIndex;
+          } else {
+            // \displaystyle not followed by large operator, \dv, or integral
+            // Future: will support other expressions like \frac, \sqrt, etc.
+            // Now: treat as text
+            result.push({
+              id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+              type: "text",
+              value: "\\displaystyle"
+            });
+          }
         }
       } else if (latex.substr(i, 10) === "\\textstyle") {
         // Handle \textstyle (inline mode) - just skip it as operators default to inline
@@ -216,8 +479,108 @@ export class LatexConverter {
           } else {
             i++;
           }
+        } else {
+          // Check if this is followed by an integral command
+          const integralResult = this.parseCustomIntegral(latex, i);
+          if (integralResult) {
+            integralResult.element.displayMode = "inline"; // This was preceded by \textstyle
+            result.push(integralResult.element);
+            i = integralResult.endIndex;
+          }
+          // If not followed by large operator or integral, just continue (skip the \textstyle)
         }
-        // If not followed by large operator, just continue (skip the \textstyle)
+      } else if (latex.substr(i, 11) === "\\derivdfrac") {
+        // Parse custom derivative display fraction command
+        i += 11;
+        const numerator = this.parseLatexGroup(latex, i);
+        i = numerator.endIndex;
+        const denominator = this.parseLatexGroup(latex, i);
+        i = denominator.endIndex;
+
+        // Parse as derivative element
+        const derivativeInfo = this.parseDerivativeFraction(numerator.content, denominator.content, "display");
+        if (derivativeInfo) {
+          result.push(derivativeInfo);
+        } else {
+          // Fallback to regular fraction if parsing fails
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "fraction",
+            displayMode: "display",
+            numerator: this.parseLatexToEquation(numerator.content),
+            denominator: this.parseLatexToEquation(denominator.content)
+          });
+        }
+      } else if (latex.substr(i, 10) === "\\derivfrac") {
+        // Parse custom derivative inline fraction command
+        i += 10;
+        const numerator = this.parseLatexGroup(latex, i);
+        i = numerator.endIndex;
+        const denominator = this.parseLatexGroup(latex, i);
+        i = denominator.endIndex;
+
+        // Parse as derivative element
+        const derivativeInfo = this.parseDerivativeFraction(numerator.content, denominator.content, "inline");
+        if (derivativeInfo) {
+          result.push(derivativeInfo);
+        } else {
+          // Fallback to regular fraction if parsing fails
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "fraction",
+            displayMode: "inline",
+            numerator: this.parseLatexToEquation(numerator.content),
+            denominator: this.parseLatexToEquation(denominator.content)
+          });
+        }
+      } else if (latex.substr(i, 11) === "\\derivlfrac") {
+        // Parse custom long form derivative inline command
+        i += 11;
+        const numerator = this.parseLatexGroup(latex, i);
+        i = numerator.endIndex;
+        const denominator = this.parseLatexGroup(latex, i);
+        i = denominator.endIndex;
+        const functionPart = this.parseLatexGroup(latex, i);
+        i = functionPart.endIndex;
+
+        // Parse as long form derivative element
+        const derivativeInfo = this.parseLongFormDerivative(numerator.content, denominator.content, functionPart.content, "inline");
+        if (derivativeInfo) {
+          result.push(derivativeInfo);
+        } else {
+          // Fallback to regular fraction if parsing fails
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "fraction",
+            displayMode: "inline",
+            numerator: this.parseLatexToEquation(numerator.content),
+            denominator: this.parseLatexToEquation(denominator.content)
+          });
+        }
+      } else if (latex.substr(i, 12) === "\\derivldfrac") {
+        // Parse custom long form derivative display command
+        i += 12;
+        const numerator = this.parseLatexGroup(latex, i);
+        i = numerator.endIndex;
+        const denominator = this.parseLatexGroup(latex, i);
+        i = denominator.endIndex;
+        const functionPart = this.parseLatexGroup(latex, i);
+        i = functionPart.endIndex;
+
+        // Parse as long form derivative element
+        const derivativeInfo = this.parseLongFormDerivative(numerator.content, denominator.content, functionPart.content, "display");
+        if (derivativeInfo) {
+          result.push(derivativeInfo);
+        } else {
+          // Fallback to regular fraction if parsing fails
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "fraction",
+            displayMode: "display",
+            numerator: this.parseLatexToEquation(numerator.content),
+            denominator: this.parseLatexToEquation(denominator.content)
+          });
+        }
       } else if (latex.substr(i, 6) === "\\dfrac") {
         i += 6;
         const numerator = this.parseLatexGroup(latex, i);
@@ -252,6 +615,313 @@ export class LatexConverter {
         if (operatorInfo) {
           result.push(operatorInfo.element);
           i = operatorInfo.endIndex;
+        } else {
+          i++;
+        }
+      } else if (latex.substr(i, 14) === "{\\displaystyle ") {
+        // Look ahead to see if this contains a \dv command or integral command
+        const displaystyleStart = i;
+        let braceCount = 1;
+        let pos = i + 14; // Skip "{\displaystyle "
+        let containsDv = false;
+        let containsIntegral = false;
+        let dvPos = -1;
+        let integralPos = -1;
+        
+        // Find the matching closing brace and check for \dv or integral commands
+        while (pos < latex.length && braceCount > 0) {
+          if (latex[pos] === '{') {
+            braceCount++;
+          } else if (latex[pos] === '}') {
+            braceCount--;
+          } else if (latex.substr(pos, 3) === "\\dv" && dvPos === -1) {
+            containsDv = true;
+            dvPos = pos;
+          } else if (!containsIntegral && pos < latex.length - 4) {
+            // Check for various integral commands
+            for (const cmd of INTEGRAL_COMMANDS) {
+              if (latex.substr(pos, cmd.length) === cmd) {
+                containsIntegral = true;
+                integralPos = pos;
+                break;
+              }
+            }
+          }
+          pos++;
+        }
+        
+        if (containsDv) {
+          // Handle displaystyle derivative: {\displaystyle \dv{f}{x}}
+          i += 14; // Skip "{\displaystyle "
+          // Skip any whitespace
+          while (i < latex.length && latex[i] === " ") i++;
+          
+          if (latex.substr(i, 3) === "\\dv") {
+          i += 3; // Skip "\dv"
+          
+          let order: number | EquationElement[] = 1;
+          // Check for optional order parameter [n]
+          if (i < latex.length && latex[i] === "[") {
+            const orderStart = i + 1;
+            let orderEnd = orderStart;
+            let bracketCount = 1;
+            
+            while (orderEnd < latex.length && bracketCount > 0) {
+              if (latex[orderEnd] === "[") bracketCount++;
+              else if (latex[orderEnd] === "]") bracketCount--;
+              orderEnd++;
+            }
+            
+            const orderContent = latex.substring(orderStart, orderEnd - 1);
+            const parsedOrder = parseInt(orderContent);
+            if (!isNaN(parsedOrder)) {
+              order = parsedOrder;
+            } else {
+              order = this.parseLatexToEquation(orderContent);
+            }
+            i = orderEnd;
+          }
+          
+          // Parse function {f}
+          const functionGroup = this.parseLatexGroup(latex, i);
+          i = functionGroup.endIndex;
+          
+          // Parse variable {x}
+          const variableGroup = this.parseLatexGroup(latex, i);
+          i = variableGroup.endIndex;
+          
+          // Skip the closing brace of displaystyle
+          if (i < latex.length && latex[i] === "}") i++;
+          
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "derivative",
+            order: order,
+            function: this.parseLatexToEquation(functionGroup.content),
+            variable: this.parseLatexToEquation(variableGroup.content),
+            displayMode: "display" // This was in displaystyle
+          });
+          } else {
+            // Not a recognized \dv command after {\displaystyle, 
+            // skip the entire displaystyle group to avoid parsing issues
+            i = displaystyleStart;
+            const group = this.parseLatexGroup(latex, i);
+            i = group.endIndex;
+            
+            // Parse the content inside the group normally (without displaystyle wrapper)
+            const innerContent = group.content;
+            if (innerContent.startsWith("\\displaystyle ")) {
+              // Remove the \displaystyle prefix and parse the rest
+              const contentAfterDisplaystyle = innerContent.substring(13);
+              result.push(...this.parseLatexToEquation(contentAfterDisplaystyle));
+            } else {
+              result.push(...this.parseLatexToEquation(innerContent));
+            }
+          }
+        } else if (containsIntegral) {
+          // Handle displaystyle integral: {\displaystyle \inti{f(x)}{x}}
+          i += 14; // Skip "{\displaystyle "
+          // Skip any whitespace
+          while (i < latex.length && latex[i] === " ") i++;
+          
+          // Parse the integral command
+          const integralResult = this.parseCustomIntegral(latex, i);
+          if (integralResult) {
+            integralResult.element.displayMode = "display"; // This was in displaystyle
+            result.push(integralResult.element);
+            i = integralResult.endIndex;
+            
+            // Skip the closing brace of displaystyle
+            if (i < latex.length && latex[i] === "}") i++;
+          } else {
+            // Failed to parse integral, fallback to normal handling
+            i = displaystyleStart;
+            const group = this.parseLatexGroup(latex, i);
+            i = group.endIndex;
+            
+            // Parse the content inside the group normally (without displaystyle wrapper)
+            const innerContent = group.content;
+            if (innerContent.startsWith("\\displaystyle ")) {
+              // Remove the \displaystyle prefix and parse the rest
+              const contentAfterDisplaystyle = innerContent.substring(13);
+              result.push(...this.parseLatexToEquation(contentAfterDisplaystyle));
+            } else {
+              result.push(...this.parseLatexToEquation(innerContent));
+            }
+          }
+        } else {
+          // Check if this contains a large operator
+          i += 14; // Skip "{\displaystyle "
+          // Skip any whitespace
+          while (i < latex.length && latex[i] === " ") i++;
+          
+          if (this.isLargeOperator(latex, i)) {
+            const operatorInfo = this.parseLargeOperator(latex, i, true); // true = display mode
+            if (operatorInfo) {
+              result.push(operatorInfo.element);
+              i = operatorInfo.endIndex;
+              
+              // Skip the closing brace of displaystyle
+              if (i < latex.length && latex[i] === "}") i++;
+            } else {
+              // Failed to parse, fallback
+              i = displaystyleStart;
+              i++;
+            }
+          } else {
+            // Not a displaystyle derivative, integral, or large operator, let other handlers process it
+            i = displaystyleStart;
+            i++;
+          }
+        }
+      } else if (latex.substr(i, 12) === "{\\textstyle ") {
+        // Handle textstyle groups similar to displaystyle
+        const textstyleStart = i;
+        let braceCount = 1;
+        let pos = i + 12; // Skip "{\textstyle "
+        let containsIntegral = false;
+        
+        // Find the matching closing brace and check for integral commands
+        while (pos < latex.length && braceCount > 0) {
+          if (latex[pos] === '{') {
+            braceCount++;
+          } else if (latex[pos] === '}') {
+            braceCount--;
+          } else if (!containsIntegral && pos < latex.length - 4) {
+            // Check for various integral commands
+            for (const cmd of INTEGRAL_COMMANDS) {
+              if (latex.substr(pos, cmd.length) === cmd) {
+                containsIntegral = true;
+                break;
+              }
+            }
+          }
+          pos++;
+        }
+        
+        if (containsIntegral) {
+          // Handle textstyle integral: {\textstyle \inti{f(x)}{x}}
+          i += 12; // Skip "{\textstyle "
+          // Skip any whitespace
+          while (i < latex.length && latex[i] === " ") i++;
+          
+          // Parse the integral command
+          const integralResult = this.parseCustomIntegral(latex, i);
+          if (integralResult) {
+            integralResult.element.displayMode = "inline"; // This was in textstyle
+            result.push(integralResult.element);
+            i = integralResult.endIndex;
+            
+            // Skip the closing brace of textstyle
+            if (i < latex.length && latex[i] === "}") i++;
+          } else {
+            // Failed to parse integral, fallback to normal handling
+            i = textstyleStart;
+            const group = this.parseLatexGroup(latex, i);
+            i = group.endIndex;
+            
+            // Parse the content inside the group normally (without textstyle wrapper)
+            result.push(...this.parseLatexToEquation(group.content));
+          }
+        } else {
+          // Check if this contains a large operator
+          i += 12; // Skip "{\textstyle "
+          // Skip any whitespace
+          while (i < latex.length && latex[i] === " ") i++;
+          
+          if (this.isLargeOperator(latex, i)) {
+            const operatorInfo = this.parseLargeOperator(latex, i, false); // false = inline mode
+            if (operatorInfo) {
+              result.push(operatorInfo.element);
+              i = operatorInfo.endIndex;
+              
+              // Skip the closing brace of textstyle
+              if (i < latex.length && latex[i] === "}") i++;
+            } else {
+              // Failed to parse, fallback
+              i = textstyleStart;
+              i++;
+            }
+          } else if (latex.substr(i, 5) === "\\frac") {
+            // Handle textstyle fraction: {\textstyle \frac{...}{...}}
+            const fractionInfo = this.parseFraction(latex, i, false); // false = inline mode
+            if (fractionInfo) {
+              result.push(fractionInfo.element);
+              i = fractionInfo.endIndex;
+              
+              // Skip the closing brace of textstyle
+              if (i < latex.length && latex[i] === "}") i++;
+            } else {
+              // Failed to parse, fallback
+              i = textstyleStart;
+              i++;
+            }
+          } else {
+            // Not a textstyle integral, large operator, or fraction
+            // Parse the entire textstyle group content
+            i = textstyleStart;
+            const group = this.parseLatexGroup(latex, i);
+            i = group.endIndex;
+            
+            // Remove the \textstyle prefix from the content and parse the rest
+            let content = group.content;
+            if (content.startsWith("\\textstyle ")) {
+              content = content.substring(11); // Remove "\textstyle "
+            }
+            result.push(...this.parseLatexToEquation(content));
+          }
+        }
+      } else if (latex.substr(i, 3) === "\\dv") {
+        // Parse physics package derivative command
+        i += 3;
+        
+        let order: number | EquationElement[] = 1;
+        // Check for optional order parameter [n]
+        if (i < latex.length && latex[i] === "[") {
+          const orderStart = i + 1;
+          let orderEnd = orderStart;
+          let bracketCount = 1;
+          
+          while (orderEnd < latex.length && bracketCount > 0) {
+            if (latex[orderEnd] === "[") bracketCount++;
+            else if (latex[orderEnd] === "]") bracketCount--;
+            orderEnd++;
+          }
+          
+          const orderContent = latex.substring(orderStart, orderEnd - 1);
+          // Try to parse as number, otherwise treat as nth order
+          const parsedOrder = parseInt(orderContent);
+          if (!isNaN(parsedOrder)) {
+            order = parsedOrder;
+          } else {
+            // nth order derivative
+            order = this.parseLatexToEquation(orderContent);
+          }
+          i = orderEnd;
+        }
+        
+        // Parse function {f}
+        const functionGroup = this.parseLatexGroup(latex, i);
+        i = functionGroup.endIndex;
+        
+        // Parse variable {x}
+        const variableGroup = this.parseLatexGroup(latex, i);
+        i = variableGroup.endIndex;
+        
+        result.push({
+          id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+          type: "derivative",
+          order: order,
+          function: this.parseLatexToEquation(functionGroup.content),
+          variable: this.parseLatexToEquation(variableGroup.content),
+          displayMode: "inline" // \dv defaults to inline
+        });
+      } else if (this.isCustomIntegralCommand(latex, i)) {
+        // Parse custom integral commands like \inti, \intd, \iinti, etc.
+        const integralInfo = this.parseCustomIntegral(latex, i);
+        if (integralInfo) {
+          result.push(integralInfo.element);
+          i = integralInfo.endIndex;
         } else {
           i++;
         }
@@ -472,7 +1142,8 @@ export class LatexConverter {
         });
         result.push(...formattedElements);
         } else {
-          i++; // Unknown command, skip it
+          // Unknown command - skip it
+          i++;
         }
       } else if (latex.substr(i, 10) === "{\\text{^}}") {
         result.push({
@@ -851,26 +1522,19 @@ export class LatexConverter {
     let result = text;
     
     
-    // Special handling for differential 'd' when italic is explicitly false
-    if (text.trim() === "d" && formatting.italic === false) {
-      // Use \mathrm{d} for roman-style differential, preserving any spacing
-      result = text.replace("d", "\\mathrm{d}");
-      // Don't apply further italic formatting since we want roman style
-    } else {
-      // Apply formatting in the correct nesting order
-      // Bold and italic (innermost)
-      if (formatting.bold && formatting.italic) {
-        // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
-        if (/^\d+$/.test(text.trim())) {
-          result = `\\textit{\\textbf{${result}}}`;
-        } else {
-          result = `\\boldsymbol{${result}}`;
-        }
-      } else if (formatting.bold) {
-        result = `\\mathbf{${result}}`;
-      } else if (formatting.italic) {
-        result = `\\mathit{${result}}`;
+    // Apply formatting in the correct nesting order
+    // Bold and italic (innermost)
+    if (formatting.bold && formatting.italic) {
+      // For numbers, use \textbf with \textit, since \boldsymbol doesn't support numbers well
+      if (/^\d+$/.test(text.trim())) {
+        result = `\\textit{\\textbf{${result}}}`;
+      } else {
+        result = `\\boldsymbol{${result}}`;
       }
+    } else if (formatting.bold) {
+      result = `\\mathbf{${result}}`;
+    } else if (formatting.italic) {
+      result = `\\mathit{${result}}`;
     }
     
     // Underline
@@ -898,16 +1562,14 @@ export class LatexConverter {
   }
 
   private convertOperatorToLatex(operator: string): string {
-    const operatorMap = getLatexToSymbolMap();
-    
-    // Find LaTeX command for the given symbol
-    for (const [command, symbol] of Object.entries(operatorMap)) {
-      if (symbol === operator) {
-        return command;
-      }
+    // Use the UNICODE_TO_LATEX mapping for all symbol conversions
+    const latexCommand = UNICODE_TO_LATEX[operator];
+    if (latexCommand) {
+      return latexCommand;
     }
     
-    return operator; // Return as-is if not found
+    // If no mapping found, return the original operator
+    return operator;
   }
 
   private isLatexCommand(latex: string, index: number): boolean {
@@ -921,10 +1583,8 @@ export class LatexConverter {
   }
 
   private isLargeOperator(latex: string, index: number): boolean {
-    const operators = Object.keys(getLatexToSymbolMap());
-    
-    // Check if any operator matches at this position
-    return operators.some(op => {
+    // Use the centralized LARGE_OPERATORS list
+    return LARGE_OPERATORS.some(op => {
       if (latex.substr(index, op.length) === op) {
         // Make sure the next character is not a letter (to avoid partial matches)
         const nextCharIndex = index + op.length;
@@ -938,16 +1598,16 @@ export class LatexConverter {
   }
 
   private parseLargeOperator(latex: string, index: number, forceDisplayMode?: boolean): { element: EquationElement; endIndex: number } | null {
-    const operatorMap = getLatexToSymbolMap();
+    // Use LATEX_TO_UNICODE for the mapping
     
     // Find which operator matches
     let operatorCommand = "";
     let operatorSymbol = "";
     
-    for (const [command, symbol] of Object.entries(operatorMap)) {
+    for (const command of LARGE_OPERATORS) {
       if (latex.substr(index, command.length) === command) {
         operatorCommand = command;
-        operatorSymbol = symbol;
+        operatorSymbol = LATEX_TO_UNICODE[command] || "";
         break;
       }
     }
@@ -957,8 +1617,8 @@ export class LatexConverter {
     }
     
     let pos = index + operatorCommand.length;
-    let limitMode = "limits"; // default
-    let displayMode = forceDisplayMode ? "display" : "inline"; // Use forced display mode if provided
+    let limitMode: "default" | "nolimits" | "limits" = "limits"; // default
+    let displayMode: "inline" | "display" = forceDisplayMode ? "display" : "inline"; // Use forced display mode if provided
     
     // Check for \limits, \nolimits
     if (latex.substr(pos, 7) === "\\limits") {
@@ -1065,6 +1725,328 @@ export class LatexConverter {
       }
     }
     return null;
+  }
+
+  private isCustomIntegralCommand(latex: string, index: number): boolean {
+    for (const cmd of INTEGRAL_COMMANDS) {
+      if (latex.substr(index, cmd.length) === cmd) {
+        // Make sure it's not part of a longer command
+        const nextChar = latex[index + cmd.length];
+        if (!nextChar || nextChar === '{' || nextChar === '[' || nextChar === ' ' || nextChar === '\\') {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private parseFraction(latex: string, index: number, forceInlineMode?: boolean): { element: EquationElement; endIndex: number } | null {
+    // Check if this is a \frac or \dfrac command
+    let isDisplayFrac = false;
+    let i = index;
+    
+    if (latex.substr(i, 6) === "\\dfrac") {
+      isDisplayFrac = true;
+      i += 6;
+    } else if (latex.substr(i, 5) === "\\frac") {
+      i += 5;
+    } else {
+      return null;
+    }
+    
+    // Parse numerator {num}
+    if (i >= latex.length || latex[i] !== '{') return null;
+    const numerator = this.parseLatexGroup(latex, i);
+    i = numerator.endIndex;
+    
+    // Parse denominator {den}
+    if (i >= latex.length || latex[i] !== '{') return null;
+    const denominator = this.parseLatexGroup(latex, i);
+    i = denominator.endIndex;
+    
+    const element: EquationElement = {
+      id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+      type: "fraction",
+      numerator: this.parseLatexToEquation(numerator.content),
+      denominator: this.parseLatexToEquation(denominator.content),
+      displayMode: forceInlineMode ? "inline" : (isDisplayFrac ? "display" : undefined)
+    };
+    
+    return { element, endIndex: i };
+  }
+
+  private parseCustomIntegral(latex: string, startIndex: number): { element: EquationElement, endIndex: number } | null {
+    let i = startIndex;
+    
+    // Determine which command we're parsing
+    let integralType: "single" | "double" | "triple" | "contour" = "single";
+    let integralStyle: "italic" | "roman" = "italic";
+    let commandLength = 0;
+    let isDefinite = false;
+    
+    // Check for definite integral commands first (longer commands)
+    if (latex.substr(i, 8) === '\\iiintdl') {
+      integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 8;
+      isDefinite = true;
+    } else if (latex.substr(i, 8) === '\\iiintil') {
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 8;
+      isDefinite = true;
+    } else if (latex.substr(i, 7) === '\\iintdl') {
+      integralType = "double";
+      integralStyle = "roman";
+      commandLength = 7;
+      isDefinite = true;
+    } else if (latex.substr(i, 7) === '\\iintil') {
+      integralType = "double";
+      integralStyle = "italic";
+      commandLength = 7;
+      isDefinite = true;
+    } else if (latex.substr(i, 7) === '\\ointdl') {
+      integralType = "contour";
+      integralStyle = "roman";
+      commandLength = 7;
+      isDefinite = true;
+    } else if (latex.substr(i, 7) === '\\ointil') {
+      integralType = "contour";
+      integralStyle = "italic";
+      commandLength = 7;
+      isDefinite = true;
+    } else if (latex.substr(i, 6) === '\\intdl') {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 6;
+      isDefinite = true;
+    } else if (latex.substr(i, 6) === '\\intil') {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 6;
+      isDefinite = true;
+    }
+    // Check for indefinite integral commands (shorter commands)
+    else if (latex.substr(i, 7) === '\\iiintd') {
+      integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 7;
+    } else if (latex.substr(i, 7) === '\\iiinti') {
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 7;
+    } else if (latex.substr(i, 6) === '\\iintd') {
+      integralType = "double";
+      integralStyle = "roman";
+      commandLength = 6;
+    } else if (latex.substr(i, 6) === '\\iinti') {
+      integralType = "double";
+      integralStyle = "italic";
+      commandLength = 6;
+    } else if (latex.substr(i, 6) === '\\ointd') {
+      integralType = "contour";
+      integralStyle = "roman";
+      commandLength = 6;
+    } else if (latex.substr(i, 6) === '\\ointi') {
+      integralType = "contour";
+      integralStyle = "italic";
+      commandLength = 6;
+    } else if (latex.substr(i, 5) === '\\intd') {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 5;
+    } else if (latex.substr(i, 5) === '\\inti') {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 5;
+    } else {
+      return null;
+    }
+    
+    i += commandLength;
+    
+    // Skip whitespace
+    while (i < latex.length && latex[i] === ' ') i++;
+    
+    let integrand: EquationElement[] = [];
+    let differentialVariable: EquationElement[] = [];
+    let lowerLimit: EquationElement[] = [];
+    let upperLimit: EquationElement[] = [];
+    
+    if (isDefinite) {
+      // For definite integrals: \intil{integrand}{variable}{lower}{upper}
+      // Parse integrand {f(x)}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const integrandGroup = this.parseLatexGroup(latex, i);
+      integrand = this.parseLatexToEquation(integrandGroup.content);
+      i = integrandGroup.endIndex;
+      
+      // Skip whitespace
+      while (i < latex.length && latex[i] === ' ') i++;
+      
+      // Parse differential variable {x}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const variableGroup = this.parseLatexGroup(latex, i);
+      differentialVariable = this.parseLatexToEquation(variableGroup.content);
+      i = variableGroup.endIndex;
+      
+      // Skip whitespace
+      while (i < latex.length && latex[i] === ' ') i++;
+      
+      // Parse lower limit {a}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const lowerGroup = this.parseLatexGroup(latex, i);
+      lowerLimit = this.parseLatexToEquation(lowerGroup.content);
+      i = lowerGroup.endIndex;
+      
+      // Skip whitespace
+      while (i < latex.length && latex[i] === ' ') i++;
+      
+      // Parse upper limit {b}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const upperGroup = this.parseLatexGroup(latex, i);
+      upperLimit = this.parseLatexToEquation(upperGroup.content);
+      i = upperGroup.endIndex;
+    } else {
+      // For indefinite integrals: \inti{integrand}{variable}
+      // Parse integrand {f(x)}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const integrandGroup = this.parseLatexGroup(latex, i);
+      integrand = this.parseLatexToEquation(integrandGroup.content);
+      i = integrandGroup.endIndex;
+      
+      // Skip whitespace
+      while (i < latex.length && latex[i] === ' ') i++;
+      
+      // Parse differential variable {x}
+      if (i >= latex.length || latex[i] !== '{') return null;
+      const variableGroup = this.parseLatexGroup(latex, i);
+      differentialVariable = this.parseLatexToEquation(variableGroup.content);
+      i = variableGroup.endIndex;
+    }
+    
+    const element: EquationElement = {
+      id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+      type: "integral",
+      integralType: integralType,
+      integralStyle: integralStyle,
+      hasLimits: isDefinite,
+      integrand: integrand,
+      differentialVariable: differentialVariable,
+      displayMode: "inline" // Default to inline
+    };
+    
+    if (isDefinite) {
+      element.lowerLimit = lowerLimit;
+      element.upperLimit = upperLimit;
+    }
+    
+    return {
+      element: element,
+      endIndex: i
+    };
+  }
+
+  private parseDerivativeFraction(numeratorLatex: string, denominatorLatex: string, displayMode: "inline" | "display"): EquationElement | null {
+    // Try to parse numerator and denominator to detect derivative pattern
+    // Pattern: numerator = d^n f, denominator = d x^n or dx^n
+    
+    // Improved pattern matching with better handling of function expressions
+    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?(.*)$/);
+    const denMatch = denominatorLatex.match(/^d\s*(.+?)(\^{(.+)})?$/);
+    
+    if (numMatch && denMatch) {
+      const orderFromNum = numMatch[2]; // From d^{n}
+      const orderFromDen = denMatch[3]; // From x^{n}
+      let functionPart = numMatch[3] || '';
+      const variablePart = denMatch[1] || '';
+      
+      // Clean up the function part - handle cases like "{ e }^{2x}"
+      functionPart = functionPart.trim();
+      
+      // If we have something like "{ e }^{2x}", we need to clean up the unnecessary braces around 'e'
+      // But preserve the script part "^{2x}"
+      if (functionPart.match(/^{\s*\w+\s*}(.*)$/)) {
+        // Extract the content from { content }rest -> content + rest  
+        const match = functionPart.match(/^{\s*(\w+)\s*}(.*)$/);
+        if (match) {
+          functionPart = match[1] + match[2]; // e.g., "{ e }^{2x}" -> "e^{2x}"
+        }
+      }
+      
+      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      let order: number | EquationElement[] = 1;
+      if (orderFromNum) {
+        const parsedOrder = parseInt(orderFromNum);
+        if (!isNaN(parsedOrder)) {
+          order = parsedOrder;
+        } else {
+          order = this.parseLatexToEquation(orderFromNum);
+        }
+      } else if (orderFromDen) {
+        const parsedOrder = parseInt(orderFromDen);
+        if (!isNaN(parsedOrder)) {
+          order = parsedOrder;
+        } else {
+          order = this.parseLatexToEquation(orderFromDen);
+        }
+      }
+      
+      return {
+        id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+        type: "derivative",
+        order: order,
+        displayMode: displayMode,
+        function: this.parseLatexToEquation(functionPart),
+        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, '')) // Remove any trailing exponent
+      };
+    }
+    
+    return null; // Not a recognizable derivative pattern
+  }
+
+  private parseLongFormDerivative(numeratorLatex: string, denominatorLatex: string, functionLatex: string, displayMode: "inline" | "display"): EquationElement | null {
+    // Parse long form derivative: \derivlfrac{d^n}{dx^n}{f} or \derivldfrac{d^n}{dx^n}{f}
+    // Pattern: numerator = d^n, denominator = dx^n, separate function part
+    
+    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?$/);
+    const denMatch = denominatorLatex.match(/^d(.+?)(\^{(.+)})?$/);
+    
+    if (numMatch && denMatch) {
+      const orderFromNum = numMatch[2]; // From d^{n}
+      const orderFromDen = denMatch[3]; // From x^{n}
+      const variablePart = denMatch[1] || '';
+      
+      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      let order: number | EquationElement[] = 1;
+      if (orderFromNum) {
+        const parsedOrder = parseInt(orderFromNum);
+        if (!isNaN(parsedOrder)) {
+          order = parsedOrder;
+        } else {
+          order = this.parseLatexToEquation(orderFromNum);
+        }
+      } else if (orderFromDen) {
+        const parsedOrder = parseInt(orderFromDen);
+        if (!isNaN(parsedOrder)) {
+          order = parsedOrder;
+        } else {
+          order = this.parseLatexToEquation(orderFromDen);
+        }
+      }
+      
+      return {
+        id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+        type: "derivative",
+        order: order,
+        displayMode: displayMode,
+        function: this.parseLatexToEquation(functionLatex),
+        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, '')), // Remove any trailing exponent
+        isLongForm: true
+      };
+    }
+    
+    return null; // Not a recognizable long form derivative pattern
   }
 
 }

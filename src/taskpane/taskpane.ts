@@ -33,6 +33,7 @@ class MathAddinApp {
   private fontMeasurementService: FontMeasurementService;
   private currentColor: string = "#000000";
   private currentUnderlineStyle: string = "single";
+  private isInlineStyle: boolean = false; // Default is display style
 
   constructor() {
     this.equationBuilder = new EquationBuilder();
@@ -64,6 +65,10 @@ class MathAddinApp {
       this.displayRenderer,
       elements.equationDisplay
     );
+
+    // Connect input handler to latex converter and display renderer for differential style
+    this.latexConverter.setInputHandler(this.inputHandler);
+    this.displayRenderer.setInputHandler(this.inputHandler);
 
     // Set up selection change callback
     this.inputHandler.onSelectionChange = () => this.updateFormattingUIBasedOnSelection();
@@ -213,6 +218,14 @@ class MathAddinApp {
       }
     });
 
+    // Display/Inline style toggle button
+    const displayStyleToggle = document.getElementById("display-style-toggle");
+    if (displayStyleToggle) {
+      displayStyleToggle.addEventListener("click", () => {
+        this.handleDisplayStyleToggle();
+      });
+    }
+
     // Display click handling
     elements.equationDisplay.addEventListener("mousedown", (e) => this.inputHandler.handleMouseDown(e));
     elements.equationDisplay.addEventListener("mousemove", (e) => this.inputHandler.handleMouseMove(e));
@@ -267,30 +280,20 @@ class MathAddinApp {
       this.inputHandler.insertLargeOperator("∏", "display", "nolimits");
     } else if (button.classList.contains("prod-display-limit-btn")) {
       this.inputHandler.insertLargeOperator("∏", "display", "limits");
-    } else if (button.classList.contains("int-nolimit-btn")) {
-      this.inputHandler.insertLargeOperator("∫", "inline", "nolimits");
-    } else if (button.classList.contains("int-limit-btn")) {
-      this.inputHandler.insertLargeOperator("∫", "inline", "limits");
     } else if (button.classList.contains("int-display-nolimit-btn")) {
-      this.inputHandler.insertLargeOperator("∫", "display", "nolimits");
+      this.inputHandler.insertDefiniteIntegral("single", this.isInlineStyle ? "inline" : "display", "nolimits");
     } else if (button.classList.contains("int-display-limit-btn")) {
-      this.inputHandler.insertLargeOperator("∫", "display", "limits");
+      this.inputHandler.insertDefiniteIntegral("single", this.isInlineStyle ? "inline" : "display", "limits");
     } else if (button.classList.contains("first-derivative-btn")) {
-      this.inputHandler.insertDerivative("first");
-    } else if (button.classList.contains("second-derivative-btn")) {
-      this.inputHandler.insertDerivative("second");
+      this.inputHandler.insertDerivativeNew("first", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("nth-derivative-btn")) {
-      this.inputHandler.insertDerivative("nth");
-    } else if (button.classList.contains("first-derivative-small-btn")) {
-      this.inputHandler.insertDerivative("first", "inline");
-    } else if (button.classList.contains("second-derivative-small-btn")) {
-      this.inputHandler.insertDerivative("second", "inline");
-    } else if (button.classList.contains("nth-derivative-small-btn")) {
-      this.inputHandler.insertDerivative("nth", "inline");
-    } else if (button.classList.contains("int-indefinite-small-btn")) {
-      this.inputHandler.insertIndefiniteIntegral("inline");
+      this.inputHandler.insertDerivativeNew("nth", this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("derivative-long-form-btn")) {
+      this.inputHandler.insertDerivativeLongForm("first", this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("nth-derivative-long-form-btn")) {
+      this.inputHandler.insertDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-indefinite-display-btn")) {
-      this.inputHandler.insertIndefiniteIntegral("display");
+      this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
     }
   }
 
@@ -615,6 +618,88 @@ class MathAddinApp {
 
     // Update existing derivatives in the equation and refresh display
     this.inputHandler.updateExistingDifferentialStyle(style);
+    
+    // Update any derivative elements to reflect the new style
+    this.updateDerivativeElementsStyle(style);
+  }
+
+  private updateDerivativeElementsStyle(style: "italic" | "roman"): void {
+    // Force refresh of the display to update derivative d elements
+    const elements = this.getDOMElements();
+    if (elements) {
+      this.displayRenderer.updateDisplay(elements.equationDisplay, this.equationBuilder.getEquation());
+    }
+  }
+
+  private detectAndSetDifferentialStyle(latex: string): void {
+    // Detect differential style from LaTeX content
+    const hasPhysicsDerivatives = /\\dv\b/.test(latex) || /\{\s*\\displaystyle\s+\\dv\b/.test(latex);
+    const hasCustomDerivatives = /\\derivfrac\b/.test(latex) || /\\derivdfrac\b/.test(latex);
+    
+    let detectedStyle: "italic" | "roman" = "italic"; // default
+    
+    if (hasPhysicsDerivatives) {
+      detectedStyle = "roman";
+    } else if (hasCustomDerivatives) {
+      detectedStyle = "italic";  
+    }
+    // else: use default italic (for equations with no derivatives)
+    
+    // Update the differential style buttons and input handler
+    this.setDifferentialStyleUI(detectedStyle);
+  }
+
+  private setDifferentialStyleUI(style: "italic" | "roman"): void {
+    const italicBtn = document.getElementById("differential-style-italic");
+    const romanBtn = document.getElementById("differential-style-roman");
+    
+    if (style === "italic") {
+      italicBtn?.classList.add("active");
+      romanBtn?.classList.remove("active");
+      this.inputHandler.setDifferentialStyle("italic");
+    } else {
+      italicBtn?.classList.remove("active");
+      romanBtn?.classList.add("active");
+      this.inputHandler.setDifferentialStyle("roman");
+    }
+    
+    // Update derivative d elements in buttons
+    const derivativeDElements = document.querySelectorAll(".derivative-d");
+    derivativeDElements.forEach(element => {
+      if (style === "roman") {
+        element.classList.add("roman");
+      } else {
+        element.classList.remove("roman");
+      }
+    });
+  }
+
+  private handleDisplayStyleToggle(): void {
+    // Toggle the inline style state
+    this.isInlineStyle = !this.isInlineStyle;
+    
+    // Update button visual state
+    const toggleBtn = document.getElementById("display-style-toggle");
+    if (toggleBtn) {
+      if (this.isInlineStyle) {
+        toggleBtn.classList.add("inline-active");
+      } else {
+        toggleBtn.classList.remove("inline-active");
+      }
+    }
+    
+    // Update body class for CSS styling
+    if (this.isInlineStyle) {
+      document.body.classList.add("inline-style-active");
+    } else {
+      document.body.classList.remove("inline-style-active");
+    }
+    
+    // Store preference in input handler
+    this.inputHandler.setInlineStyle(this.isInlineStyle);
+    
+    // Update existing equations in the display to reflect the new style
+    this.inputHandler.updateExistingEquationStyle(this.isInlineStyle);
   }
 
   private handleHexInputChange(e: Event): void {
@@ -711,6 +796,9 @@ class MathAddinApp {
 
   private async handleEquationLoaded(latex: string): Promise<void> {
     try {
+      // Detect and set differential style based on LaTeX content
+      this.detectAndSetDifferentialStyle(latex);
+      
       // Convert LaTeX back to equation structure
       const elements = this.latexConverter.parseFromLatex(latex);
       

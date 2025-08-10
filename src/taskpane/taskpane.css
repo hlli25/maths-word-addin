@@ -275,6 +275,37 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
   margin: 0 2px;
 }
 
+/* Add spacing for superscripts (3rd child) and subscripts */
+msup > mn:last-child,
+msup > mrow:last-child,
+msubsup > mn:nth-child(3),
+msubsup > mrow:nth-child(3) {
+  padding-left: 0.15em;
+}
+
+/* Add spacing for subscripts (2nd child) */
+msub > mn:last-child,
+msub > mrow:last-child,
+msubsup > mn:nth-child(2),
+msubsup > mrow:nth-child(2) {
+  padding-left: 0.1em;
+}
+
+/* Display fractions should appear larger even when nested */
+mfrac.display-fraction {
+  font-size: 1.2em;
+}
+
+/* Ensure nested display fractions maintain their size */
+mfrac mfrac.display-fraction {
+  font-size: 1.15em;
+}
+
+/* Third level nested display fractions */
+mfrac mfrac mfrac.display-fraction {
+  font-size: 1.1em;
+}
+
 /* Keep button symbols centered and unaffected */
 .builder-btn math,
 .builder-btn math * {
@@ -398,7 +429,7 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
 
 .tab-content {
   padding: 8px;
-  height: 150px;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -471,6 +502,7 @@ mfrac, msqrt, mroot, msup, msub, msubsup, mo {
 
 /* Footer Styling */
 .footer {
+  height: 50px;
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #eaeaea;
@@ -1234,15 +1266,15 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
 /* Calculus tab styles */
 .differential-style-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 4px;
   padding: 8px;
   background-color: #f8f8f8;
   border-radius: 4px;
 }
 
 .differential-style-btn {
-  padding: 4px 12px;
+  padding: 4px 8px;
   border: 1px solid #c8c8c8;
   background-color: #fff;
   border-radius: 3px;
@@ -1270,8 +1302,72 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   color: white;
 }
 
+/* Vertical separator in differential style row */
+.differential-style-row .vertical-separator {
+  width: 1px;
+  height: 28px;
+  background-color: #c8c8c8;
+  margin: 0 2px;
+  align-self: center;
+}
+
+/* Derivative element styling */
+.derivative-fraction {
+  display: inline-block;
+}
+
+.derivative-d.italic {
+  font-style: italic;
+  font-family: 'Times New Roman', serif;
+}
+
+.derivative-d.roman {
+  font-style: normal;
+  font-family: 'Times New Roman', serif;
+}
+
+/* Ensure derivative d elements are properly styled in different contexts */
+math .derivative-d.italic {
+  font-style: italic;
+}
+
+math .derivative-d.roman {
+  font-style: normal;
+}
+
+/* Display/Inline style toggle button */
+.display-style-toggle-btn {
+  padding: 4px 8px;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 72px;
+}
+
+.display-style-toggle-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+.display-style-toggle-btn.inline-active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.display-style-toggle-btn.inline-active math {
+  color: white;
+}
+
 .derivative-btn {
-  width: 60px;
+  width: 64px;
   height: 60px;
   font-size: 20px;
   padding: 4px;
@@ -1291,12 +1387,13 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
 }
 
-/* Derivative buttons styling */
-.derivative-btn[class*="derivative"]:not([class*="small"]) math {
+/* Derivative buttons styling - default display style */
+.derivative-btn math {
   font-size: 20px !important;
 }
 
-.derivative-btn[class*="derivative"][class*="small"] math {
+/* Derivative buttons styling - inline style when toggle is active */
+body.inline-style-active .derivative-btn math {
   font-size: 16px !important;
 }
 
@@ -1312,7 +1409,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
 
 /* Integral buttons styling */
 .integral-btn {
-  width: 66px !important;
+  width: 64px !important;
   height: 68px !important;
   font-size: 12px;
   padding: 6px !important;
@@ -1322,6 +1419,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   justify-content: center;
 }
 
+/* Integral buttons - default display style */
 .integral-btn math {
   font-size: 12px;
   line-height: 1.2;
@@ -1330,5 +1428,10 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
   align-items: center;
   min-height: 40px;
   justify-content: center;
+}
+
+/* Integral buttons - inline style when toggle is active */
+body.inline-style-active .integral-btn math {
+  font-size: 10px;
 }
 
