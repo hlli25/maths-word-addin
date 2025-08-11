@@ -928,11 +928,11 @@ mi[style*="double-underline"], mo[style*="double-underline"], mn[style*="double-
 }
 
 /* MathML cancel styling */
-mi.math-cancel, mo.math-cancel, mn.math-cancel {
+mi.math-cancel, mo.math-cancel, mn.math-cancel, mrow.math-cancel {
   position: relative;
 }
 
-mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after {
+mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-cancel::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -1492,4 +1492,163 @@ body.inline-style-active .derivative-btn math {
 body.inline-style-active .integral-btn math {
   font-size: 10px;
 }
+
+/* Matrix Styles */
+.matrix-btn {
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 45px;
+}
+
+.matrix-size-panel {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.matrix-size-header {
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.matrix-panel-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.matrix-panel-left {
+  flex: 0 0 auto;
+}
+
+.matrix-grid-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.matrix-panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.matrix-grid-selector {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.matrix-grid-cell {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.1s ease;
+}
+
+.matrix-grid-cell:hover,
+.matrix-grid-cell.highlighted {
+  background: #0078d4;
+  border-color: #0078d4;
+}
+
+.matrix-grid-cell.selected {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.matrix-manual-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.matrix-input-hint {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.matrix-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-input-row label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #374151;
+  min-width: 35px;
+}
+
+.matrix-size-input {
+  flex: 1;
+  max-width: 60px;
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.matrix-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+.matrix-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.matrix-action-btn {
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.matrix-create-btn {
+  background: #0078d4;
+  color: #ffffff;
+}
+
+.matrix-create-btn:hover {
+  background: #106ebe;
+}
+
+.matrix-cancel-btn {
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.matrix-cancel-btn:hover {
+  background: #e5e7eb;
+}
+
 

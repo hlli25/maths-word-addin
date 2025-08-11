@@ -371,9 +371,67 @@ export class LatexConverter {
             }
           }
         }
+      } else if (element.type === "matrix") {
+        const matrixLatex = this.matrixToLatex(element, maxDepth);
+        latex += matrixLatex;
       }
     }
     return latex;
+  }
+
+  private matrixToLatex(element: EquationElement, maxDepth: number): string {
+    const { rows, cols, cells, matrixType } = element;
+    
+    if (!rows || !cols || !cells) {
+      return '';
+    }
+
+    // Build the matrix content from the cells object
+    const matrixRows: string[] = [];
+    for (let row = 0; row < rows; row++) {
+      const cellsInRow: string[] = [];
+      for (let col = 0; col < cols; col++) {
+        const cellKey = `cell_${row}_${col}`;
+        const cellElements = cells[cellKey] || [];
+        const cellContent = this.toLatexRecursive(cellElements, maxDepth).trim();
+        cellsInRow.push(cellContent || ''); // Empty cells are empty
+      }
+      matrixRows.push(cellsInRow.join(' & '));
+    }
+    const matrixContent = matrixRows.join(' \\\\ ');
+
+    // Wrap with appropriate LaTeX environment based on matrix type
+    let matrixLatex = '';
+    switch (matrixType) {
+      case "parentheses":
+        matrixLatex = `\\begin{pmatrix}${matrixContent}\\end{pmatrix}`;
+        break;
+      case "brackets":
+        matrixLatex = `\\begin{bmatrix}${matrixContent}\\end{bmatrix}`;
+        break;
+      case "braces":
+        matrixLatex = `\\begin{Bmatrix}${matrixContent}\\end{Bmatrix}`;
+        break;
+      case "bars":
+        matrixLatex = `\\begin{vmatrix}${matrixContent}\\end{vmatrix}`;
+        break;
+      case "double-bars":
+        matrixLatex = `\\begin{Vmatrix}${matrixContent}\\end{Vmatrix}`;
+        break;
+      case "none":
+        matrixLatex = `\\begin{matrix}${matrixContent}\\end{matrix}`;
+        break;
+      default:
+        matrixLatex = `\\begin{pmatrix}${matrixContent}\\end{pmatrix}`;
+        break;
+    }
+
+    // Apply formatting to the entire matrix structure (excluding bold/italic which should apply to entries)
+    const matrixFormatting = { ...element };
+    delete matrixFormatting.bold;
+    delete matrixFormatting.italic;
+    
+    return this.applyFormattingToLatex(matrixLatex, matrixFormatting);
   }
 
   private shouldUsePhysicsPackageForDerivative(): boolean {
@@ -609,6 +667,21 @@ export class LatexConverter {
           numerator: this.parseLatexToEquation(numerator.content),
           denominator: this.parseLatexToEquation(denominator.content)
         });
+      } else if (latex.substr(i, 6) === "\\begin") {
+        // Parse matrix environments
+        const matrixResult = this.parseMatrixEnvironment(latex, i);
+        if (matrixResult) {
+          result.push(matrixResult.element);
+          i = matrixResult.endIndex;
+        } else {
+          // Not a matrix environment, treat as text
+          result.push({
+            id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+            type: "text",
+            value: latex[i]
+          });
+          i++;
+        }
       } else if (this.isLargeOperator(latex, i)) {
         // Parse large operators like \sum, \prod, \int, etc.
         const operatorInfo = this.parseLargeOperator(latex, i, false); // false = inline mode
@@ -2053,6 +2126,75 @@ export class LatexConverter {
     }
     
     return null; // Not a recognizable long form derivative pattern
+  }
+
+  private parseMatrixEnvironment(latex: string, startIndex: number): { element: EquationElement; endIndex: number } | null {
+    // Check for matrix environment patterns
+    const matrixTypes = [
+      { pattern: "\\begin{pmatrix}", end: "\\end{pmatrix}", brackets: "parentheses" },
+      { pattern: "\\begin{bmatrix}", end: "\\end{bmatrix}", brackets: "brackets" },
+      { pattern: "\\begin{Bmatrix}", end: "\\end{Bmatrix}", brackets: "braces" },
+      { pattern: "\\begin{vmatrix}", end: "\\end{vmatrix}", brackets: "bars" },
+      { pattern: "\\begin{Vmatrix}", end: "\\end{Vmatrix}", brackets: "double-bars" },
+      { pattern: "\\begin{matrix}", end: "\\end{matrix}", brackets: "none" }
+    ];
+
+    let matrixType: string | null = null;
+    let endPattern: string | null = null;
+    let currentIndex = startIndex;
+
+    // Find which matrix type this is
+    for (const type of matrixTypes) {
+      if (latex.substr(startIndex, type.pattern.length) === type.pattern) {
+        matrixType = type.brackets;
+        endPattern = type.end;
+        currentIndex = startIndex + type.pattern.length;
+        break;
+      }
+    }
+
+    if (!matrixType || !endPattern) {
+      return null; // Not a matrix environment
+    }
+
+    // Find the end of the matrix environment
+    const endIndex = latex.indexOf(endPattern, currentIndex);
+    if (endIndex === -1) {
+      return null; // Malformed matrix - no closing tag
+    }
+
+    // Extract matrix content between \begin{} and \end{}
+    const matrixContent = latex.substring(currentIndex, endIndex).trim();
+
+    // Parse matrix content into rows and cells
+    const rows = matrixContent.split('\\\\').map(row => row.trim()).filter(row => row.length > 0);
+    const matrixData: { [key: string]: EquationElement[] } = {};
+
+    rows.forEach((row, rowIndex) => {
+      const cells = row.split('&').map(cell => cell.trim());
+      cells.forEach((cell, colIndex) => {
+        const cellKey = `cell_${rowIndex}_${colIndex}`;
+        matrixData[cellKey] = this.parseLatexToEquation(cell);
+      });
+    });
+
+    // Determine matrix dimensions
+    const numRows = rows.length;
+    const numCols = rows.length > 0 ? rows[0].split('&').length : 1;
+
+    const matrixElement: EquationElement = {
+      id: this.equationBuilder?.generateElementId() || `element-${Math.random()}`,
+      type: "matrix",
+      matrixType: matrixType,
+      rows: numRows,
+      cols: numCols,
+      cells: matrixData
+    };
+
+    return {
+      element: matrixElement,
+      endIndex: endIndex + endPattern.length
+    };
   }
 
 }

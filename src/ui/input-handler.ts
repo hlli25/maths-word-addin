@@ -101,6 +101,10 @@ export class InputHandler {
     } else if (e.ctrlKey && key.toLowerCase() === 'b') {
       e.preventDefault();
       this.toggleBold();
+    } else if (e.ctrlKey && e.shiftKey && key === ' ') {
+      // Ctrl+Shift+Space: Select entire matrix when inside matrix cell
+      e.preventDefault();
+      this.selectEntireMatrix();
     } else if (e.ctrlKey && key === ' ') {
       // Ctrl+Space: Select structure at cursor
       e.preventDefault();
@@ -214,6 +218,7 @@ export class InputHandler {
             contextPath.endsWith('/base') ||
             contextPath.endsWith('/superscript') ||
             contextPath.endsWith('/subscript') ||
+            contextPath.match(/\/cell_\d+_\d+$/) ||  // Matrix cell pattern
             contextPath.endsWith('/content') ||
             contextPath.endsWith('/lowerLimit') ||
             contextPath.endsWith('/upperLimit') ||
@@ -392,9 +397,9 @@ export class InputHandler {
       if (/^[a-zA-Z]$/.test(unicodeSymbol)) {
         return undefined; // naturally italic
       }
-      // Numbers should not be italic by default unless explicitly set
+      // Numbers should render normally without italic formatting
       if (/^[0-9]$/.test(unicodeSymbol)) {
-        return false;
+        return undefined; // Let numbers render normally
       }
       // Basic operators should not be italic
       if (/^[+\-=<>(){}[\]|]$/.test(unicodeSymbol)) {
@@ -722,6 +727,60 @@ export class InputHandler {
         block: 'nearest',
         inline: 'nearest'
       });
+    }
+  }
+
+  private isMatrixCellPath(contextPath: string): boolean {
+    return /\/cell_\d+_\d+$/.test(contextPath);
+  }
+
+  private getMatrixElementFromCellPath(cellPath: string): { matrixPath: string; matrixElement: any } | null {
+    const match = cellPath.match(/^(.*?)\/cell_\d+_\d+$/);
+    if (!match) return null;
+    
+    const matrixPath = match[1];
+    
+    // Find the matrix element by traversing the path
+    const pathParts = matrixPath.split('/');
+    let currentContext = this.equationBuilder.getEquation();
+    
+    // Skip 'root' if present
+    let startIndex = pathParts[0] === 'root' ? 1 : 0;
+    
+    for (let i = startIndex; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      const element = currentContext.find((el: any) => el.id === part);
+      
+      if (!element) return null;
+      
+      if (i === pathParts.length - 1) {
+        // This should be the matrix element
+        if (element.type === 'matrix') {
+          return { matrixPath, matrixElement: element };
+        }
+      } else {
+        // Navigate deeper into the structure
+        const nextPart = pathParts[i + 1];
+        currentContext = (element as any)[nextPart];
+        if (!currentContext) return null;
+      }
+    }
+    
+    return null;
+  }
+
+  selectEntireMatrix(): void {
+    const currentPath = this.contextManager.getActiveContextPath();
+    if (!currentPath || !this.isMatrixCellPath(currentPath)) {
+      return;
+    }
+    
+    const matrixInfo = this.getMatrixElementFromCellPath(currentPath);
+    if (!matrixInfo) return;
+    
+    // Use Ctrl+Space functionality to select the entire matrix structure
+    if (this.contextManager.selectStructureAtCursor()) {
+      this.updateDisplay();
     }
   }
 
@@ -1208,5 +1267,28 @@ export class InputHandler {
   getDifferentialStyleForLatex(): boolean {
     // Return true if roman style should use physics package, false for italic/standard LaTeX
     return this.differentialStyle === "roman";
+  }
+
+  createMatrix(rows: number, cols: number, matrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create matrix element with empty cells
+    const matrixElement = this.equationBuilder.createMatrixElement(rows, cols, matrixType);
+
+    // Get the current context path before insertion
+    const currentContextPath = this.contextManager.getActiveContextPath() || "root";
+    
+    // Insert matrix into equation
+    this.contextManager.insertElementAtCursor(matrixElement);
+
+    // Navigate to first cell (top-left)
+    const matrixPath = `${currentContextPath}/${matrixElement.id}`;
+    this.contextManager.enterContextPath(`${matrixPath}/cell_0_0`, 0);
+
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
   }
 }

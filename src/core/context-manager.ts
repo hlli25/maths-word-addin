@@ -99,6 +99,19 @@ export class ContextManager {
       return null;
     }
 
+    // Handle matrix element containers
+    if (element.type === "matrix") {
+      // Parse matrix cell container name: "cell_row_col"
+      const cellMatch = containerName.match(/^cell_(\d+)_(\d+)$/);
+      if (cellMatch && element.cells) {
+        const cellKey = containerName; // Use the full container name as the key (e.g., "cell_0_0")
+        if (element.cells[cellKey]) {
+          return { array: element.cells[cellKey], parent: element };
+        }
+      }
+      return null;
+    }
+
     // Handle other element types
     const array = element[containerName as keyof EquationElement] as EquationElement[] | undefined;
     return array ? { array, parent: element } : null;
@@ -119,6 +132,10 @@ export class ContextManager {
       this.cursorPosition = newPosition;
       return true;
     } else if (this.activeContextPath !== "root") {
+      // Check if we're in a matrix cell and can navigate horizontally
+      if (this.navigateMatrixHorizontal(direction)) {
+        return true;
+      }
       this.navigateOutOfContext(direction === 1 ? "forward" : "backward");
       return true;
     }
@@ -252,9 +269,71 @@ export class ContextManager {
           this.navigateOutOfContext("backward");
         }
       }
+    } else if (parentElement.type === "matrix") {
+      // Handle matrix cell navigation
+      const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
+      if (cellMatch && parentElement.rows && parentElement.cols) {
+        const currentRow = parseInt(cellMatch[1]);
+        const currentCol = parseInt(cellMatch[2]);
+        
+        if (direction === "ArrowDown") {
+          // Move to next row, same column
+          if (currentRow < parentElement.rows - 1) {
+            this.activeContextPath = `${parentPath}/${elementId}/cell_${currentRow + 1}_${currentCol}`;
+            this.cursorPosition = 0;
+          } else {
+            this.navigateOutOfContext("forward");
+          }
+        } else if (direction === "ArrowUp") {
+          // Move to previous row, same column
+          if (currentRow > 0) {
+            this.activeContextPath = `${parentPath}/${elementId}/cell_${currentRow - 1}_${currentCol}`;
+            this.cursorPosition = 0;
+          } else {
+            this.navigateOutOfContext("backward");
+          }
+        }
+      }
     } else {
       this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
     }
+  }
+
+  private navigateMatrixHorizontal(direction: number): boolean {
+    if (!this.activeContextPath || this.activeContextPath === "root") return false;
+
+    const parts = this.activeContextPath.split("/");
+    const currentPart = parts.pop()!;
+    const elementId = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join("/");
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context || !context.parent || context.parent.type !== "matrix") return false;
+
+    // Parse matrix cell container name: "cell_row_col"
+    const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
+    if (!cellMatch || !context.parent.rows || !context.parent.cols) return false;
+
+    const currentRow = parseInt(cellMatch[1]);
+    const currentCol = parseInt(cellMatch[2]);
+
+    if (direction === 1) {
+      // Move right to next column
+      if (currentCol < context.parent.cols - 1) {
+        this.activeContextPath = `${parentPath}/${elementId}/cell_${currentRow}_${currentCol + 1}`;
+        this.cursorPosition = 0;
+        return true;
+      }
+    } else if (direction === -1) {
+      // Move left to previous column
+      if (currentCol > 0) {
+        this.activeContextPath = `${parentPath}/${elementId}/cell_${currentRow}_${currentCol - 1}`;
+        this.cursorPosition = 0;
+        return true;
+      }
+    }
+
+    return false;
   }
 
   navigateOutOfContext(direction: "forward" | "backward"): void {
@@ -684,19 +763,43 @@ export class ContextManager {
           elementsModified++;
         } else {
           // For structures (fraction, sqrt, etc.), handle formatting differently
-          if (formatting.underline !== undefined) {
-            // For underline, apply only to the structure itself
-            this.applyStructureUnderline(element, formatting.underline);
-            elementsModified++;
-          }
-          
-          // For other formatting (bold, italic, color), apply recursively to all text within
-          const recursiveFormatting = { ...formatting };
-          delete recursiveFormatting.underline;
-          
-          if (Object.keys(recursiveFormatting).length > 0) {
-            this.applyFormattingToStructureContents(element, recursiveFormatting);
-            elementsModified++;
+          if (element.type === 'matrix') {
+            // For matrices, handle different formatting types appropriately
+            if (formatting.bold !== undefined || formatting.italic !== undefined) {
+              // Bold and italic should apply to all matrix entries, not the structure
+              const entryFormatting = {
+                bold: formatting.bold,
+                italic: formatting.italic
+              };
+              this.applyFormattingToStructureContents(element, entryFormatting);
+              elementsModified++;
+            }
+            
+            // Other formatting (underline, color, cancel) can apply to the matrix structure
+            const structureFormatting = { ...formatting };
+            delete structureFormatting.bold;
+            delete structureFormatting.italic;
+            
+            if (Object.keys(structureFormatting).length > 0) {
+              this.applyFormattingToElement(element, structureFormatting);
+              elementsModified++;
+            }
+          } else {
+            // For other structures, handle formatting differently
+            if (formatting.underline !== undefined) {
+              // For underline, apply only to the structure itself
+              this.applyStructureUnderline(element, formatting.underline);
+              elementsModified++;
+            }
+            
+            // For other formatting (bold, italic, color), apply recursively to all text within
+            const recursiveFormatting = { ...formatting };
+            delete recursiveFormatting.underline;
+            
+            if (Object.keys(recursiveFormatting).length > 0) {
+              this.applyFormattingToStructureContents(element, recursiveFormatting);
+              elementsModified++;
+            }
           }
         }
       }
@@ -858,5 +961,14 @@ export class ContextManager {
     }
     applyToArray(element.integrand);
     applyToArray(element.differentialVariable);
+    
+    // Apply to matrix cells
+    if (element.cells && typeof element.cells === 'object') {
+      Object.keys(element.cells).forEach(cellKey => {
+        if (cellKey.startsWith('cell_')) {
+          applyToArray(element.cells[cellKey]);
+        }
+      });
+    }
   }
 }

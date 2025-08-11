@@ -118,6 +118,8 @@ export class DisplayRenderer {
         return this.derivativeToMathML(element, contextPath, isActive, position, isSelected);
       case 'integral':
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
+      case 'matrix':
+        return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
       default:
         return '';
     }
@@ -617,6 +619,101 @@ export class DisplayRenderer {
       <mi ${mathVariantAttr}>d</mi>
       <mrow data-context-path="${elementPath}/differentialVariable">${differentialVariableML}</mrow>
     </mrow>`;
+  }
+
+  private matrixToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const { rows, cols, cells, matrixType } = element;
+    
+    if (!rows || !cols || !cells) {
+      return '<mtext>Invalid Matrix</mtext>';
+    }
+
+    // Generate the matrix content
+    let matrixContent = '<mtable>';
+    
+    for (let row = 0; row < rows; row++) {
+      matrixContent += '<mtr>';
+      for (let col = 0; col < cols; col++) {
+        const cellPath = `${elementPath}/cell_${row}_${col}`;
+        const cellElements = cells[`cell_${row}_${col}`] || [];
+        
+        const cellContent = this.generateMathMLContent(cellPath, cellElements);
+        matrixContent += `<mtd>${cellContent}</mtd>`;
+      }
+      matrixContent += '</mtr>';
+    }
+    
+    matrixContent += '</mtable>';
+
+    // Wrap with brackets based on matrix type
+    return this.wrapMatrixWithBrackets(matrixContent, matrixType || 'parentheses', elementPath, position, isSelected, element);
+  }
+
+  private wrapMatrixWithBrackets(matrixContent: string, matrixType: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
+    const classes: string[] = [];
+    if (isSelected) classes.push('selected-structure');
+    
+    // Apply structure-level formatting styling
+    if (element.cancel) classes.push('math-cancel');
+    
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    
+    // Build inline styles for structure-level formatting
+    let style = '';
+    if (isSelected) {
+      style += 'background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;';
+    } else {
+      // Apply matrix structure formatting when not selected
+      if (element.color) {
+        style += `color: ${element.color};`;
+      }
+      if (element.underline) {
+        if (element.underline === 'double') {
+          style += 'text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;';
+        } else {
+          style += 'text-decoration: underline;';
+        }
+      }
+    }
+    
+    const styleAttr = style ? `style="${style}"` : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+
+    switch (matrixType) {
+      case 'parentheses':
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mo stretchy="true">(</mo>
+          ${matrixContent}
+          <mo stretchy="true">)</mo>
+        </mrow>`;
+      case 'brackets':
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mo stretchy="true">[</mo>
+          ${matrixContent}
+          <mo stretchy="true">]</mo>
+        </mrow>`;
+      case 'braces':
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mo stretchy="true">{</mo>
+          ${matrixContent}
+          <mo stretchy="true">}</mo>
+        </mrow>`;
+      case 'bars':
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mo stretchy="true">|</mo>
+          ${matrixContent}
+          <mo stretchy="true">|</mo>
+        </mrow>`;
+      case 'double-bars':
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mo stretchy="true">∥</mo>
+          ${matrixContent}
+          <mo stretchy="true">∥</mo>
+        </mrow>`;
+      case 'none':
+      default:
+        return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>${matrixContent}</mrow>`;
+    }
   }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {

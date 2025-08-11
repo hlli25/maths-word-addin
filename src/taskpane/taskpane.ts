@@ -252,6 +252,9 @@ class MathAddinApp {
     } else if (button.classList.contains("greek-letter-btn") || button.classList.contains("greek-letter-capital-btn")) {
       const greekLetter = (button as HTMLElement).dataset.greek || "";
       this.inputHandler.insertSymbol(greekLetter);
+    } else if (button.classList.contains("matrix-btn")) {
+      const matrixType = (button as HTMLElement).dataset.matrixType as "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" || "parentheses";
+      this.handleMatrixButtonClick(matrixType);
     } else if (button.classList.contains("sqrt-btn")) {
       this.inputHandler.insertSquareRoot();
     } else if (button.classList.contains("nthroot-btn")) {
@@ -856,6 +859,7 @@ class MathAddinApp {
       return;
     }
 
+    let latex: string | undefined;
     try {
       // Update UI state
       insertButton.disabled = true;
@@ -863,14 +867,18 @@ class MathAddinApp {
       statusDiv.textContent = "Converting to LaTeX...";
 
       // Convert equation to LaTeX
-      const latex = this.latexConverter.convertToLatex(this.equationBuilder.getEquation());
+      latex = this.latexConverter.convertToLatex(this.equationBuilder.getEquation());
       if (!latex) {
         throw new Error("Equation is empty or invalid.");
       }
+      
+      
+      console.log("Generated LaTeX:", latex); // Debug output
 
       // Render LaTeX using MathJax
       statusDiv.textContent = "Rendering equation...";
       const svgElement = await this.mathJaxService.renderLatexToSvg(latex);
+      console.log("SVG rendered successfully, element:", svgElement);
 
       // Extract positioning information
       const positionInfo = this.mathJaxService.extractSvgPositionInfo(svgElement);
@@ -897,6 +905,10 @@ class MathAddinApp {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       console.error("Error inserting equation:", error);
+      if (latex) {
+        console.error("LaTeX that failed:", latex);
+      }
+      console.error("Error details:", JSON.stringify(error, null, 2));
       statusDiv.textContent = `Error: ${errorMessage}`;
     } finally {
       // Reset button state
@@ -911,6 +923,133 @@ class MathAddinApp {
       }, 3000);
     }
   }
+
+  private handleMatrixButtonClick(matrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none"): void {
+    // Store the matrix type for later use
+    this.currentMatrixType = matrixType;
+    
+    // Show the matrix size selection panel
+    this.showMatrixSizePanel();
+  }
+
+  private currentMatrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" = "parentheses";
+
+  private showMatrixSizePanel(): void {
+    const panel = document.getElementById("matrixSizePanel") as HTMLDivElement;
+    if (!panel) return;
+
+    // Initialize the grid selector
+    this.initializeMatrixGridSelector();
+    
+    // Set up event listeners for the panel
+    this.setupMatrixPanelEventListeners();
+    
+    // Show the panel
+    panel.style.display = "block";
+  }
+
+  private initializeMatrixGridSelector(): void {
+    const gridSelector = document.getElementById("matrixGridSelector") as HTMLDivElement;
+    if (!gridSelector) return;
+
+    // Clear existing grid
+    gridSelector.innerHTML = "";
+
+    // Create 6x6 grid
+    for (let i = 0; i < 36; i++) {
+      const cell = document.createElement("div");
+      cell.className = "matrix-grid-cell";
+      cell.dataset.row = Math.floor(i / 6).toString();
+      cell.dataset.col = (i % 6).toString();
+      gridSelector.appendChild(cell);
+    }
+
+    // Add hover effects
+    const cells = gridSelector.querySelectorAll(".matrix-grid-cell");
+    cells.forEach((cell, index) => {
+      cell.addEventListener("mouseenter", () => this.highlightMatrixGrid(index));
+      cell.addEventListener("click", () => this.selectMatrixSize(index));
+    });
+
+    gridSelector.addEventListener("mouseleave", () => {
+      cells.forEach(cell => cell.classList.remove("highlighted"));
+    });
+  }
+
+  private highlightMatrixGrid(index: number): void {
+    const gridSelector = document.getElementById("matrixGridSelector") as HTMLDivElement;
+    const cells = gridSelector.querySelectorAll(".matrix-grid-cell");
+    
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+
+    cells.forEach((cell, i) => {
+      const cellRow = Math.floor(i / 6);
+      const cellCol = i % 6;
+      
+      if (cellRow <= row && cellCol <= col) {
+        cell.classList.add("highlighted");
+      } else {
+        cell.classList.remove("highlighted");
+      }
+    });
+
+    // Update the input fields
+    const rowsInput = document.getElementById("matrixRows") as HTMLInputElement;
+    const colsInput = document.getElementById("matrixCols") as HTMLInputElement;
+    if (rowsInput && colsInput) {
+      rowsInput.value = (row + 1).toString();
+      colsInput.value = (col + 1).toString();
+    }
+  }
+
+  private selectMatrixSize(index: number): void {
+    const row = Math.floor(index / 6) + 1;
+    const col = (index % 6) + 1;
+    
+    this.createMatrix(row, col);
+  }
+
+  private setupMatrixPanelEventListeners(): void {
+    const createBtn = document.getElementById("createMatrixBtn") as HTMLButtonElement;
+    const cancelBtn = document.getElementById("cancelMatrixBtn") as HTMLButtonElement;
+    
+    if (createBtn) {
+      createBtn.onclick = () => {
+        const rowsInput = document.getElementById("matrixRows") as HTMLInputElement;
+        const colsInput = document.getElementById("matrixCols") as HTMLInputElement;
+        
+        const rows = parseInt(rowsInput?.value || "2");
+        const cols = parseInt(colsInput?.value || "2");
+        
+        if (rows >= 1 && rows <= 20 && cols >= 1 && cols <= 20) {
+          this.createMatrix(rows, cols);
+        } else {
+          alert("Matrix size must be between 1x1 and 20x20");
+        }
+      };
+    }
+
+    if (cancelBtn) {
+      cancelBtn.onclick = () => this.hideMatrixSizePanel();
+    }
+  }
+
+  private createMatrix(rows: number, cols: number): void {
+    // Create the matrix using InputHandler
+    this.inputHandler.createMatrix(rows, cols, this.currentMatrixType);
+    
+    // Hide the panel
+    this.hideMatrixSizePanel();
+  }
+
+  private hideMatrixSizePanel(): void {
+    const panel = document.getElementById("matrixSizePanel") as HTMLDivElement;
+    if (panel) {
+      panel.style.display = "none";
+    }
+  }
+
 }
 
 // Global app instance

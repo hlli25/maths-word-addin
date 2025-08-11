@@ -1,7 +1,7 @@
 // Equation element types and builder functionality
 export interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator" | "derivative" | "integral";
+  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator" | "derivative" | "integral" | "matrix";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -45,6 +45,11 @@ export interface EquationElement {
   integralStyle?: "italic" | "roman"; // style for d
   hasLimits?: boolean; // whether this is a definite integral
   integralType?: "single" | "double" | "triple" | "contour"; // type of integral (may extend in future)
+  // for matrix
+  matrixType?: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none";
+  rows?: number;
+  cols?: number;
+  cells?: EquationElement[]; // 1D array: cells[`cell_${row}_${col}`]
 }
 
 export class EquationBuilder {
@@ -215,6 +220,29 @@ export class EquationBuilder {
     };
   }
 
+  createMatrixElement(
+    rows: number,
+    cols: number,
+    matrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" = "parentheses"
+  ): EquationElement {
+    // Create cells object with keys like "cell_0_0", "cell_0_1", etc.
+    const cells: { [key: string]: EquationElement[] } = {};
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        cells[`cell_${row}_${col}`] = [];
+      }
+    }
+
+    return {
+      id: this.generateElementId(),
+      type: "matrix",
+      matrixType: matrixType,
+      rows: rows,
+      cols: cols,
+      cells: cells,
+    };
+  }
+
   findElementById(elements: EquationElement[], id: string): EquationElement | null {
     for (const el of elements) {
       if (el.id === id) return el;
@@ -262,6 +290,16 @@ export class EquationBuilder {
           this.findElementById(el.lowerLimit || [], id) ||
           this.findElementById(el.upperLimit || [], id);
         if (found) return found;
+      }
+      if (el.type === "matrix") {
+        if (el.cells) {
+          for (let row = 0; row < el.cells.length; row++) {
+            for (let col = 0; col < el.cells[row].length; col++) {
+              const found = this.findElementById(el.cells[row][col], id);
+              if (found) return found;
+            }
+          }
+        }
       }
     }
     return null;
