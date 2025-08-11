@@ -388,9 +388,9 @@ export class InputHandler {
     
     // Handle direct text input (English letters)
     if (originalSymbol === unicodeSymbol) {
-      // English lowercase and uppercase letters should be italic by default (variables)
+      // English lowercase and uppercase letters are naturally italic
       if (/^[a-zA-Z]$/.test(unicodeSymbol)) {
-        return true;
+        return undefined; // naturally italic
       }
       // Numbers should not be italic by default unless explicitly set
       if (/^[0-9]$/.test(unicodeSymbol)) {

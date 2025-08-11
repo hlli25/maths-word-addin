@@ -87,7 +87,7 @@ export class LatexConverter {
           value = this.escapeLatexSpecialChars(value);
           
           // Add spacing for operators
-          if (/[+\-=\\times\\div]/.test(value)) {
+          if (/^[+\-=×÷]$/.test(value)) {
             groupedText += ` ${value} `;
           } else {
             groupedText += value;
@@ -1512,10 +1512,16 @@ export class LatexConverter {
 
   private hasEqualFormatting(element: EquationElement, formatting: any): boolean {
     return element.bold === formatting.bold &&
-           element.italic === formatting.italic &&
+           this.getEffectiveItalicFormatting(element.italic) === this.getEffectiveItalicFormatting(formatting.italic) &&
            element.color === formatting.color &&
            element.underline === formatting.underline &&
            element.cancel === formatting.cancel;
+  }
+
+  private getEffectiveItalicFormatting(italic: boolean | undefined): string {
+    if (italic === true) return 'mathit';
+    if (italic === false) return 'mathrm'; 
+    return 'plain'; // undefined = naturally italic, no wrapping needed
   }
 
   private applyFormattingToLatex(text: string, formatting: any): string {
@@ -1530,9 +1536,12 @@ export class LatexConverter {
       result = `\\boldsymbol{${result}}`;
     } else if (formatting.bold) {
       result = `\\mathbf{${result}}`;
-    } else if (formatting.italic) {
+    } else if (formatting.italic === true) {
       result = `\\mathit{${result}}`;
+    } else if (formatting.italic === false) {
+      result = `\\mathrm{${result}}`;
     }
+    // If formatting.italic is undefined, leave as plain text (naturally italic)
     
     // Underline
     if (formatting.underline) {

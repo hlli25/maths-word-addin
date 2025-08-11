@@ -710,11 +710,9 @@ export class ContextManager {
   }
 
   private applyFormattingToElement(element: EquationElement, formatting: any): void {
-    // Handle removal of properties (when value is false)
+    // Apply formatting properties (including false values for explicit roman/off states)
     Object.keys(formatting).forEach(key => {
-      if (formatting[key] === false) {
-        delete (element as any)[key];
-      } else if (formatting[key] !== undefined) {
+      if (formatting[key] !== undefined) {
         (element as any)[key] = formatting[key];
       }
     });
@@ -759,10 +757,19 @@ export class ContextManager {
         const element = context.array[i];
         if (element.type === 'text') {
           hasTextElements = true;
-          // If any text element is not italic, selection is not fully italic
-          if (!element.italic) {
-            return false;
+          // Check if element is explicitly italic
+          if (element.italic === true) {
+            continue;
           }
+          // Check if element is naturally italic when not explicitly set
+          if (element.italic === undefined) {
+            // English letters are naturally italic in LaTeX math mode
+            if (/^[a-zA-Z]$/.test(element.value || '')) {
+              continue;
+            }
+          }
+          // Element is not italic
+          return false;
         }
       }
     }
