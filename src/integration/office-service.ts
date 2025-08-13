@@ -23,8 +23,6 @@ export class OfficeService {
     latex: string
   ): Promise<void> {
     try {
-      console.log("Starting Word insertion process...");
-      console.log("Original SVG length:", svgString.length);
       
       // Convert SVG string to base64
       let base64Svg: string;

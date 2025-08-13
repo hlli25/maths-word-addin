@@ -805,7 +805,7 @@ class MathAddinApp {
 
       // Convert LaTeX back to equation structure
       const elements = this.latexConverter.parseFromLatex(latex);
-
+      
       // Clear current equation and load the parsed elements
       this.equationBuilder.clear();
       this.equationBuilder.setEquation(elements);
@@ -815,6 +815,9 @@ class MathAddinApp {
 
       // Enter editing mode
       this.contextManager.enterRootContext();
+      
+      // Clear any stale selection state after loading equation
+      this.contextManager.clearSelection();
 
       // Update the display
       const equationDisplay = document.getElementById("equationDisplay") as HTMLDivElement;
@@ -870,12 +873,10 @@ class MathAddinApp {
         throw new Error("Equation is empty or invalid.");
       }
 
-      console.log("Generated LaTeX:", latex); // Debug output
 
       // Render LaTeX using MathJax
       statusDiv.textContent = "Rendering equation...";
       const svgElement = await this.mathJaxService.renderLatexToSvg(latex);
-      console.log("SVG rendered successfully, element:", svgElement);
 
       // Extract positioning information
       const positionInfo = this.mathJaxService.extractSvgPositionInfo(svgElement);

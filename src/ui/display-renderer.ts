@@ -149,8 +149,6 @@ export class DisplayRenderer {
       }
     }
     
-    // Add wrapper group styling for text elements
-    style += this.getWrapperGroupStyles(element);
 
     // Add selection highlighting
     if (isSelected) {
@@ -196,8 +194,6 @@ export class DisplayRenderer {
     if (isSelected) classNames.push('selected');
     if (element.cancel) classNames.push('math-cancel');
     
-    // Add wrapper group classes
-    classNames.push(...this.getWrapperGroupClasses(element));
 
     // Add active-context class if this is the active context
     const activeContextPath = this.contextManager.getActiveContextPath();
@@ -267,8 +263,6 @@ export class DisplayRenderer {
     if (isSelected) classes.push('selected-structure');
     if (element.underline) classes.push('underlined-structure');
     
-    // Add wrapper group classes for structures
-    classes.push(...this.getWrapperGroupClasses(element));
     
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
@@ -282,8 +276,6 @@ export class DisplayRenderer {
       }
     }
     
-    // Add wrapper group styling for structures
-    style += this.getWrapperGroupStyles(element);
     
     const styleAttr = style ? `style="${style}"` : "";
 
@@ -749,35 +741,6 @@ export class DisplayRenderer {
   }
 
 
-  private getWrapperGroupStyles(element: EquationElement): string {
-    let style = "";
-    if (element.wrapperGroupType) {
-      if (element.wrapperGroupType === "cancel") {
-        // Use background gradient for cancel effect
-        style += "background: linear-gradient(to top right, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%); padding: 2px 4px;";
-      } else if (element.wrapperGroupType === "underline") {
-        if (element.wrapperGroupValue === "double") {
-          style += "text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;";
-        } else {
-          style += "text-decoration: underline;";
-        }
-      } else if (element.wrapperGroupType === "color" && element.wrapperGroupValue) {
-        style += `color: ${element.wrapperGroupValue};`;
-      }
-    }
-    return style;
-  }
-
-  private getWrapperGroupClasses(element: EquationElement): string[] {
-    const classes = [];
-    if (element.wrapperGroupType) {
-      classes.push(`wrapper-group-${element.wrapperGroupType}`);
-      if (element.wrapperGroupId) {
-        classes.push(`wrapper-group-id-${element.wrapperGroupId}`);
-      }
-    }
-    return classes;
-  }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {
     if (!elements || elements.length === 0) {

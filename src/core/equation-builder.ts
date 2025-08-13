@@ -62,10 +62,14 @@ export interface EquationElement {
   rows?: number;
   cols?: number;
   cells?: EquationElement[]; // 1D array: cells[`cell_${row}_${col}`]
-  // For elements that are part of a wrapper group
-  wrapperGroupId?: string;
-  wrapperGroupType?: "cancel" | "underline" | "color";
-  wrapperGroupValue?: string;
+  // For elements that are part of wrapper groups (multi-wrapper support)
+  wrappers?: {
+    underline?: { id: string; type: "single" | "double" };
+    cancel?: { id: string };
+    color?: { id: string; value: string };
+  };
+  // Order in which wrappers were applied by the user
+  wrapperOrder?: string[];
 }
 
 export class EquationBuilder {
@@ -327,54 +331,6 @@ export class EquationBuilder {
     return null;
   }
 
-  getElementsByWrapperGroupId(elements: EquationElement[], groupId: string): EquationElement[] {
-    const result: EquationElement[] = [];
-    
-    for (const el of elements) {
-      if (el.wrapperGroupId === groupId) {
-        result.push(el);
-      }
-      
-      if (el.type === "fraction" || el.type === "bevelled-fraction") {
-        result.push(...this.getElementsByWrapperGroupId(el.numerator || [], groupId));
-        result.push(...this.getElementsByWrapperGroupId(el.denominator || [], groupId));
-      } else if (el.type === "sqrt") {
-        result.push(...this.getElementsByWrapperGroupId(el.radicand || [], groupId));
-      } else if (el.type === "nthroot") {
-        result.push(...this.getElementsByWrapperGroupId(el.index || [], groupId));
-        result.push(...this.getElementsByWrapperGroupId(el.radicand || [], groupId));
-      } else if (el.type === "script") {
-        result.push(...this.getElementsByWrapperGroupId(el.base || [], groupId));
-        if (el.superscript) result.push(...this.getElementsByWrapperGroupId(el.superscript, groupId));
-        if (el.subscript) result.push(...this.getElementsByWrapperGroupId(el.subscript, groupId));
-      } else if (el.type === "bracket") {
-        result.push(...this.getElementsByWrapperGroupId(el.content || [], groupId));
-      } else if (el.type === "large-operator") {
-        if (el.lowerLimit) result.push(...this.getElementsByWrapperGroupId(el.lowerLimit, groupId));
-        if (el.upperLimit) result.push(...this.getElementsByWrapperGroupId(el.upperLimit, groupId));
-        if (el.operand) result.push(...this.getElementsByWrapperGroupId(el.operand, groupId));
-      } else if (el.type === "derivative") {
-        if (el.function) result.push(...this.getElementsByWrapperGroupId(el.function, groupId));
-        if (el.variable) result.push(...this.getElementsByWrapperGroupId(el.variable, groupId));
-        if (Array.isArray(el.order)) result.push(...this.getElementsByWrapperGroupId(el.order, groupId));
-      } else if (el.type === "integral") {
-        if (el.integrand) result.push(...this.getElementsByWrapperGroupId(el.integrand, groupId));
-        if (el.differentialVariable) result.push(...this.getElementsByWrapperGroupId(el.differentialVariable, groupId));
-        if (el.lowerLimit) result.push(...this.getElementsByWrapperGroupId(el.lowerLimit, groupId));
-        if (el.upperLimit) result.push(...this.getElementsByWrapperGroupId(el.upperLimit, groupId));
-      } else if (el.type === "matrix") {
-        if (el.cells) {
-          for (let row = 0; row < el.cells.length; row++) {
-            for (let col = 0; col < el.cells[row].length; col++) {
-              result.push(...this.getElementsByWrapperGroupId(el.cells[row][col], groupId));
-            }
-          }
-        }
-      }
-    }
-    
-    return result;
-  }
 
   updateParenthesesScaling(): void {
     this.updateParenthesesScalingRecursive(this.equation);

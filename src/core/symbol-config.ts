@@ -73,6 +73,11 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\bullet": { unicode: "•", defaultItalic: false },
   
   // Comparison and relations (upright by default)
+  "=": { unicode: "=", defaultItalic: false },
+  "<": { unicode: "<", defaultItalic: false },
+  ">": { unicode: ">", defaultItalic: false },
+  "+": { unicode: "+", defaultItalic: false },
+  "-": { unicode: "-", defaultItalic: false },
   "\\neq": { unicode: "≠", defaultItalic: false },
   "\\sim": { unicode: "∼", defaultItalic: false },
   "\\simeq": { unicode: "≃", defaultItalic: false },

@@ -1013,17 +1013,9 @@ export class InputHandler {
         this.contextManager.removeWrapperFormattingFromSelection("underline");
       } else {
         // Apply new underline style (will replace any existing underline)
-        const success = this.contextManager.applyWrapperFormattingToSelection({
+        this.contextManager.applyWrapperFormattingToSelection({
           underline: underlineType as "single" | "double",
         });
-
-        if (!success) {
-          // Fallback to old method if wrapper formatting fails
-          this.contextManager.applyFormattingToSelection({
-            underline: underlineType as "single" | "double",
-          });
-          this.contextManager.clearSelection();
-        }
       }
     }
 
@@ -1039,9 +1031,14 @@ export class InputHandler {
       return;
     }
     
-    this.contextManager.applyFormattingToSelection({ color: color });
+    // If black is selected, remove color formatting (toggle off)
+    if (color === "black" || color === "#000000") {
+      this.contextManager.removeWrapperFormattingFromSelection("color");
+    } else {
+      // Use wrapper formatting for color to enable structural-level coloring
+      this.contextManager.applyWrapperFormattingToSelection({ color: color });
+    }
     
-    this.contextManager.clearSelection(); // Clear selection after formatting
     this.updateDisplay();
   }
 

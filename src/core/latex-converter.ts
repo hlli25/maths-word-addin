@@ -2,6 +2,7 @@ import { EquationElement, EquationBuilder } from "./equation-builder";
 import {
   UNICODE_TO_LATEX,
   LATEX_TO_UNICODE,
+  SYMBOL_CONFIG,
   getLatexCommandLength,
   LARGE_OPERATORS,
   BRACKET_PAIRS,
@@ -122,40 +123,39 @@ export class LatexConverter {
     return this.parseLatexToEquation(latex);
   }
 
-  private applyWrapperGroupToElements(
-    elements: EquationElement[],
-    wrapperGroupId: string,
-    wrapperGroupType: "cancel" | "underline" | "color",
-    wrapperGroupValue?: string
-  ): void {
-    // Only apply wrapper group metadata to top-level elements, not nested content
-    elements.forEach(element => {
-      // Apply wrapper group metadata to this element only
-      element.wrapperGroupId = wrapperGroupId;
-      element.wrapperGroupType = wrapperGroupType;
-      element.wrapperGroupValue = wrapperGroupValue;
-    });
-  }
 
-  private isElementProcessedInGroup(elements: EquationElement[], index: number): boolean {
-    // Check if this element is part of a wrapper group that started earlier
-    if (index === 0 || !elements[index].wrapperGroupId) {
-      return false;
-    }
-    
-    const groupId = elements[index].wrapperGroupId;
-    // Look backward to see if there's an earlier element with the same group ID
-    for (let i = index - 1; i >= 0; i--) {
-      if (elements[i].wrapperGroupId === groupId) {
+
+  private haveSameWrappers(element1: EquationElement, element2: EquationElement): boolean {
+    if (element1.wrappers || element2.wrappers) {
+      // Both must have wrappers object or both must not have it
+      if (!element1.wrappers && !element2.wrappers) {
         return true;
       }
-      // If we hit a different element without a group ID, we're at the start
-      if (!elements[i].wrapperGroupId) {
+      if (!element1.wrappers || !element2.wrappers) {
         return false;
       }
+      
+      // Compare each wrapper type
+      const checkWrapper = (type: 'underline' | 'cancel' | 'color') => {
+        const w1 = element1.wrappers![type];
+        const w2 = element2.wrappers![type];
+        
+        if (!w1 && !w2) return true;
+        if (!w1 || !w2) return false;
+        
+        if (type === 'underline') {
+          return (w1 as any).type === (w2 as any).type;
+        } else if (type === 'color') {
+          return (w1 as any).value === (w2 as any).value;
+        } else {
+          return true; // cancel
+        }
+      };
+      
+      return checkWrapper('underline') && checkWrapper('cancel') && checkWrapper('color');
     }
     
-    return false;
+    return true;
   }
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
@@ -206,20 +206,17 @@ export class LatexConverter {
       processedElements = this.removeUniformFormattingFromElements(elements, hasUniformFormatting);
     }
 
-    // Process elements, handling wrapper groups
+    // Process elements, handling multi-wrapper system
     for (let i = 0; i < processedElements.length; i++) {
       const element = processedElements[i];
       
-      // Check if this element starts a wrapper group
-      if (element.wrapperGroupId && !this.isElementProcessedInGroup(processedElements, i)) {
-        // Find all consecutive elements with the same wrapper group ID
+      // Check if this element has multi-wrapper formatting
+      if (element.wrappers && Object.keys(element.wrappers).length > 0) {
+        // Find all consecutive elements with the same wrapper combination
         const groupElements: EquationElement[] = [];
-        const groupId = element.wrapperGroupId;
-        const groupType = element.wrapperGroupType;
-        const groupValue = element.wrapperGroupValue;
-        
         let j = i;
-        while (j < processedElements.length && processedElements[j].wrapperGroupId === groupId) {
+        
+        while (j < processedElements.length && this.haveSameWrappers(element, processedElements[j])) {
           groupElements.push(processedElements[j]);
           j++;
         }
@@ -227,34 +224,37 @@ export class LatexConverter {
         // Generate LaTeX for the grouped elements (without wrapper metadata)
         const cleanGroupElements = groupElements.map(el => {
           const cleanEl = { ...el };
-          delete cleanEl.wrapperGroupId;
-          delete cleanEl.wrapperGroupType;
-          delete cleanEl.wrapperGroupValue;
+          delete cleanEl.wrappers;
           return cleanEl;
         });
         
         const groupContent = this.toLatexRecursive(cleanGroupElements, maxDepth);
         
-        // Apply wrapper formatting based on type
-        if (groupType === "cancel") {
-          latex += `\\cancel{${groupContent}}`;
-        } else if (groupType === "underline") {
-          if (groupValue === "double") {
-            latex += `\\underline{\\underline{${groupContent}}}`;
-          } else {
-            latex += `\\underline{${groupContent}}`;
+        // Apply wrapper formatting in user-defined order (innermost to outermost)
+        let wrappedContent = groupContent;
+        
+        // Use user's application order if available, otherwise fall back to default order
+        const wrapperOrder = element.wrapperOrder || ['underline', 'cancel', 'color'];
+        
+        // Apply wrappers in the order they were applied by the user
+        for (const wrapperType of wrapperOrder) {
+          if (wrapperType === 'underline' && element.wrappers.underline) {
+            if (element.wrappers.underline.type === "double") {
+              wrappedContent = `\\underline{\\underline{${wrappedContent}}}`;
+            } else {
+              wrappedContent = `\\underline{${wrappedContent}}`;
+            }
+          } else if (wrapperType === 'cancel' && element.wrappers.cancel) {
+            wrappedContent = `\\cancel{${wrappedContent}}`;
+          } else if (wrapperType === 'color' && element.wrappers.color) {
+            wrappedContent = `\\textcolor{${element.wrappers.color.value}}{${wrappedContent}}`;
           }
-        } else if (groupType === "color") {
-          latex += `\\textcolor{${groupValue}}{${groupContent}}`;
         }
+        
+        latex += wrappedContent;
         
         // Skip the processed elements
         i = j - 1;
-        continue;
-      }
-      
-      // Skip if this element was already processed as part of a group
-      if (element.wrapperGroupId && this.isElementProcessedInGroup(processedElements, i)) {
         continue;
       }
 
@@ -268,6 +268,7 @@ export class LatexConverter {
           color: element.color,
           underline: element.underline,
           cancel: element.cancel,
+          wrappers: element.wrappers, // Include wrappers in formatting comparison
         };
 
         while (j < processedElements.length &&
@@ -888,8 +889,8 @@ export class LatexConverter {
           const formattedElements = this.parseLatexToEquation(contentGroup.content);
           const wrapperGroupId = this.generateElementId();
           
-          // Apply wrapper group metadata for color recursively
-          this.applyWrapperGroupToElements(formattedElements, wrapperGroupId, "color", colorGroup.content);
+          // Apply color wrapper using multi-wrapper system
+          this.applyWrapperToElements(formattedElements, "color", colorGroup.content);
           result.push(...formattedElements);
         } else if (latex.substr(i, 6) === "\\color") {
           i += 6;
@@ -919,14 +920,14 @@ export class LatexConverter {
             // Parse the inner content for double underline
             const innerContent = group.content.slice(11, -1); // Remove \underline{ and }
             const formattedElements = this.parseLatexToEquation(innerContent);
-            // Apply wrapper group metadata for double underline recursively
-            this.applyWrapperGroupToElements(formattedElements, wrapperGroupId, "underline", "double");
+            // Apply double underline wrapper using multi-wrapper system
+            this.applyWrapperToElements(formattedElements, "underline", "double");
             result.push(...formattedElements);
           } else {
             // Single underline
             const formattedElements = this.parseLatexToEquation(group.content);
-            // Apply wrapper group metadata for single underline recursively
-            this.applyWrapperGroupToElements(formattedElements, wrapperGroupId, "underline", "single");
+            // Apply single underline wrapper using multi-wrapper system
+            this.applyWrapperToElements(formattedElements, "underline", "single");
             result.push(...formattedElements);
           }
         } else if (latex.substr(i, 7) === "\\cancel") {
@@ -935,10 +936,9 @@ export class LatexConverter {
           i = group.endIndex;
           // Parse the content and apply wrapper group metadata to each element
           const wrappedElements = this.parseLatexToEquation(group.content);
-          const wrapperGroupId = this.generateElementId();
           
-          // Apply wrapper group metadata recursively to all elements
-          this.applyWrapperGroupToElements(wrappedElements, wrapperGroupId, "cancel");
+          // Apply cancel wrapper using multi-wrapper system
+          this.applyWrapperToElements(wrappedElements, "cancel");
           
           // Add the elements directly to the result (not as a wrapper)
           result.push(...wrappedElements);
@@ -1311,11 +1311,27 @@ export class LatexConverter {
   }
 
   private hasEqualFormatting(element: EquationElement, formatting: any): boolean {
-    return (element.bold === formatting.bold &&
+    // First check legacy formatting properties
+    const legacyFormattingMatch = (element.bold === formatting.bold &&
       this.getEffectiveItalicFormatting(element.italic) === this.getEffectiveItalicFormatting(formatting.italic) &&
       element.color === formatting.color &&
       element.underline === formatting.underline &&
       element.cancel === formatting.cancel);
+    
+    // Then check if wrappers match
+    // If either element has wrappers, they must match exactly
+    if (element.wrappers || formatting.wrappers) {
+      // Create a dummy element with formatting's wrappers for comparison
+      const formattingElement: EquationElement = {
+        id: '',
+        type: 'text',
+        value: '',
+        wrappers: formatting.wrappers
+      };
+      return legacyFormattingMatch && this.haveSameWrappers(element, formattingElement);
+    }
+    
+    return legacyFormattingMatch;
   }
 
   private checkUniformFormatting(elements: EquationElement[]): any | null {
@@ -1551,6 +1567,57 @@ export class LatexConverter {
     return 'plain'; // undefined = naturally italic, no wrapping needed
   }
 
+  private isOperatorSymbol(text: string): boolean {
+    // Trim whitespace to handle cases like " = " or " + "
+    const trimmedText = text.trim();
+    
+    // Check if the text is a known mathematical operator using symbol config
+    // First check direct matches (like "=" which has unicode "=")
+    const directMatch = Object.values(SYMBOL_CONFIG).find(info => info.unicode === trimmedText);
+    if (directMatch && !directMatch.defaultItalic) {
+      return true;
+    }
+    
+    // Also check if text is a latex command that maps to an operator
+    const symbolInfo = SYMBOL_CONFIG[trimmedText];
+    if (symbolInfo && !symbolInfo.defaultItalic) {
+      return true;
+    }
+    
+    // Check if the entire text (with spaces) consists only of operators and whitespace
+    if (text !== trimmedText && trimmedText.length === 1) {
+      // This handles cases like " = " where we want to treat the whole thing as an operator
+      return this.isOperatorSymbol(trimmedText);
+    }
+    
+    return false;
+  }
+
+  private applyWrapperToElements(elements: EquationElement[], wrapperType: "cancel" | "underline" | "color", wrapperValue?: string): void {
+    // Apply wrapper using multi-wrapper system, preserving existing wrappers and tracking order
+    const wrapperGroupId = this.generateElementId();
+    
+    elements.forEach(element => {
+      if (!element.wrappers) element.wrappers = {};
+      
+      // Initialize wrapperOrder if it doesn't exist
+      if (!element.wrapperOrder) element.wrapperOrder = [];
+      
+      // Only add to order if this wrapper type doesn't already exist
+      if (!element.wrappers[wrapperType]) {
+        element.wrapperOrder.push(wrapperType);
+      }
+      
+      if (wrapperType === "cancel") {
+        element.wrappers.cancel = { id: wrapperGroupId };
+      } else if (wrapperType === "underline") {
+        element.wrappers.underline = { id: wrapperGroupId, type: wrapperValue as "single" | "double" };
+      } else if (wrapperType === "color") {
+        element.wrappers.color = { id: wrapperGroupId, value: wrapperValue! };
+      }
+    });
+  }
+
   private applyFormattingToLatex(text: string, formatting: any): string {
     let result = text;
 
@@ -1565,8 +1632,8 @@ export class LatexConverter {
     } else if (formatting.italic === true) {
       result = `\\mathit{${result}}`;
     } else if (formatting.italic === false) {
-      // Don't apply \mathrm{} to LaTeX commands (symbols) as it removes operator spacing
-      if (!result.startsWith('\\')) {
+      // Don't apply \mathrm{} to LaTeX commands or known operator symbols as it removes proper spacing
+      if (!result.startsWith('\\') && !this.isOperatorSymbol(result)) {
         result = `\\mathrm{${result}}`;
       }
     }

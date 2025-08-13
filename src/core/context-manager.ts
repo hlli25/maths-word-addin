@@ -459,10 +459,12 @@ export class ContextManager {
   }
 
   setSelection(startPosition: number, endPosition: number, contextPath?: string): void {
+    const finalContextPath = contextPath || this.activeContextPath || 'root';
+    
     this.selection = {
       startPosition: Math.min(startPosition, endPosition),
       endPosition: Math.max(startPosition, endPosition),
-      contextPath: contextPath || this.activeContextPath || 'root',
+      contextPath: finalContextPath,
       isActive: true
     };
   }
@@ -689,15 +691,30 @@ export class ContextManager {
           formattingCounts.italic[italic as any]++;
 
           // Count underline
-          const underline = element.underline || 'none';
+          let underline = 'none';
+          if (element.wrappers?.underline) {
+            underline = element.wrappers.underline.type;
+          } else if (element.underline) {
+            underline = element.underline;
+          }
           formattingCounts.underline[underline] = (formattingCounts.underline[underline] || 0) + 1;
 
           // Count cancel
-          const cancel = element.cancel || false;
+          let cancel = false;
+          if (element.wrappers?.cancel) {
+            cancel = true;
+          } else if (element.cancel) {
+            cancel = element.cancel;
+          }
           formattingCounts.cancel[cancel as any]++;
 
           // Count color
-          const color = element.color || 'default';
+          let color = 'default';
+          if (element.wrappers?.color) {
+            color = element.wrappers.color.value;
+          } else if (element.color) {
+            color = element.color;
+          }
           formattingCounts.color[color] = (formattingCounts.color[color] || 0) + 1;
         }
       }
@@ -740,21 +757,34 @@ export class ContextManager {
       return false;
     }
 
-    const context = this.getContext(this.activeContextPath);
+    // Use the selection's context path, not the active context path
+    const selectionContextPath = this.selection.contextPath || this.activeContextPath;
+    const context = this.getContext(selectionContextPath);
     if (!context) {
       return false;
     }
 
-    // Remove wrapper group metadata from selected elements
+    // Remove specific wrapper type from selected elements using new multi-wrapper system
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        // Only remove if it matches the wrapper type we're removing
-        if (element.wrapperGroupType === wrapperType) {
-          delete element.wrapperGroupId;
-          delete element.wrapperGroupType;
-          delete element.wrapperGroupValue;
+        
+        if (element.wrappers) {
+          // Remove the specific wrapper type
+          delete element.wrappers[wrapperType];
+          
+          // Remove from order array
+          if (element.wrapperOrder) {
+            element.wrapperOrder = element.wrapperOrder.filter(w => w !== wrapperType);
+          }
+          
+          // Clean up empty wrappers object and order array
+          if (Object.keys(element.wrappers).length === 0) {
+            delete element.wrappers;
+            delete element.wrapperOrder;
+          }
         }
+        
       }
     }
 
@@ -773,49 +803,101 @@ export class ContextManager {
       return false;
     }
 
-    const context = this.getContext(this.activeContextPath);
+    // Use the selection's context path, not the active context path
+    const selectionContextPath = this.selection.contextPath || this.activeContextPath;
+    
+    const context = this.getContext(selectionContextPath);
+    
     if (!context) {
       return false;
     }
 
-    // Generate a unique group ID for this wrapper
-    const wrapperGroupId = this.equationBuilder.generateElementId();
+    // Apply wrapper formatting to selected elements using new multi-wrapper system
+    let elementsProcessed = 0;
     
-    // Determine wrapper type and value
-    let wrapperGroupType: "cancel" | "underline" | "color" | undefined;
-    let wrapperGroupValue: string | undefined;
-    
-    if (formatting.cancel) {
-      wrapperGroupType = "cancel";
-    } else if (formatting.underline) {
-      wrapperGroupType = "underline";
-      wrapperGroupValue = formatting.underline;
-    } else if (formatting.color) {
-      wrapperGroupType = "color";
-      wrapperGroupValue = formatting.color;
-    } else {
-      return false;
-    }
-
-    // Apply wrapper group metadata to selected elements
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
+        elementsProcessed++;
         
-        // If element already has a wrapper of the same type, remove it first
-        if (element.wrapperGroupType === wrapperGroupType) {
-          delete element.wrapperGroupId;
-          delete element.wrapperGroupType;
-          delete element.wrapperGroupValue;
+        // Initialize wrappers object if it doesn't exist
+        if (!element.wrappers) {
+          element.wrappers = {};
         }
         
-        // Add new wrapper group metadata to each element
-        element.wrapperGroupId = wrapperGroupId;
-        element.wrapperGroupType = wrapperGroupType;
-        element.wrapperGroupValue = wrapperGroupValue;
+        // Apply each wrapper type independently with order tracking
+        if (formatting.cancel !== undefined) {
+          if (formatting.cancel) {
+            // If cancel doesn't exist, add it and track order
+            if (!element.wrappers.cancel) {
+              element.wrappers.cancel = { id: this.equationBuilder.generateElementId() };
+              element.wrapperOrder = element.wrapperOrder || [];
+              element.wrapperOrder.push('cancel');
+            }
+            // If cancel already exists, just update it (keep existing order)
+          } else {
+            delete element.wrappers.cancel;
+            // Remove from order array
+            if (element.wrapperOrder) {
+              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'cancel');
+            }
+          }
+        }
+        
+        if (formatting.underline !== undefined) {
+          if (formatting.underline) {
+            // If underline doesn't exist, add it and track order
+            if (!element.wrappers.underline) {
+              element.wrappers.underline = { 
+                id: this.equationBuilder.generateElementId(), 
+                type: formatting.underline 
+              };
+              element.wrapperOrder = element.wrapperOrder || [];
+              element.wrapperOrder.push('underline');
+            } else {
+              // If underline already exists, just update the type (keep existing order)
+              element.wrappers.underline.type = formatting.underline;
+            }
+          } else {
+            delete element.wrappers.underline;
+            // Remove from order array
+            if (element.wrapperOrder) {
+              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'underline');
+            }
+          }
+        }
+        
+        if (formatting.color !== undefined) {
+          if (formatting.color) {
+            // If color doesn't exist, add it and track order
+            if (!element.wrappers.color) {
+              element.wrappers.color = { 
+                id: this.equationBuilder.generateElementId(), 
+                value: formatting.color 
+              };
+              element.wrapperOrder = element.wrapperOrder || [];
+              element.wrapperOrder.push('color');
+            } else {
+              // If color already exists, just update the value (keep existing order)
+              element.wrappers.color.value = formatting.color;
+            }
+          } else {
+            delete element.wrappers.color;
+            // Remove from order array
+            if (element.wrapperOrder) {
+              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'color');
+            }
+          }
+        }
+        
+        // Clean up empty wrappers object and order array
+        if (Object.keys(element.wrappers).length === 0) {
+          delete element.wrappers;
+          delete element.wrapperOrder;
+        }
       }
     }
-
+    
     // Clear selection after applying wrapper formatting
     this.clearSelection();
 
@@ -829,7 +911,9 @@ export class ContextManager {
       return false;
     }
 
-    const context = this.getContext(this.activeContextPath);
+    // Use the selection's context path, not the active context path
+    const selectionContextPath = this.selection.contextPath || this.activeContextPath;
+    const context = this.getContext(selectionContextPath);
     if (!context) {
       return false;
     }
@@ -977,16 +1061,17 @@ export class ContextManager {
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
-    // Check if all selected elements have cancel wrapper
+    // Check if all selected elements have cancel wrapper (multi-wrapper system)
     let hasElements = false;
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
         hasElements = true;
-        // Check for wrapper group type
-        if (element.wrapperGroupType !== "cancel") {
-          return false;
+        // Check new wrapper system
+        if (element.wrappers?.cancel) {
+          continue; // This element has cancel
         }
+        return false; // This element doesn't have cancel
       }
     }
 
@@ -999,7 +1084,7 @@ export class ContextManager {
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
-    // Check if all selected elements have underline wrapper
+    // Check if all selected elements have underline wrapper (multi-wrapper system)
     let hasElements = false;
     let underlineStyle: "single" | "double" | undefined;
     
@@ -1008,15 +1093,19 @@ export class ContextManager {
         const element = context.array[i];
         hasElements = true;
         
-        // Check for wrapper group type
-        if (element.wrapperGroupType !== "underline") {
-          return false;
+        let elementUnderlineStyle: "single" | "double" | undefined;
+        
+        // Check new wrapper system
+        if (element.wrappers?.underline) {
+          elementUnderlineStyle = element.wrappers.underline.type;
+        } else {
+          return false; // This element doesn't have underline
         }
         
         // Check consistency of underline style
         if (!underlineStyle) {
-          underlineStyle = element.wrapperGroupValue as "single" | "double";
-        } else if (underlineStyle !== element.wrapperGroupValue) {
+          underlineStyle = elementUnderlineStyle;
+        } else if (underlineStyle !== elementUnderlineStyle) {
           return false; // Mixed styles
         }
       }
