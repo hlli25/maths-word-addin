@@ -977,17 +977,22 @@ export class InputHandler {
     if (!this.contextManager.hasSelection()) {
       return;
     }
+
+    // Check if selection already has cancel formatting
+    const isAlreadyCancelled = this.contextManager.isSelectionCancel();
     
-    // Check if selected text is already cancel to determine toggle action
-    const isCancel = this.contextManager.isSelectionCancel();
-    
-    if (isCancel) {
-      this.contextManager.applyFormattingToSelection({ cancel: false });
+    if (isAlreadyCancelled) {
+      // Remove cancel formatting
+      this.contextManager.removeWrapperFormattingFromSelection("cancel");
     } else {
-      this.contextManager.applyFormattingToSelection({ cancel: true });
+      // Apply cancel formatting
+      const success = this.contextManager.applyWrapperFormattingToSelection({ cancel: true });
+      
+      if (!success) {
+        console.warn("Failed to apply cancel formatting");
+      }
     }
-    
-    this.contextManager.clearSelection(); // Clear selection after formatting
+
     this.updateDisplay();
   }
 
@@ -997,12 +1002,31 @@ export class InputHandler {
     }
     
     if (underlineType === "none") {
-      this.contextManager.applyFormattingToSelection({ underline: undefined });
+      // Remove underline wrapper formatting
+      this.contextManager.removeWrapperFormattingFromSelection("underline");
     } else {
-      this.contextManager.applyFormattingToSelection({ underline: underlineType as "single" | "double" });
+      // Check if selection already has the same underline style
+      const currentUnderline = this.contextManager.isSelectionUnderlined();
+      
+      if (currentUnderline === underlineType) {
+        // Toggle off if clicking the same style
+        this.contextManager.removeWrapperFormattingFromSelection("underline");
+      } else {
+        // Apply new underline style (will replace any existing underline)
+        const success = this.contextManager.applyWrapperFormattingToSelection({
+          underline: underlineType as "single" | "double",
+        });
+
+        if (!success) {
+          // Fallback to old method if wrapper formatting fails
+          this.contextManager.applyFormattingToSelection({
+            underline: underlineType as "single" | "double",
+          });
+          this.contextManager.clearSelection();
+        }
+      }
     }
-    
-    this.contextManager.clearSelection(); // Clear selection after formatting
+
     this.updateDisplay();
   }
 
@@ -1117,75 +1141,6 @@ export class InputHandler {
   }
 
   insertDerivative(type: "first" | "second" | "nth", displayMode?: "display" | "inline"): void {
-    if (!this.contextManager.isActive()) {
-      this.contextManager.enterRootContext();
-    }
-
-    // Create a fraction for the derivative (display by default, inline if specified)
-    const fraction = displayMode === "inline" 
-      ? this.equationBuilder.createFractionElement()
-      : this.equationBuilder.createDisplayFractionElement();
-    
-    // Create differential elements based on style
-    const createDifferentialD = () => {
-      const d = this.equationBuilder.createTextElement("d");
-      // Mark the style for LaTeX conversion
-      if (this.differentialStyle === "roman") {
-        d.italic = false; // This signals to use \mathrm{d}
-      }
-      return d;
-    };
-
-    // Build numerator based on type
-    if (type === "first") {
-      fraction.numerator = [createDifferentialD()];
-    } else if (type === "second") {
-      const dElement = this.equationBuilder.createScriptElement();
-      dElement.base = [createDifferentialD()];
-      dElement.superscript = [this.equationBuilder.createTextElement("2")];
-      fraction.numerator = [dElement];
-    } else if (type === "nth") {
-      const dElement = this.equationBuilder.createScriptElement();
-      dElement.base = [createDifferentialD()];
-      dElement.superscript = [];
-      fraction.numerator = [dElement];
-    }
-
-    // Build denominator based on type
-    if (type === "first") {
-      fraction.denominator = [createDifferentialD()];
-    } else if (type === "second") {
-      const varElement = this.equationBuilder.createScriptElement();
-      varElement.base = [];
-      varElement.superscript = [this.equationBuilder.createTextElement("2")];
-      fraction.denominator = [createDifferentialD(), varElement];
-    } else if (type === "nth") {
-      const varElement = this.equationBuilder.createScriptElement();
-      varElement.base = [];
-      varElement.superscript = [];
-      fraction.denominator = [createDifferentialD(), varElement];
-    }
-
-    // Insert the derivative fraction
-    this.contextManager.insertElementAtCursor(fraction);
-
-    // Move cursor to appropriate position for user input
-    let targetPath: string;
-    if (type === "nth") {
-      // Move to the superscript of d in numerator (for the power n)
-      targetPath = this.contextManager.getElementContextPath(fraction.numerator![0].id, "superscript");
-      this.contextManager.enterContextPath(targetPath, 0);
-    } else {
-      // Move to after d in numerator for the function
-      targetPath = this.contextManager.getElementContextPath(fraction.id, "numerator");
-      this.contextManager.enterContextPath(targetPath, 1);
-    }
-    this.updateDisplay();
-    this.equationBuilder.updateParenthesesScaling();
-    this.focusHiddenInput();
-  }
-
-  insertDerivativeNew(type: "first" | "second" | "nth", displayMode?: "display" | "inline"): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }

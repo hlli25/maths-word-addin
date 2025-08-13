@@ -4,6 +4,9 @@
 export interface SymbolInfo {
   unicode: string;
   defaultItalic: boolean; // true = italic by default (variables), false = upright by default (operators)
+  isLargeOperator?: boolean; // true if it is a large operator (sum, prod, etc.)
+  dataAttribute?: string; // data-operator attribute value for CSS targeting
+  needsInlineScaling?: boolean; // true if operator needs CSS scaling in inline mode
 }
 
 // Symbol mappings with styling information
@@ -134,20 +137,97 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\because": { unicode: "∵", defaultItalic: false },
   
   // Large operators (upright by default)
-  "\\sum": { unicode: "∑", defaultItalic: false },
-  "\\prod": { unicode: "∏", defaultItalic: false },
-  "\\coprod": { unicode: "∐", defaultItalic: false },
-  "\\bigcup": { unicode: "∪", defaultItalic: false },
-  "\\bigcap": { unicode: "∩", defaultItalic: false },
-  "\\bigvee": { unicode: "∨", defaultItalic: false },
-  "\\bigwedge": { unicode: "∧", defaultItalic: false },
-  "\\bigoplus": { unicode: "⨁", defaultItalic: false },
-  "\\bigotimes": { unicode: "⨂", defaultItalic: false },
-  "\\bigodot": { unicode: "⨀", defaultItalic: false },
-  "\\biguplus": { unicode: "⨄", defaultItalic: false },
-  "\\int": { unicode: "∫", defaultItalic: false },
-  "\\oint": { unicode: "∮", defaultItalic: false },
-  
+  "\\sum": {
+    unicode: "∑",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "sum",
+    needsInlineScaling: true,
+  },
+  "\\prod": {
+    unicode: "∏",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "prod",
+    needsInlineScaling: true,
+  },
+  "\\coprod": {
+    unicode: "∐",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "coprod",
+    needsInlineScaling: true,
+  },
+  "\\bigcup": {
+    unicode: "∪",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigcup",
+    needsInlineScaling: true,
+  },
+  "\\bigcap": {
+    unicode: "∩",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigcap",
+    needsInlineScaling: true,
+  },
+  "\\bigvee": {
+    unicode: "∨",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigvee",
+    needsInlineScaling: true,
+  },
+  "\\bigwedge": {
+    unicode: "∧",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigwedge",
+    needsInlineScaling: true,
+  },
+  "\\bigoplus": {
+    unicode: "⨁",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigoplus",
+    needsInlineScaling: true,
+  },
+  "\\bigotimes": {
+    unicode: "⨂",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigotimes",
+    needsInlineScaling: true,
+  },
+  "\\bigodot": {
+    unicode: "⨀",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "bigodot",
+    needsInlineScaling: true,
+  },
+  "\\biguplus": {
+    unicode: "⨄",
+    defaultItalic: false,
+    isLargeOperator: true,
+    dataAttribute: "biguplus",
+    needsInlineScaling: true,
+  },
+  "\\int": { 
+    unicode: "∫",
+    defaultItalic: false, 
+    isLargeOperator: true, 
+    dataAttribute: "int",
+    // No inline scaling needed
+  }, 
+  "\\oint": { 
+    unicode: "∮", 
+    defaultItalic: false, 
+    isLargeOperator: true, 
+    dataAttribute: "oint",
+    // No inline scaling needed 
+  },
 };
 
 // Map LaTeX commands to Unicode symbols for easy lookup
@@ -183,12 +263,27 @@ export const UNICODE_TO_LATEX: { [key: string]: string } = Object.entries(SYMBOL
 
 // Helper functions for common operations
 
-// Centralized list of large operators for easy maintenance
-export const LARGE_OPERATORS = [
-  "\\sum", "\\prod", "\\coprod", "\\bigcup", "\\bigcap", 
-  "\\bigvee", "\\bigwedge", "\\bigoplus", "\\bigotimes", 
-  "\\bigodot", "\\biguplus", "\\int", "\\oint"
-];
+// Helper functions for large operators
+export function getLargeOperators(): string[] {
+  return Object.entries(SYMBOL_CONFIG)
+    .filter(([_, info]) => info.isLargeOperator)
+    .map(([latex, _]) => latex);
+}
+
+export function getOperatorsNeedingInlineScaling(): string[] {
+  return Object.entries(SYMBOL_CONFIG)
+    .filter(([_, info]) => info.isLargeOperator && info.needsInlineScaling)
+    .map(([_, info]) => info.dataAttribute!)
+    .filter(Boolean);
+}
+
+export function getDataAttributeForOperator(latex: string): string | undefined {
+  const info = SYMBOL_CONFIG[latex];
+  return info?.isLargeOperator ? info.dataAttribute : undefined;
+}
+
+// For backward compatibility, maintain the simple array of LaTeX commands
+export const LARGE_OPERATORS = getLargeOperators();
 
 // Convert LaTeX command to Unicode symbol
 export function latexToUnicode(latex: string): string | undefined {

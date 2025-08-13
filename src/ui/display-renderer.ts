@@ -25,7 +25,7 @@ export class DisplayRenderer {
 
   renderEquation(elements: EquationElement[]): string {
     const activeContextPath = this.contextManager.getActiveContextPath();
-    
+
     if (activeContextPath === null && elements.length === 0) {
       return '<span class="empty-state">Click here and start typing your equation</span>';
     }
@@ -35,7 +35,7 @@ export class DisplayRenderer {
 
   updateDisplay(displayElement: HTMLElement, elements: EquationElement[]): void {
     const activeContextPath = this.contextManager.getActiveContextPath();
-    
+
     if (activeContextPath === null && elements.length === 0) {
       displayElement.innerHTML = '<span class="empty-state">Click here and start typing your equation</span>';
       displayElement.classList.remove("active");
@@ -43,14 +43,14 @@ export class DisplayRenderer {
     }
 
     displayElement.classList.toggle("active", activeContextPath !== null);
-    
+
     const mathmlContent = this.generateMathML(elements, "root");
     const visualHTML = `
       <div class="visual-equation-container" style="font-size: ${this.globalFontSize * 1.5}px;">
         ${mathmlContent}
       </div>
     `;
-    
+
     displayElement.innerHTML = visualHTML;
   }
 
@@ -75,20 +75,20 @@ export class DisplayRenderer {
         mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="' + index + '" />';
       }
       const elementPath = contextPath === 'root' ? `root/${element.id}` : `${contextPath}/${element.id}`;
-      
+
       // Check if this element is in the selection range
       const isSelected = selection.isActive && 
-                        selection.contextPath === contextPath && 
-                        index >= selection.startPosition && 
-                        index < selection.endPosition;
-      
+        selection.contextPath === contextPath &&
+        index >= selection.startPosition &&
+        index < selection.endPosition;
+
       mathmlContent += this.elementToMathML(element, elementPath, index, isSelected);
     });
 
     if (contextPath === activeContextPath && elements.length === cursorPosition) {
       mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="' + elements.length + '" />';
     }
-    
+
     mathmlContent += '</mrow></math>';
     return mathmlContent;
   }
@@ -131,15 +131,15 @@ export class DisplayRenderer {
     const isVariable = /[a-zA-Z]/.test(value);
     const isNumber = /[0-9]/.test(value);
     const isSymbol = /[^\w\s]/.test(value);
-    
+
     let tag = 'mi';
     if (isOperator) tag = 'mo';
     else if (isNumber) tag = 'mn';
-    
+
     let style = '';
     if (element.color) style += `color: ${element.color};`;
     if (element.bold) style += 'font-weight: bold;';
-    
+
     // Add underline styling
     if (element.underline) {
       if (element.underline === 'double') {
@@ -149,19 +149,22 @@ export class DisplayRenderer {
       }
     }
     
+    // Add wrapper group styling for text elements
+    style += this.getWrapperGroupStyles(element);
+
     // Add selection highlighting
     if (isSelected) {
       style += 'background-color: #0078d4; color: white; border-radius: 2px; padding: 1px 2px;';
     }
-    
+
     const styleAttr = style ? `style="${style}"` : '';
-    
+
     // Handle italic styling using mathvariant attribute for mi elements, inline styles for others
     let mathVariantAttr = '';
     if (tag === 'mi') {
       // For <mi> elements, use mathvariant attribute to control italic behavior
       let shouldBeItalic = false;
-      
+
       if (element.italic === true) {
         shouldBeItalic = true;
       } else if (element.italic === false) {
@@ -170,7 +173,7 @@ export class DisplayRenderer {
         // Variables default to italic unless bold or explicitly set to normal
         shouldBeItalic = true;
       }
-      
+
       // Set mathvariant to "normal" to override default italic behavior of <mi>
       if (!shouldBeItalic) {
         mathVariantAttr = 'mathvariant="normal"';
@@ -187,21 +190,24 @@ export class DisplayRenderer {
         style += 'font-style: italic;';
       }
     }
-    
+
     const classNames = [];
     if (isActive) classNames.push('active-element');
     if (isSelected) classNames.push('selected');
     if (element.cancel) classNames.push('math-cancel');
     
+    // Add wrapper group classes
+    classNames.push(...this.getWrapperGroupClasses(element));
+
     // Add active-context class if this is the active context
     const activeContextPath = this.contextManager.getActiveContextPath();
     if (activeContextPath === contextPath) {
       classNames.push('active-context');
     }
-    
+
     const classAttr = classNames.length > 0 ? `class="${classNames.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${contextPath}" data-position="${position}"`;
-    
+
     // Update styleAttr if we modified style for non-mi elements
     const finalStyleAttr = style ? `style="${style}"` : '';
 
@@ -211,7 +217,7 @@ export class DisplayRenderer {
   private fractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
     const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
-    
+
     // Add classes for active element, selection, and display mode
     const classes = [];
     if (isActive) classes.push('active-element');
@@ -219,7 +225,7 @@ export class DisplayRenderer {
     if (element.displayMode === 'display') classes.push('display-fraction');
     if (element.underline) classes.push('underlined-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    
+
     // Add style for underline
     let style = '';
     if (element.underline) {
@@ -229,9 +235,9 @@ export class DisplayRenderer {
         style = 'style="text-decoration: underline;"';
       }
     }
-    
+
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
-    
+
     // Add displaystyle attribute for display mode fractions
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
 
@@ -260,21 +266,30 @@ export class DisplayRenderer {
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
     if (element.underline) classes.push('underlined-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     
-    // Add style for underline
+    // Add wrapper group classes for structures
+    classes.push(...this.getWrapperGroupClasses(element));
+    
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+
+    // Add style for underline and wrapper groups
     let style = '';
     if (element.underline) {
       if (element.underline === 'double') {
-        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
+        style += 'text-decoration: underline; border-bottom: 1px solid currentColor;';
       } else {
-        style = 'style="text-decoration: underline;"';
+        style += 'text-decoration: underline;';
       }
     }
     
+    // Add wrapper group styling for structures
+    style += this.getWrapperGroupStyles(element);
+    
+    const styleAttr = style ? `style="${style}"` : "";
+
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
-    return `<msqrt ${classAttr} ${style} ${dataAttrs}>
+    return `<msqrt ${classAttr} ${styleAttr} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
     </msqrt>`;
   }
@@ -301,7 +316,7 @@ export class DisplayRenderer {
     if (isSelected) classes.push('selected-structure');
     if (element.underline) classes.push('underlined-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    
+
     // Add style for underline
     let style = '';
     if (element.underline) {
@@ -311,7 +326,7 @@ export class DisplayRenderer {
         style = 'style="text-decoration: underline;"';
       }
     }
-    
+
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     if (element.superscript && element.subscript) {
@@ -340,11 +355,11 @@ export class DisplayRenderer {
 
   private bracketToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
-    
+
     // Apply MathML sizing based on nesting depth to match LaTeX bracket sizes
     // Depth 0 = outermost (largest), higher depth = more nested (smaller)
     const nestingDepth = element.nestingDepth || 0;
-    
+
     // Determine bracket size based on nesting depth
     // Outermost brackets (depth 0) are largest, innermost are smallest
     let bracketSize = "2em"; // Default large size for outermost
@@ -355,13 +370,16 @@ export class DisplayRenderer {
     } else if (nestingDepth >= 3) {
       bracketSize = "1em";
     }
-    
+
     const leftBracket = element.leftBracketSymbol ? 
       `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.leftBracketSymbol}</mo>` : '';
     const rightBracket = element.rightBracketSymbol ? 
       `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.rightBracketSymbol}</mo>` : '';
-    
-    const classAttr = isActive ? 'class="active-element"' : '';
+
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
 
     return `<mrow ${classAttr} ${dataAttrs}>
@@ -374,18 +392,21 @@ export class DisplayRenderer {
   private largeOperatorToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const operator = element.operator || '&#x2211;';
     const operandML = this.generateMathMLContent(`${elementPath}/operand`, element.operand);
-    const classAttr = isActive ? 'class="active-element"' : '';
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
-    
+
     // Check if this is marked as an indefinite integral
     const isIndefiniteIntegral = (element as any).isIndefiniteIntegral === true;
-    
+
     // Add displaystyle attribute for display mode OR limits mode (to force proper limit positioning)
     const displayStyle = (element.displayMode === 'display' || element.limitMode === 'limits') ? 'displaystyle="true"' : '';
-    
+
     // Get data-operator attribute for all operator types
     const operatorData = this.getOperatorDataAttribute(operator);
-    
+
     let operatorML = '';
     if (isIndefiniteIntegral) {
       // Simple indefinite integral without limits
@@ -395,7 +416,9 @@ export class DisplayRenderer {
       const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
       // Distinguish regular limits from display limits for sizing
       const limitsClass = element.displayMode === 'display' ? 'display-limits' : 'inline-limits';
-      operatorML = `<munderover class="${limitsClass}" ${operatorData} ${classAttr} ${dataAttrs}>
+      const limitsClasses = [limitsClass];
+      if (isSelected) limitsClasses.push('selected-structure');
+      operatorML = `<munderover class="${limitsClasses.join(' ')}" ${operatorData} ${dataAttrs}>
         <mo>${operator}</mo>
         <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
         <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
@@ -409,10 +432,13 @@ export class DisplayRenderer {
         <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
       </msubsup>`;
     }
-    
+
     // Wrap everything in mrow with displaystyle and include operand
     // Add data-operator to the wrapper so CSS can target cursors within any integral
-    return `<mrow ${displayStyle} ${operatorData}>
+    const wrapperClasses = [];
+    if (isSelected) wrapperClasses.push('selected-structure');
+    const wrapperClassAttr = wrapperClasses.length > 0 ? ` class="${wrapperClasses.join(' ')}"` : '';
+    return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr}>
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
     </mrow>`;
@@ -426,28 +452,31 @@ export class DisplayRenderer {
   }
 
   private derivativeToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
-    const classAttr = isActive ? 'class="active-element"' : '';
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
-    
+
     // Add displaystyle attribute for display mode derivatives
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
-    
+
     // Check current differential style preference from context manager
     const isDifferentialItalic = this.getDifferentialStylePreference();
     const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
-    
+
     // Check if this is long form derivative
     if (element.isLongForm) {
       return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, mathVariantAttr);
     }
-    
+
     // Generate content for each part (standard form)
     const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
     const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
-    
+
     let numeratorContent = '';
     let denominatorContent = '';
-    
+
     if (typeof element.order === 'number') {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
@@ -470,7 +499,7 @@ export class DisplayRenderer {
         <mi ${mathVariantAttr}>d</mi>
         <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
       </msup>${functionML}`;
-      
+
       // For denominator, create a read-only copy without editable context
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
@@ -499,13 +528,13 @@ export class DisplayRenderer {
   private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string): string {
     const classAttr = isActive ? 'class="active-element"' : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
-    
+
     // Generate content for each part
     const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
     const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
-    
+
     let fractionContent = '';
-    
+
     if (typeof element.order === 'number') {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
@@ -536,11 +565,11 @@ export class DisplayRenderer {
     } else {
       // nth order with custom expression
       const orderML = this.generateMathMLContent(`${elementPath}/order`, element.order);
-      
+
       // For denominator, create a read-only copy without editable context to prevent shared input
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
-        
+
       fractionContent = `<mfrac ${displayStyle}>
         <msup>
           <mi ${mathVariantAttr}>d</mi>
@@ -555,7 +584,7 @@ export class DisplayRenderer {
         </mrow>
       </mfrac>`;
     }
-    
+
     // Long form
     return `<mrow ${classAttr} ${dataAttrs}>
       ${fractionContent}
@@ -564,33 +593,36 @@ export class DisplayRenderer {
   }
 
   private integralToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
-    const classAttr = isActive ? 'class="active-element"' : '';
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
-    
+
     // Add displaystyle attribute for display mode integrals
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
-    
+
     // Get the integral symbol based on type
     const integralSymbol = getIntegralSymbol(element.integralType || 'single');
-    
+
     // Check differential style preference
     const isDifferentialItalic = element.integralStyle === 'italic';
     const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
-    
+
     // Generate content for integrand and differential variable
     const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
     const differentialVariableML = this.generateMathMLContent(`${elementPath}/differentialVariable`, element.differentialVariable);
-    
+
     let integralOperatorML = '';
-    
+
     if (element.hasLimits) {
       // Definite integral with limits
       const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
       const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
-      
+
       // Use limitMode to determine positioning: "limits" = above/below, "nolimits" = side
       const useAboveBelow = element.limitMode === "limits" || (element.limitMode === "default" && element.displayMode === "display");
-      
+
       if (useAboveBelow) {
         // Limits above and below
         integralOperatorML = `<munderover>
@@ -610,7 +642,7 @@ export class DisplayRenderer {
       // Indefinite integral without limits
       integralOperatorML = `<mo>${integralSymbol}</mo>`;
     }
-    
+
     // Combine all parts: integral symbol, integrand, space, d, variable
     return `<mrow ${displayStyle} ${classAttr} ${dataAttrs}>
       ${integralOperatorML}
@@ -623,26 +655,26 @@ export class DisplayRenderer {
 
   private matrixToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const { rows, cols, cells, matrixType } = element;
-    
+
     if (!rows || !cols || !cells) {
       return '<mtext>Invalid Matrix</mtext>';
     }
 
     // Generate the matrix content
     let matrixContent = '<mtable>';
-    
+
     for (let row = 0; row < rows; row++) {
       matrixContent += '<mtr>';
       for (let col = 0; col < cols; col++) {
         const cellPath = `${elementPath}/cell_${row}_${col}`;
         const cellElements = cells[`cell_${row}_${col}`] || [];
-        
+
         const cellContent = this.generateMathMLContent(cellPath, cellElements);
         matrixContent += `<mtd>${cellContent}</mtd>`;
       }
       matrixContent += '</mtr>';
     }
-    
+
     matrixContent += '</mtable>';
 
     // Wrap with brackets based on matrix type
@@ -652,12 +684,12 @@ export class DisplayRenderer {
   private wrapMatrixWithBrackets(matrixContent: string, matrixType: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
     const classes: string[] = [];
     if (isSelected) classes.push('selected-structure');
-    
+
     // Apply structure-level formatting styling
     if (element.cancel) classes.push('math-cancel');
-    
+
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    
+
     // Build inline styles for structure-level formatting
     let style = '';
     if (isSelected) {
@@ -675,7 +707,7 @@ export class DisplayRenderer {
         }
       }
     }
-    
+
     const styleAttr = style ? `style="${style}"` : '';
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
 
@@ -714,6 +746,37 @@ export class DisplayRenderer {
       default:
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>${matrixContent}</mrow>`;
     }
+  }
+
+
+  private getWrapperGroupStyles(element: EquationElement): string {
+    let style = "";
+    if (element.wrapperGroupType) {
+      if (element.wrapperGroupType === "cancel") {
+        // Use background gradient for cancel effect
+        style += "background: linear-gradient(to top right, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%); padding: 2px 4px;";
+      } else if (element.wrapperGroupType === "underline") {
+        if (element.wrapperGroupValue === "double") {
+          style += "text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;";
+        } else {
+          style += "text-decoration: underline;";
+        }
+      } else if (element.wrapperGroupType === "color" && element.wrapperGroupValue) {
+        style += `color: ${element.wrapperGroupValue};`;
+      }
+    }
+    return style;
+  }
+
+  private getWrapperGroupClasses(element: EquationElement): string[] {
+    const classes = [];
+    if (element.wrapperGroupType) {
+      classes.push(`wrapper-group-${element.wrapperGroupType}`);
+      if (element.wrapperGroupId) {
+        classes.push(`wrapper-group-id-${element.wrapperGroupId}`);
+      }
+    }
+    return classes;
   }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {

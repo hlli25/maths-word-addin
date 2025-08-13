@@ -1,7 +1,19 @@
 // Equation element types and builder functionality
 export interface EquationElement {
   id: string;
-  type: "text" | "fraction" | "bevelled-fraction" | "sqrt" | "nthroot" | "script" | "bracket" | "large-operator" | "derivative" | "integral" | "matrix";
+  type:
+    | "text"
+    | "fraction"
+    | "bevelled-fraction"
+    | "sqrt"
+    | "nthroot"
+    | "script"
+    | "bracket"
+    | "large-operator"
+    | "derivative"
+    | "integral"
+    | "matrix"
+    | "wrapper";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -50,6 +62,10 @@ export interface EquationElement {
   rows?: number;
   cols?: number;
   cells?: EquationElement[]; // 1D array: cells[`cell_${row}_${col}`]
+  // For elements that are part of a wrapper group
+  wrapperGroupId?: string;
+  wrapperGroupType?: "cancel" | "underline" | "color";
+  wrapperGroupValue?: string;
 }
 
 export class EquationBuilder {
@@ -77,7 +93,7 @@ export class EquationBuilder {
     return this.equation.length === 0;
   }
 
-  generateElementId(): string {
+  public generateElementId(): string {
     return `element-${this.elementIdCounter++}`;
   }
 
@@ -166,8 +182,8 @@ export class EquationBuilder {
   }
 
   createLargeOperatorElement(
-    operator: string, 
-    displayMode: "inline" | "display" = "inline", 
+    operator: string,
+    displayMode: "inline" | "display" = "inline",
     limitMode: "default" | "nolimits" | "limits" = "default"
   ): EquationElement {
     return {
@@ -194,7 +210,7 @@ export class EquationBuilder {
       displayMode: displayMode,
       function: [],
       variable: [],
-      isLongForm: isLongForm
+      isLongForm: isLongForm,
     };
   }
 
@@ -223,7 +239,13 @@ export class EquationBuilder {
   createMatrixElement(
     rows: number,
     cols: number,
-    matrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" = "parentheses"
+    matrixType:
+      | "parentheses"
+      | "brackets"
+      | "braces"
+      | "bars"
+      | "double-bars"
+      | "none" = "parentheses"
   ): EquationElement {
     // Create cells object with keys like "cell_0_0", "cell_0_1", etc.
     const cells: { [key: string]: EquationElement[] } = {};
@@ -305,6 +327,55 @@ export class EquationBuilder {
     return null;
   }
 
+  getElementsByWrapperGroupId(elements: EquationElement[], groupId: string): EquationElement[] {
+    const result: EquationElement[] = [];
+    
+    for (const el of elements) {
+      if (el.wrapperGroupId === groupId) {
+        result.push(el);
+      }
+      
+      if (el.type === "fraction" || el.type === "bevelled-fraction") {
+        result.push(...this.getElementsByWrapperGroupId(el.numerator || [], groupId));
+        result.push(...this.getElementsByWrapperGroupId(el.denominator || [], groupId));
+      } else if (el.type === "sqrt") {
+        result.push(...this.getElementsByWrapperGroupId(el.radicand || [], groupId));
+      } else if (el.type === "nthroot") {
+        result.push(...this.getElementsByWrapperGroupId(el.index || [], groupId));
+        result.push(...this.getElementsByWrapperGroupId(el.radicand || [], groupId));
+      } else if (el.type === "script") {
+        result.push(...this.getElementsByWrapperGroupId(el.base || [], groupId));
+        if (el.superscript) result.push(...this.getElementsByWrapperGroupId(el.superscript, groupId));
+        if (el.subscript) result.push(...this.getElementsByWrapperGroupId(el.subscript, groupId));
+      } else if (el.type === "bracket") {
+        result.push(...this.getElementsByWrapperGroupId(el.content || [], groupId));
+      } else if (el.type === "large-operator") {
+        if (el.lowerLimit) result.push(...this.getElementsByWrapperGroupId(el.lowerLimit, groupId));
+        if (el.upperLimit) result.push(...this.getElementsByWrapperGroupId(el.upperLimit, groupId));
+        if (el.operand) result.push(...this.getElementsByWrapperGroupId(el.operand, groupId));
+      } else if (el.type === "derivative") {
+        if (el.function) result.push(...this.getElementsByWrapperGroupId(el.function, groupId));
+        if (el.variable) result.push(...this.getElementsByWrapperGroupId(el.variable, groupId));
+        if (Array.isArray(el.order)) result.push(...this.getElementsByWrapperGroupId(el.order, groupId));
+      } else if (el.type === "integral") {
+        if (el.integrand) result.push(...this.getElementsByWrapperGroupId(el.integrand, groupId));
+        if (el.differentialVariable) result.push(...this.getElementsByWrapperGroupId(el.differentialVariable, groupId));
+        if (el.lowerLimit) result.push(...this.getElementsByWrapperGroupId(el.lowerLimit, groupId));
+        if (el.upperLimit) result.push(...this.getElementsByWrapperGroupId(el.upperLimit, groupId));
+      } else if (el.type === "matrix") {
+        if (el.cells) {
+          for (let row = 0; row < el.cells.length; row++) {
+            for (let col = 0; col < el.cells[row].length; col++) {
+              result.push(...this.getElementsByWrapperGroupId(el.cells[row][col], groupId));
+            }
+          }
+        }
+      }
+    }
+    
+    return result;
+  }
+
   updateParenthesesScaling(): void {
     this.updateParenthesesScalingRecursive(this.equation);
   }
@@ -380,21 +451,28 @@ export class EquationBuilder {
         this.updateBracketNestingRecursive(element.radicand!, currentDepth);
       } else if (element.type === "script") {
         this.updateBracketNestingRecursive(element.base!, currentDepth);
-        if (element.superscript) this.updateBracketNestingRecursive(element.superscript, currentDepth);
+        if (element.superscript)
+          this.updateBracketNestingRecursive(element.superscript, currentDepth);
         if (element.subscript) this.updateBracketNestingRecursive(element.subscript, currentDepth);
       } else if (element.type === "large-operator") {
-        if (element.lowerLimit) this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
-        if (element.upperLimit) this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
+        if (element.lowerLimit)
+          this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
+        if (element.upperLimit)
+          this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
         if (element.operand) this.updateBracketNestingRecursive(element.operand, currentDepth);
       } else if (element.type === "integral") {
         if (element.integrand) this.updateBracketNestingRecursive(element.integrand, currentDepth);
-        if (element.differentialVariable) this.updateBracketNestingRecursive(element.differentialVariable, currentDepth);
-        if (element.lowerLimit) this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
-        if (element.upperLimit) this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
+        if (element.differentialVariable)
+          this.updateBracketNestingRecursive(element.differentialVariable, currentDepth);
+        if (element.lowerLimit)
+          this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
+        if (element.upperLimit)
+          this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
       } else if (element.type === "derivative") {
         if (element.function) this.updateBracketNestingRecursive(element.function, currentDepth);
         if (element.variable) this.updateBracketNestingRecursive(element.variable, currentDepth);
-        if (Array.isArray(element.order)) this.updateBracketNestingRecursive(element.order, currentDepth);
+        if (Array.isArray(element.order))
+          this.updateBracketNestingRecursive(element.order, currentDepth);
       }
     });
   }

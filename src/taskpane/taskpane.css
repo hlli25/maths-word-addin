@@ -1651,4 +1651,26 @@ body.inline-style-active .integral-btn math {
   background: #e5e7eb;
 }
 
+/* Wrapper group styling */
+.wrapper-group-cancel {
+  position: relative;
+  background: linear-gradient(
+    to top right,
+    transparent 47%,
+    currentColor 47%,
+    currentColor 53%,
+    transparent 53%
+  );
+  padding: 2px 4px;
+}
+
+.wrapper-group-underline {
+  text-decoration: underline;
+}
+
+.wrapper-group-underline-double {
+  text-decoration: underline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
 

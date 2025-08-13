@@ -1,4 +1,5 @@
 import { EquationElement, EquationBuilder } from './equation-builder';
+import { LatexConverter } from './latex-converter';
 import { hasMixedBrackets } from './symbol-config';
 
 export interface ContextInfo {
@@ -17,6 +18,7 @@ export class ContextManager {
   private activeContextPath: string | null = null;
   private cursorPosition = 0;
   private equationBuilder: EquationBuilder;
+  private latexConverter: LatexConverter;
   private selection: SelectionState = {
     startPosition: 0,
     endPosition: 0,
@@ -24,8 +26,9 @@ export class ContextManager {
     isActive: false
   };
 
-  constructor(equationBuilder: EquationBuilder) {
+  constructor(equationBuilder: EquationBuilder, latexConverter: LatexConverter) {
     this.equationBuilder = equationBuilder;
+    this.latexConverter = latexConverter;
   }
 
   getActiveContextPath(): string | null {
@@ -144,7 +147,7 @@ export class ContextManager {
 
   navigateUpDown(key: "ArrowUp" | "ArrowDown" | "Tab"): void {
     const direction = key === "ArrowUp" ? "ArrowUp" : "ArrowDown";
-    
+
     if (!this.activeContextPath || this.activeContextPath === "root") return;
 
     const parts = this.activeContextPath.split("/");
@@ -275,7 +278,7 @@ export class ContextManager {
       if (cellMatch && parentElement.rows && parentElement.cols) {
         const currentRow = parseInt(cellMatch[1]);
         const currentCol = parseInt(cellMatch[2]);
-        
+
         if (direction === "ArrowDown") {
           // Move to next row, same column
           if (currentRow < parentElement.rows - 1) {
@@ -392,7 +395,7 @@ export class ContextManager {
       if (this.activeContextPath.includes('function') && context.parent?.type === 'derivative') {
         const currentContent = this.getContextText(context.array);
         const newContent = currentContent.slice(0, this.cursorPosition) + text + currentContent.slice(this.cursorPosition);
-        
+
         // Check for mixed brackets
         if (hasMixedBrackets(newContent)) {
           this.showMixedBracketsError();
@@ -414,8 +417,8 @@ export class ContextManager {
   }
 
   showMixedBracketsError(): void {
-    const errorDiv = document.createElement('div');
-    errorDiv.textContent = 'Mixed brackets are not supported for derivatives.';
+    const errorDiv = document.createElement("div");
+    errorDiv.textContent = "Mixed brackets are not supported for derivatives.";
     errorDiv.style.cssText = `
       position: fixed;
       top: 20px;
@@ -430,9 +433,9 @@ export class ContextManager {
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       font-family: Arial, sans-serif;
     `;
-    
+
     document.body.appendChild(errorDiv);
-    
+
     setTimeout(() => {
       if (errorDiv.parentNode) {
         errorDiv.parentNode.removeChild(errorDiv);
@@ -554,7 +557,7 @@ export class ContextManager {
     } else {
       // Extend existing selection
       let newPosition = this.cursorPosition;
-      
+
       if (direction > 0 && this.cursorPosition < context.array.length) {
         const element = context.array[this.cursorPosition];
         newPosition = element && element.type !== 'text' ? 
@@ -594,7 +597,7 @@ export class ContextManager {
       const newStart = this.cursorPosition;
       const newEnd = this.cursorPosition + direction;
       this.setSelection(newStart, newEnd);
-      
+
       // Update cursor to the moving end of selection
       this.cursorPosition = newEnd;
     } else {
@@ -617,14 +620,14 @@ export class ContextManager {
           this.cursorPosition = this.selection.startPosition;
         }
       }
-      
+
       // Ensure start <= end and normalize selection
       if (this.selection.startPosition > this.selection.endPosition) {
         const temp = this.selection.startPosition;
         this.selection.startPosition = this.selection.endPosition;
         this.selection.endPosition = temp;
       }
-      
+
       // If selection becomes empty, clear it
       if (this.selection.startPosition === this.selection.endPosition) {
         this.clearSelection();
@@ -634,18 +637,18 @@ export class ContextManager {
 
   deleteSelection(): boolean {
     if (!this.hasSelection() || !this.activeContextPath) return false;
-    
+
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
     // Delete elements in selection range
     const deleteCount = this.selection.endPosition - this.selection.startPosition;
     context.array.splice(this.selection.startPosition, deleteCount);
-    
+
     // Move cursor to start of deleted selection
     this.cursorPosition = this.selection.startPosition;
     this.clearSelection();
-    
+
     return true;
   }
 
@@ -653,7 +656,7 @@ export class ContextManager {
     if (!this.hasSelection() || !this.activeContextPath) {
       return null;
     }
-    
+
     const context = this.getContext(this.activeContextPath);
     if (!context) {
       return null;
@@ -667,76 +670,165 @@ export class ContextManager {
       cancel: { true: 0, false: 0 },
       color: {} as Record<string, number>
     };
-    
+
     let totalTextElements = 0;
-    
+
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        
+
         if (element.type === 'text') {
           totalTextElements++;
-          
+
           // Count bold
           const bold = element.bold || false;
           formattingCounts.bold[bold as any]++;
-          
+
           // Count italic
           const italic = element.italic || false;
           formattingCounts.italic[italic as any]++;
-          
+
           // Count underline
           const underline = element.underline || 'none';
           formattingCounts.underline[underline] = (formattingCounts.underline[underline] || 0) + 1;
-          
+
           // Count cancel
           const cancel = element.cancel || false;
           formattingCounts.cancel[cancel as any]++;
-          
+
           // Count color
           const color = element.color || 'default';
           formattingCounts.color[color] = (formattingCounts.color[color] || 0) + 1;
         }
       }
     }
-    
+
     if (totalTextElements === 0) return null;
-    
+
     // Determine consistent formatting
     const result: any = {};
-    
+
     // Bold: consistent if all elements have same value
     if (formattingCounts.bold.true === totalTextElements) result.bold = true;
     else if (formattingCounts.bold.false === totalTextElements) result.bold = false;
-    
+
     // Italic: consistent if all elements have same value
     if (formattingCounts.italic.true === totalTextElements) result.italic = true;
     else if (formattingCounts.italic.false === totalTextElements) result.italic = false;
-    
+
     // Underline: consistent if all elements have same value
     const underlineTypes = Object.keys(formattingCounts.underline);
     if (underlineTypes.length === 1 && formattingCounts.underline[underlineTypes[0]] === totalTextElements) {
       result.underline = underlineTypes[0];
     }
-    
+
     // Cancel: consistent if all elements have same value
     if (formattingCounts.cancel.true === totalTextElements) result.cancel = true;
     else if (formattingCounts.cancel.false === totalTextElements) result.cancel = false;
-    
+
     // Color: consistent if all elements have same value
     const colorTypes = Object.keys(formattingCounts.color);
     if (colorTypes.length === 1 && formattingCounts.color[colorTypes[0]] === totalTextElements) {
-      result.color = colorTypes[0] === 'default' ? undefined : colorTypes[0];
+      result.color = colorTypes[0] === "default" ? undefined : colorTypes[0];
     }
-    
+
     return result;
   }
 
-  applyFormattingToSelection(formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'underline' | 'cancel' | 'color'>>): boolean {
+  removeWrapperFormattingFromSelection(wrapperType: "cancel" | "underline" | "color"): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
     }
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context) {
+      return false;
+    }
+
+    // Remove wrapper group metadata from selected elements
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        // Only remove if it matches the wrapper type we're removing
+        if (element.wrapperGroupType === wrapperType) {
+          delete element.wrapperGroupId;
+          delete element.wrapperGroupType;
+          delete element.wrapperGroupValue;
+        }
+      }
+    }
+
+    // Clear selection after removing wrapper formatting
+    this.clearSelection();
+
+    return true;
+  }
+
+  applyWrapperFormattingToSelection(formatting: {
+    cancel?: boolean;
+    underline?: "single" | "double";
+    color?: string;
+  }): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) {
+      return false;
+    }
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context) {
+      return false;
+    }
+
+    // Generate a unique group ID for this wrapper
+    const wrapperGroupId = this.equationBuilder.generateElementId();
     
+    // Determine wrapper type and value
+    let wrapperGroupType: "cancel" | "underline" | "color" | undefined;
+    let wrapperGroupValue: string | undefined;
+    
+    if (formatting.cancel) {
+      wrapperGroupType = "cancel";
+    } else if (formatting.underline) {
+      wrapperGroupType = "underline";
+      wrapperGroupValue = formatting.underline;
+    } else if (formatting.color) {
+      wrapperGroupType = "color";
+      wrapperGroupValue = formatting.color;
+    } else {
+      return false;
+    }
+
+    // Apply wrapper group metadata to selected elements
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        
+        // If element already has a wrapper of the same type, remove it first
+        if (element.wrapperGroupType === wrapperGroupType) {
+          delete element.wrapperGroupId;
+          delete element.wrapperGroupType;
+          delete element.wrapperGroupValue;
+        }
+        
+        // Add new wrapper group metadata to each element
+        element.wrapperGroupId = wrapperGroupId;
+        element.wrapperGroupType = wrapperGroupType;
+        element.wrapperGroupValue = wrapperGroupValue;
+      }
+    }
+
+    // Clear selection after applying wrapper formatting
+    this.clearSelection();
+
+    return true;
+  }
+
+  applyFormattingToSelection(
+    formatting: Partial<Pick<EquationElement, "bold" | "italic" | "underline" | "cancel" | "color">>
+  ): boolean {
+    if (!this.hasSelection() || !this.activeContextPath) {
+      return false;
+    }
+
     const context = this.getContext(this.activeContextPath);
     if (!context) {
       return false;
@@ -747,11 +839,11 @@ export class ContextManager {
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        
+
         if (element.type === 'text') {
           // For text elements, apply all formatting normally
           const isOperator = /[+\-×÷=<>≤≥≠]/.test(element.value || "");
-          
+
           if (isOperator && (formatting.bold !== undefined)) {
             // Skip bold for operators, but allow other formatting
             const filteredFormatting = { ...formatting };
@@ -774,12 +866,12 @@ export class ContextManager {
               this.applyFormattingToStructureContents(element, entryFormatting);
               elementsModified++;
             }
-            
+
             // Other formatting (underline, color, cancel) can apply to the matrix structure
             const structureFormatting = { ...formatting };
             delete structureFormatting.bold;
             delete structureFormatting.italic;
-            
+
             if (Object.keys(structureFormatting).length > 0) {
               this.applyFormattingToElement(element, structureFormatting);
               elementsModified++;
@@ -791,11 +883,11 @@ export class ContextManager {
               this.applyStructureUnderline(element, formatting.underline);
               elementsModified++;
             }
-            
+
             // For other formatting (bold, italic, color), apply recursively to all text within
             const recursiveFormatting = { ...formatting };
             delete recursiveFormatting.underline;
-            
+
             if (Object.keys(recursiveFormatting).length > 0) {
               this.applyFormattingToStructureContents(element, recursiveFormatting);
               elementsModified++;
@@ -804,11 +896,11 @@ export class ContextManager {
         }
       }
     }
-    
+
     if (elementsModified > 0) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -819,12 +911,11 @@ export class ContextManager {
         (element as any)[key] = formatting[key];
       }
     });
-
   }
 
   isSelectionBold(): boolean {
     if (!this.hasSelection() || !this.activeContextPath) return false;
-    
+
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
@@ -842,14 +933,14 @@ export class ContextManager {
         }
       }
     }
-    
+
     // Return true only if we found text elements and all are bold
     return hasTextElements;
   }
 
   isSelectionItalic(): boolean {
     if (!this.hasSelection() || !this.activeContextPath) return false;
-    
+
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
@@ -876,32 +967,62 @@ export class ContextManager {
         }
       }
     }
-    
+
     return hasTextElements;
   }
 
   isSelectionCancel(): boolean {
     if (!this.hasSelection() || !this.activeContextPath) return false;
-    
+
     const context = this.getContext(this.activeContextPath);
     if (!context) return false;
 
-    // Check if all selected text elements are cancel
-    let hasTextElements = false;
+    // Check if all selected elements have cancel wrapper
+    let hasElements = false;
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        if (element.type === 'text') {
-          hasTextElements = true;
-          // If any text element is not cancel, selection is not fully cancel
-          if (!element.cancel) {
-            return false;
-          }
+        hasElements = true;
+        // Check for wrapper group type
+        if (element.wrapperGroupType !== "cancel") {
+          return false;
         }
       }
     }
+
+    return hasElements;
+  }
+
+  isSelectionUnderlined(): "single" | "double" | false {
+    if (!this.hasSelection() || !this.activeContextPath) return false;
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return false;
+
+    // Check if all selected elements have underline wrapper
+    let hasElements = false;
+    let underlineStyle: "single" | "double" | undefined;
     
-    return hasTextElements;
+    for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
+      if (i < context.array.length) {
+        const element = context.array[i];
+        hasElements = true;
+        
+        // Check for wrapper group type
+        if (element.wrapperGroupType !== "underline") {
+          return false;
+        }
+        
+        // Check consistency of underline style
+        if (!underlineStyle) {
+          underlineStyle = element.wrapperGroupValue as "single" | "double";
+        } else if (underlineStyle !== element.wrapperGroupValue) {
+          return false; // Mixed styles
+        }
+      }
+    }
+
+    return hasElements && underlineStyle ? underlineStyle : false;
   }
 
   getElementContextPath(elementId: string, containerName: string): string {
@@ -919,7 +1040,7 @@ export class ContextManager {
   }
 
   private applyFormattingToStructureContents(
-    element: EquationElement, 
+    element: EquationElement,
     formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'cancel' | 'color'>>
   ): void {
     // Recursively apply formatting to all text elements within the structure
@@ -961,7 +1082,7 @@ export class ContextManager {
     }
     applyToArray(element.integrand);
     applyToArray(element.differentialVariable);
-    
+
     // Apply to matrix cells
     if (element.cells && typeof element.cells === 'object') {
       Object.keys(element.cells).forEach(cellKey => {
