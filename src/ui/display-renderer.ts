@@ -46,13 +46,20 @@ export class DisplayRenderer {
 
     const mathmlContent = this.generateMathML(elements, "root");
     const visualHTML = `
-      <div class="visual-equation-container" style="font-size: ${this.globalFontSize * 1.5}px;">
+      <div class="visual-equation-container" style="font-size: ${this.globalFontSize * 1.5}px; position: relative;">
         ${mathmlContent}
+        <div class="wrapper-overlays" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></div>
       </div>
     `;
 
     displayElement.innerHTML = visualHTML;
+
+    // Create wrapper overlays after DOM is updated
+    requestAnimationFrame(() => {
+      this.createWrapperOverlays(displayElement, elements);
+    });
   }
+
 
   private generateMathML(elements: EquationElement[], contextPath: string): string {
     const activeContextPath = this.contextManager.getActiveContextPath();
@@ -140,14 +147,6 @@ export class DisplayRenderer {
     if (element.color) style += `color: ${element.color};`;
     if (element.bold) style += 'font-weight: bold;';
 
-    // Add underline styling
-    if (element.underline) {
-      if (element.underline === 'double') {
-        style += 'text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;';
-      } else {
-        style += 'text-decoration: underline;';
-      }
-    }
     
 
     // Add selection highlighting
@@ -192,7 +191,6 @@ export class DisplayRenderer {
     const classNames = [];
     if (isActive) classNames.push('active-element');
     if (isSelected) classNames.push('selected');
-    if (element.cancel) classNames.push('math-cancel');
     
 
     // Add active-context class if this is the active context
@@ -202,7 +200,7 @@ export class DisplayRenderer {
     }
 
     const classAttr = classNames.length > 0 ? `class="${classNames.join(' ')}"` : '';
-    const dataAttrs = `data-context-path="${contextPath}" data-position="${position}"`;
+    const dataAttrs = `data-context-path="${contextPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Update styleAttr if we modified style for non-mi elements
     const finalStyleAttr = style ? `style="${style}"` : '';
@@ -219,18 +217,9 @@ export class DisplayRenderer {
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
     if (element.displayMode === 'display') classes.push('display-fraction');
-    if (element.underline) classes.push('underlined-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
 
-    // Add style for underline
-    let style = '';
-    if (element.underline) {
-      if (element.underline === 'double') {
-        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
-      } else {
-        style = 'style="text-decoration: underline;"';
-      }
-    }
+    const style = '';
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
@@ -261,23 +250,10 @@ export class DisplayRenderer {
     const classes = [];
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
-    if (element.underline) classes.push('underlined-structure');
-    
     
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    // Add style for underline and wrapper groups
-    let style = '';
-    if (element.underline) {
-      if (element.underline === 'double') {
-        style += 'text-decoration: underline; border-bottom: 1px solid currentColor;';
-      } else {
-        style += 'text-decoration: underline;';
-      }
-    }
-    
-    
-    const styleAttr = style ? `style="${style}"` : "";
+    const styleAttr = "";
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
@@ -306,18 +282,9 @@ export class DisplayRenderer {
     const classes = [];
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
-    if (element.underline) classes.push('underlined-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
 
-    // Add style for underline
-    let style = '';
-    if (element.underline) {
-      if (element.underline === 'double') {
-        style = 'style="text-decoration: underline; border-bottom: 1px solid currentColor;"';
-      } else {
-        style = 'style="text-decoration: underline;"';
-      }
-    }
+    const style = '';
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
@@ -388,7 +355,7 @@ export class DisplayRenderer {
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Check if this is marked as an indefinite integral
     const isIndefiniteIntegral = (element as any).isIndefiniteIntegral === true;
@@ -430,7 +397,7 @@ export class DisplayRenderer {
     const wrapperClasses = [];
     if (isSelected) wrapperClasses.push('selected-structure');
     const wrapperClassAttr = wrapperClasses.length > 0 ? ` class="${wrapperClasses.join(' ')}"` : '';
-    return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr}>
+    return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr} data-element-id="${element.id}">
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
     </mrow>`;
@@ -448,7 +415,7 @@ export class DisplayRenderer {
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode derivatives
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
@@ -518,8 +485,11 @@ export class DisplayRenderer {
   }
 
   private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string): string {
-    const classAttr = isActive ? 'class="active-element"' : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const classes = [];
+    if (isActive) classes.push('active-element');
+    if (isSelected) classes.push('selected-structure');
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Generate content for each part
     const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
@@ -589,7 +559,7 @@ export class DisplayRenderer {
     if (isActive) classes.push('active-element');
     if (isSelected) classes.push('selected-structure');
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode integrals
     const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
@@ -677,31 +647,16 @@ export class DisplayRenderer {
     const classes: string[] = [];
     if (isSelected) classes.push('selected-structure');
 
-    // Apply structure-level formatting styling
-    if (element.cancel) classes.push('math-cancel');
-
     const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
 
     // Build inline styles for structure-level formatting
     let style = '';
     if (isSelected) {
       style += 'background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;';
-    } else {
-      // Apply matrix structure formatting when not selected
-      if (element.color) {
-        style += `color: ${element.color};`;
-      }
-      if (element.underline) {
-        if (element.underline === 'double') {
-          style += 'text-decoration: underline; border-bottom: 1px solid currentColor; padding-bottom: 1px;';
-        } else {
-          style += 'text-decoration: underline;';
-        }
-      }
     }
 
     const styleAttr = style ? `style="${style}"` : '';
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     switch (matrixType) {
       case 'parentheses':
@@ -740,7 +695,204 @@ export class DisplayRenderer {
     }
   }
 
+  private createWrapperOverlays(displayElement: HTMLElement, elements: EquationElement[]): void {
+    const overlayContainer = displayElement.querySelector('.wrapper-overlays') as HTMLElement;
+    if (!overlayContainer) return;
 
+    // Clear existing overlays
+    overlayContainer.innerHTML = '';
+
+    // Collect all underlined elements and group them by wrapper ID
+    const underlineGroups = new Map<string, { elements: HTMLElement[], type: "single" | "double" }>();
+    // Collect all canceled elements and group them by wrapper ID
+    const cancelGroups = new Map<string, HTMLElement[]>();
+
+    this.findElementsWithWrappers(elements, (element, domElement) => {
+      if (element.wrappers) {
+        // Handle underline wrappers
+        if (element.wrappers.underline) {
+          const wrapperId = element.wrappers.underline.id;
+          if (!underlineGroups.has(wrapperId)) {
+            underlineGroups.set(wrapperId, {
+              elements: [],
+              type: element.wrappers.underline.type
+            });
+          }
+          underlineGroups.get(wrapperId)!.elements.push(domElement);
+        }
+        
+        // Handle cancel wrappers
+        if (element.wrappers.cancel) {
+          const wrapperId = element.wrappers.cancel.id;
+          if (!cancelGroups.has(wrapperId)) {
+            cancelGroups.set(wrapperId, []);
+          }
+          cancelGroups.get(wrapperId)!.push(domElement);
+        }
+      }
+    });
+
+    // Create underlines for each group
+    underlineGroups.forEach((group, wrapperId) => {
+      this.createGroupedUnderlineOverlay(overlayContainer, group.elements, group.type);
+    });
+    
+    // Create cancel overlays for each group
+    cancelGroups.forEach((elements, wrapperId) => {
+      this.createGroupedCancelOverlay(overlayContainer, elements);
+    });
+  }
+
+  private findElementsWithWrappers(elements: EquationElement[], callback: (element: EquationElement, domElement: HTMLElement) => void): void {
+    elements.forEach(element => {
+      if (element.wrappers && Object.keys(element.wrappers).length > 0) {
+        // Find the DOM element for this equation element
+        const domElement = document.querySelector(`[data-element-id="${element.id}"]`) as HTMLElement;
+        if (domElement) {
+          callback(element, domElement);
+        }
+      }
+
+      // Recursively check nested elements
+      if (element.numerator) this.findElementsWithWrappers(element.numerator, callback);
+      if (element.denominator) this.findElementsWithWrappers(element.denominator, callback);
+      if (element.base) this.findElementsWithWrappers(element.base, callback);
+      if (element.superscript) this.findElementsWithWrappers(element.superscript, callback);
+      if (element.subscript) this.findElementsWithWrappers(element.subscript, callback);
+      if (element.radicand) this.findElementsWithWrappers(element.radicand, callback);
+      if (element.index) this.findElementsWithWrappers(element.index, callback);
+      if (element.content) this.findElementsWithWrappers(element.content, callback);
+      if (element.function) this.findElementsWithWrappers(element.function, callback);
+      if (element.variable) this.findElementsWithWrappers(element.variable, callback);
+      if (element.integrand) this.findElementsWithWrappers(element.integrand, callback);
+      if (element.differentialVariable) this.findElementsWithWrappers(element.differentialVariable, callback);
+      if (element.operand) this.findElementsWithWrappers(element.operand, callback);
+      if (element.upperLimit) this.findElementsWithWrappers(element.upperLimit, callback);
+      if (element.lowerLimit) this.findElementsWithWrappers(element.lowerLimit, callback);
+      
+      // Handle matrix cells
+      if (element.cells) {
+        Object.values(element.cells).forEach(cellElements => {
+          this.findElementsWithWrappers(cellElements, callback);
+        });
+      }
+    });
+  }
+
+  private createGroupedUnderlineOverlay(overlayContainer: HTMLElement, elements: HTMLElement[], type: "single" | "double"): void {
+    if (elements.length === 0) return;
+
+    const containerRect = overlayContainer.getBoundingClientRect();
+    
+    // Find the leftmost position, rightmost position, and lowest bottom
+    let leftmost = Infinity;
+    let rightmost = -Infinity;
+    let lowestBottom = -Infinity;
+
+    elements.forEach(element => {
+      const rect = element.getBoundingClientRect();
+      leftmost = Math.min(leftmost, rect.left);
+      rightmost = Math.max(rightmost, rect.right);
+      lowestBottom = Math.max(lowestBottom, rect.bottom);
+    });
+
+    // Calculate position relative to overlay container
+    const left = leftmost - containerRect.left;
+    const width = rightmost - leftmost;
+    const top = lowestBottom - containerRect.top + 1; // Position slightly below the lowest element
+
+    if (type === 'double') {
+      // Create double underline
+      const underline1 = document.createElement('div');
+      underline1.style.cssText = `
+        position: absolute;
+        left: ${left}px;
+        top: ${top}px;
+        width: ${width}px;
+        height: 1px;
+        background-color: currentColor;
+        pointer-events: none;
+      `;
+      
+      const underline2 = document.createElement('div');
+      underline2.style.cssText = `
+        position: absolute;
+        left: ${left}px;
+        top: ${top + 3}px;
+        width: ${width}px;
+        height: 1px;
+        background-color: currentColor;
+        pointer-events: none;
+      `;
+      
+      overlayContainer.appendChild(underline1);
+      overlayContainer.appendChild(underline2);
+    } else {
+      // Create single underline
+      const underline = document.createElement('div');
+      underline.style.cssText = `
+        position: absolute;
+        left: ${left}px;
+        top: ${top}px;
+        width: ${width}px;
+        height: 1px;
+        background-color: currentColor;
+        pointer-events: none;
+      `;
+      
+      overlayContainer.appendChild(underline);
+    }
+  }
+
+  private createGroupedCancelOverlay(overlayContainer: HTMLElement, elements: HTMLElement[]): void {
+    if (elements.length === 0) return;
+
+    const containerRect = overlayContainer.getBoundingClientRect();
+    
+    // Find the bounding box of all elements
+    let leftmost = Infinity;
+    let rightmost = -Infinity;
+    let topmost = Infinity;
+    let bottommost = -Infinity;
+
+    elements.forEach(element => {
+      const rect = element.getBoundingClientRect();
+      leftmost = Math.min(leftmost, rect.left);
+      rightmost = Math.max(rightmost, rect.right);
+      topmost = Math.min(topmost, rect.top);
+      bottommost = Math.max(bottommost, rect.bottom);
+    });
+
+    // Calculate position and size relative to overlay container
+    const left = leftmost - containerRect.left;
+    const top = topmost - containerRect.top;
+    const width = rightmost - leftmost;
+    const height = bottommost - topmost;
+
+    // Create SVG for the diagonal line
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = `
+      position: absolute;
+      left: ${left}px;
+      top: ${top}px;
+      width: ${width}px;
+      height: ${height}px;
+      pointer-events: none;
+      overflow: visible;
+    `;
+    
+    // Create the diagonal line from top-left to bottom-right
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', String(width));
+    line.setAttribute('x2', '0');
+    line.setAttribute('y1', '0');
+    line.setAttribute('y2', String(height));
+    line.setAttribute('stroke', 'black');
+    line.setAttribute('stroke-width', '1.5');
+    
+    svg.appendChild(line);
+    overlayContainer.appendChild(svg);
+  }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {
     if (!elements || elements.length === 0) {

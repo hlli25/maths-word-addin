@@ -61,7 +61,7 @@ export interface EquationElement {
   matrixType?: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none";
   rows?: number;
   cols?: number;
-  cells?: EquationElement[]; // 1D array: cells[`cell_${row}_${col}`]
+  cells?: Record<string, EquationElement[]>; // Object with keys like cell_0_0, cell_1_0, etc.
   // For elements that are part of wrapper groups (multi-wrapper support)
   wrappers?: {
     underline?: { id: string; type: "single" | "double" };

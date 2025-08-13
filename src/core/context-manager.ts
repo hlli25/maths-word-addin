@@ -812,6 +812,14 @@ export class ContextManager {
       return false;
     }
 
+    // Generate shared wrapper IDs for this selection - all selected elements
+    // should share the same wrapper ID for continuous formatting
+    const sharedWrapperIds = {
+      cancel: this.equationBuilder.generateElementId(),
+      underline: this.equationBuilder.generateElementId(),
+      color: this.equationBuilder.generateElementId()
+    };
+
     // Apply wrapper formatting to selected elements using new multi-wrapper system
     let elementsProcessed = 0;
     
@@ -828,13 +836,14 @@ export class ContextManager {
         // Apply each wrapper type independently with order tracking
         if (formatting.cancel !== undefined) {
           if (formatting.cancel) {
-            // If cancel doesn't exist, add it and track order
-            if (!element.wrappers.cancel) {
-              element.wrappers.cancel = { id: this.equationBuilder.generateElementId() };
+            // Always use new ID to override any existing formatting
+            element.wrappers.cancel = { id: sharedWrapperIds.cancel };
+            // If cancel doesn't exist, add it to order tracking
+            if (!element.wrapperOrder || !element.wrapperOrder.includes('cancel')) {
               element.wrapperOrder = element.wrapperOrder || [];
               element.wrapperOrder.push('cancel');
             }
-            // If cancel already exists, just update it (keep existing order)
+            // Keep existing order position if already present
           } else {
             delete element.wrappers.cancel;
             // Remove from order array
@@ -849,14 +858,18 @@ export class ContextManager {
             // If underline doesn't exist, add it and track order
             if (!element.wrappers.underline) {
               element.wrappers.underline = { 
-                id: this.equationBuilder.generateElementId(), 
+                id: sharedWrapperIds.underline, 
                 type: formatting.underline 
               };
               element.wrapperOrder = element.wrapperOrder || [];
               element.wrapperOrder.push('underline');
             } else {
-              // If underline already exists, just update the type (keep existing order)
-              element.wrappers.underline.type = formatting.underline;
+              // If underline already exists, update with new ID and type to override
+              element.wrappers.underline = {
+                id: sharedWrapperIds.underline,
+                type: formatting.underline
+              };
+              // Keep existing order position
             }
           } else {
             delete element.wrappers.underline;
@@ -869,18 +882,17 @@ export class ContextManager {
         
         if (formatting.color !== undefined) {
           if (formatting.color) {
-            // If color doesn't exist, add it and track order
-            if (!element.wrappers.color) {
-              element.wrappers.color = { 
-                id: this.equationBuilder.generateElementId(), 
-                value: formatting.color 
-              };
+            // Always use new ID to override any existing formatting
+            element.wrappers.color = { 
+              id: sharedWrapperIds.color, 
+              value: formatting.color 
+            };
+            // If color doesn't exist, add it to order tracking
+            if (!element.wrapperOrder || !element.wrapperOrder.includes('color')) {
               element.wrapperOrder = element.wrapperOrder || [];
               element.wrapperOrder.push('color');
-            } else {
-              // If color already exists, just update the value (keep existing order)
-              element.wrappers.color.value = formatting.color;
             }
+            // Keep existing order position if already present
           } else {
             delete element.wrappers.color;
             // Remove from order array
