@@ -1199,6 +1199,40 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
   font-style: italic;
 }
 
+/* Accent and Arrow Button Styling */
+.accent-btn {
+  min-width: 50px;
+  height: 50px;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.accent-btn math {
+  pointer-events: none;
+  font-size: 14px;
+}
+
+.arrow-btn {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Tab-specific button row spacing */
+#accents .button-row,
+#arrows .button-row {
+  margin-bottom: 8px;
+}
+
+#accents .button-row {
+  gap: 6px;
+}
+
+#arrows .button-row {
+  gap: 4px;
+}
+
 /* Horizontal Separator Layout */
 .horizontal-separator {
   margin: 15px 0;
@@ -1353,7 +1387,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
 }
 
 /* Adjust button row spacing for larger buttons */
-#larger-operators .button-row {
+#large-operators .button-row {
   gap: 8px;
   justify-content: flex-start;
   margin-bottom: 8px;

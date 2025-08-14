@@ -123,8 +123,6 @@ export class LatexConverter {
     return this.parseLatexToEquation(latex);
   }
 
-
-
   private haveSameWrappers(element1: EquationElement, element2: EquationElement): boolean {
     if (element1.wrappers || element2.wrappers) {
       // Both must have wrappers object or both must not have it
@@ -134,18 +132,18 @@ export class LatexConverter {
       if (!element1.wrappers || !element2.wrappers) {
         return false;
       }
-      
+
       // Compare each wrapper type
-      const checkWrapper = (type: 'underline' | 'cancel' | 'color' | 'textMode') => {
+      const checkWrapper = (type: "underline" | "cancel" | "color" | "textMode") => {
         const w1 = element1.wrappers![type];
         const w2 = element2.wrappers![type];
-        
+
         if (!w1 && !w2) return true;
         if (!w1 || !w2) return false;
-        
-        if (type === 'underline') {
+
+        if (type === "underline") {
           return (w1 as any).type === (w2 as any).type;
-        } else if (type === 'color') {
+        } else if (type === "color") {
           return (w1 as any).value === (w2 as any).value;
         } else {
           return true; // cancel and textMode
@@ -154,14 +152,14 @@ export class LatexConverter {
       
       return checkWrapper('underline') && checkWrapper('cancel') && checkWrapper('color') && checkWrapper('textMode');
     }
-    
+
     return true;
   }
 
   private findMaxNestingDepth(elements: EquationElement[]): number {
     const findMaxDepthRecursive = (elements: EquationElement[]): number => {
       let localMax = 0;
-      
+
       elements.forEach((element) => {
         if (element.type === "bracket") {
           localMax = Math.max(localMax, element.nestingDepth || 0);
@@ -209,52 +207,55 @@ export class LatexConverter {
     // Process elements, handling multi-wrapper system
     for (let i = 0; i < processedElements.length; i++) {
       const element = processedElements[i];
-      
+
       // Check if this element has multi-wrapper formatting
       if (element.wrappers && Object.keys(element.wrappers).length > 0) {
         // Find all consecutive elements with the same wrapper combination
         const groupElements: EquationElement[] = [];
         let j = i;
-        
-        while (j < processedElements.length && this.haveSameWrappers(element, processedElements[j])) {
+
+        while (
+          j < processedElements.length &&
+          this.haveSameWrappers(element, processedElements[j])
+        ) {
           groupElements.push(processedElements[j]);
           j++;
         }
-        
+
         // Generate LaTeX for the grouped elements (without wrapper metadata)
-        const cleanGroupElements = groupElements.map(el => {
+        const cleanGroupElements = groupElements.map((el) => {
           const cleanEl = { ...el };
           delete cleanEl.wrappers;
           return cleanEl;
         });
-        
+
         const groupContent = this.toLatexRecursive(cleanGroupElements, maxDepth);
-        
+
         // Apply wrapper formatting in user-defined order (innermost to outermost)
         let wrappedContent = groupContent;
-        
+
         // Use user's application order if available, otherwise fall back to default order
-        const wrapperOrder = element.wrapperOrder || ['underline', 'cancel', 'color', 'textMode'];
-        
+        const wrapperOrder = element.wrapperOrder || ["underline", "cancel", "color", "textMode"];
+
         // Apply wrappers in the order they were applied by the user
         for (const wrapperType of wrapperOrder) {
-          if (wrapperType === 'underline' && element.wrappers.underline) {
+          if (wrapperType === "underline" && element.wrappers.underline) {
             if (element.wrappers.underline.type === "double") {
               wrappedContent = `\\underline{\\underline{${wrappedContent}}}`;
             } else {
               wrappedContent = `\\underline{${wrappedContent}}`;
             }
-          } else if (wrapperType === 'cancel' && element.wrappers.cancel) {
+          } else if (wrapperType === "cancel" && element.wrappers.cancel) {
             wrappedContent = `\\cancel{${wrappedContent}}`;
-          } else if (wrapperType === 'color' && element.wrappers.color) {
+          } else if (wrapperType === "color" && element.wrappers.color) {
             wrappedContent = `\\textcolor{${element.wrappers.color.value}}{${wrappedContent}}`;
-          } else if (wrapperType === 'textMode' && element.wrappers.textMode) {
+          } else if (wrapperType === "textMode" && element.wrappers.textMode) {
             wrappedContent = `\\text{${wrappedContent}}`;
           }
         }
-        
+
         latex += wrappedContent;
-        
+
         // Skip the processed elements
         i = j - 1;
         continue;
@@ -262,8 +263,9 @@ export class LatexConverter {
 
       if (element.type === "text") {
         // Check if element is in text mode
-        const isTextMode = element.textMode === true || (element.wrappers && element.wrappers.textMode);
-        
+        const isTextMode =
+          element.textMode === true || (element.wrappers && element.wrappers.textMode);
+
         // Look ahead to group consecutive text elements with same formatting
         let groupedText = "";
         let j = i;
@@ -279,7 +281,8 @@ export class LatexConverter {
 
         while (j < processedElements.length &&
           processedElements[j].type === "text" &&
-          this.hasEqualFormatting(processedElements[j], currentFormatting)) {
+          this.hasEqualFormatting(processedElements[j], currentFormatting)
+        ) {
           let value = processedElements[j].value || "";
 
           // In text mode, preserve spaces and don't convert to LaTeX symbols
@@ -310,12 +313,12 @@ export class LatexConverter {
         // Apply formatting to the grouped text (formatting should already be cleaned if uniform formatting detected)
         let formattedText = groupedText;
         formattedText = this.applyFormattingToLatex(formattedText, currentFormatting);
-        
+
         // If in text mode, wrap the entire group in \text{}
         if (isTextMode) {
           formattedText = `\\text{${formattedText}}`;
         }
-        
+
         latex += formattedText;
         i = j - 1; // Skip the elements which have been already processed
       } else if (element.type === "fraction") {
@@ -377,7 +380,7 @@ export class LatexConverter {
         // Wrap operand in braces for predictable parsing
         const wrappedOperand = operand ? ` {${operand}}` : " {}";
 
-        let finalLatex = '';
+        let finalLatex = "";
         if (isIndefiniteIntegral) {
           // Simple indefinite integral: no limits at all
           finalLatex = `${operatorLatex}${wrappedOperand}`;
@@ -397,44 +400,44 @@ export class LatexConverter {
         const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth);
 
         // Determine the command based on integral type, style, and whether it has limits
-        let integralCommand = '';
-        const useRomanD = element.integralStyle === 'roman';
+        let integralCommand = "";
+        const useRomanD = element.integralStyle === "roman";
         const isDefinite = element.hasLimits;
 
         switch (element.integralType) {
-          case 'double':
+          case "double":
             if (isDefinite) {
-              integralCommand = useRomanD ? '\\iintdl' : '\\iintil';
+              integralCommand = useRomanD ? "\\iintdl" : "\\iintil";
             } else {
-              integralCommand = useRomanD ? '\\iintd' : '\\iinti';
+              integralCommand = useRomanD ? "\\iintd" : "\\iinti";
             }
             break;
-          case 'triple':
+          case "triple":
             if (isDefinite) {
-              integralCommand = useRomanD ? '\\iiintdl' : '\\iiintil';
+              integralCommand = useRomanD ? "\\iiintdl" : "\\iiintil";
             } else {
-              integralCommand = useRomanD ? '\\iiintd' : '\\iiinti';
+              integralCommand = useRomanD ? "\\iiintd" : "\\iiinti";
             }
             break;
-          case 'contour':
+          case "contour":
             if (isDefinite) {
-              integralCommand = useRomanD ? '\\ointdl' : '\\ointil';
+              integralCommand = useRomanD ? "\\ointdl" : "\\ointil";
             } else {
-              integralCommand = useRomanD ? '\\ointd' : '\\ointi';
+              integralCommand = useRomanD ? "\\ointd" : "\\ointi";
             }
             break;
-          case 'single':
+          case "single":
           default:
             if (isDefinite) {
-              integralCommand = useRomanD ? '\\intdl' : '\\intil';
+              integralCommand = useRomanD ? "\\intdl" : "\\intil";
             } else {
-              integralCommand = useRomanD ? '\\intd' : '\\inti';
+              integralCommand = useRomanD ? "\\intd" : "\\inti";
             }
             break;
         }
 
         // Build the integral LaTeX command
-        let finalLatex = '';
+        let finalLatex = "";
         if (isDefinite) {
           // For definite integrals: \intil{integrand}{variable}{lower}{upper}
           const lowerLatex = this.toLatexRecursive(element.lowerLimit!, maxDepth);
@@ -462,8 +465,8 @@ export class LatexConverter {
           const usePhysicsPackage = this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            let dvCommand = '';
-            if (typeof element.order === 'number') {
+            let dvCommand = "";
+            if (typeof element.order === "number") {
               if (element.order === 1) {
                 dvCommand = `\\dv{${variableLatex || "x"}}`;
               } else {
@@ -509,12 +512,12 @@ export class LatexConverter {
             }
           } else {
             // For non-physics package (italic d), use custom long form commands
-            let numerator = '';
-            let denominator = '';
+            let numerator = "";
+            let denominator = "";
 
-            if (typeof element.order === 'number') {
+            if (typeof element.order === "number") {
               if (element.order === 1) {
-                numerator = 'd';
+                numerator = "d";
                 denominator = `d${variableLatex || "x"}`;
               } else {
                 numerator = `d^{${element.order}}`;
@@ -541,8 +544,8 @@ export class LatexConverter {
 
           if (usePhysicsPackage) {
             // Use physics package \dv command (always renders with roman 'd' based on italicdiff setting)
-            let dvCommand = '';
-            if (typeof element.order === 'number') {
+            let dvCommand = "";
+            if (typeof element.order === "number") {
               if (element.order === 1) {
                 dvCommand = `\\dv{${functionLatex || " "}}{${variableLatex || " "}}`;
               } else {
@@ -562,10 +565,10 @@ export class LatexConverter {
             }
           } else {
             // Use custom derivative commands for standard LaTeX (allows italic 'd')
-            let numerator = '';
-            let denominator = '';
+            let numerator = "";
+            let denominator = "";
 
-            if (typeof element.order === 'number') {
+            if (typeof element.order === "number") {
               if (element.order === 1) {
                 numerator = `d${functionLatex || " "}`;
                 denominator = `d${variableLatex || " "}`;
@@ -597,6 +600,9 @@ export class LatexConverter {
       } else if (element.type === "cases") {
         const casesLatex = this.casesToLatex(element, maxDepth);
         latex += casesLatex;
+      } else if (element.type === "accent") {
+        const accentLatex = this.accentToLatex(element, maxDepth);
+        latex += accentLatex;
       }
     }
 
@@ -612,7 +618,7 @@ export class LatexConverter {
     const { rows, cols, cells, matrixType } = element;
 
     if (!rows || !cols || !cells) {
-      return '';
+      return "";
     }
 
     // Build the matrix content from the cells object
@@ -623,14 +629,14 @@ export class LatexConverter {
         const cellKey = `cell_${row}_${col}`;
         const cellElements = cells[cellKey] || [];
         const cellContent = this.toLatexRecursive(cellElements, maxDepth).trim();
-        cellsInRow.push(cellContent || ''); // Empty cells are empty
+        cellsInRow.push(cellContent || ""); // Empty cells are empty
       }
-      matrixRows.push(cellsInRow.join(' & '));
+      matrixRows.push(cellsInRow.join(" & "));
     }
-    const matrixContent = matrixRows.join(' \\\\ ');
+    const matrixContent = matrixRows.join(" \\\\ ");
 
     // Wrap with appropriate LaTeX environment based on matrix type
-    let matrixLatex = '';
+    let matrixLatex = "";
     switch (matrixType) {
       case "parentheses":
         matrixLatex = `\\begin{pmatrix}${matrixContent}\\end{pmatrix}`;
@@ -667,7 +673,7 @@ export class LatexConverter {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
-      return '\\text{Invalid Stack}';
+      return "\\text{Invalid Stack}";
     }
 
     // Build the stack content from the cells object
@@ -680,12 +686,12 @@ export class LatexConverter {
         const cellLatex = this.toLatexRecursive(cellElements, maxDepth - 1).trim();
         cellsInRow.push(cellLatex);
       }
-      stackRows.push(cellsInRow.join(' & '));
+      stackRows.push(cellsInRow.join(" & "));
     }
-    const stackContent = stackRows.join(' \\\\ ');
+    const stackContent = stackRows.join(" \\\\ ");
 
     // Use array environment for plain stacks
-    let stackLatex = `\\begin{array}{${'c'.repeat(cols)}}${stackContent}\\end{array}`;
+    let stackLatex = `\\begin{array}{${"c".repeat(cols)}}${stackContent}\\end{array}`;
 
     // Apply formatting to the entire stack structure
     const stackFormatting = { ...element };
@@ -699,7 +705,7 @@ export class LatexConverter {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
-      return '\\text{Invalid Cases}';
+      return "\\text{Invalid Cases}";
     }
 
     // Build the cases content from the cells object
@@ -712,9 +718,9 @@ export class LatexConverter {
         const cellLatex = this.toLatexRecursive(cellElements, maxDepth - 1).trim();
         cellsInRow.push(cellLatex);
       }
-      casesRows.push(cellsInRow.join(' & '));
+      casesRows.push(cellsInRow.join(" & "));
     }
-    const casesContent = casesRows.join(' \\\\ ');
+    const casesContent = casesRows.join(" \\\\ ");
 
     // Use cases environment for piecewise functions
     let casesLatex = `\\begin{cases}${casesContent}\\end{cases}`;
@@ -727,10 +733,67 @@ export class LatexConverter {
     return this.applyFormattingToLatex(casesLatex, casesFormatting);
   }
 
+  private accentToLatex(element: EquationElement, maxDepth: number): string {
+    const baseLatex = this.toLatexRecursive(element.accentBase || [], maxDepth);
+
+    switch (element.accentType) {
+      case "hat":
+        return `\\hat{${baseLatex}}`;
+      case "tilde":
+        return `\\tilde{${baseLatex}}`;
+      case "bar":
+        return `\\bar{${baseLatex}}`;
+      case "dot":
+        return `\\dot{${baseLatex}}`;
+      case "ddot":
+        return `\\ddot{${baseLatex}}`;
+      case "vec":
+        return `\\vec{${baseLatex}}`;
+      case "widehat":
+        return `\\widehat{${baseLatex}}`;
+      case "widetilde":
+        return `\\widetilde{${baseLatex}}`;
+      case "widebar":
+        return `\\overline{${baseLatex}}`;
+      case "overrightarrow":
+        return `\\overrightarrow{${baseLatex}}`;
+      case "overleftarrow":
+        return `\\overleftarrow{${baseLatex}}`;
+      case "overleftrightarrow":
+        return `\\overleftrightarrow{${baseLatex}}`;
+      case "overbrace":
+        if (element.accentLabel && element.accentLabel.length > 0) {
+          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth);
+          return `\\overbrace{${baseLatex}}^{${labelLatex}}`;
+        } else {
+          return `\\overbrace{${baseLatex}}`;
+        }
+      case "underbrace":
+        if (element.accentLabel && element.accentLabel.length > 0) {
+          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth);
+          return `\\underbrace{${baseLatex}}_{${labelLatex}}`;
+        } else {
+          return `\\underbrace{${baseLatex}}`;
+        }
+      case "labeledoverbrace":
+        const overbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth);
+        return `\\overbrace{${baseLatex}}^{${overbraceLabel}}`;
+      case "labeledunderbrace":
+        const underbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth);
+        return `\\underbrace{${baseLatex}}_{${underbraceLabel}}`;
+      case "overparen":
+        return `\\overparen{${baseLatex}}`;
+      case "underparen":
+        return `\\underparen{${baseLatex}}`;
+      default:
+        return `\\hat{${baseLatex}}`;
+    }
+  }
+
   private shouldUsePhysicsPackageForDerivative(): boolean {
     // Determine whether to use physics package based on current differential style
     // Use physics package for roman style differentials
-    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === 'function') {
+    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === "function") {
       return this.inputHandler.getDifferentialStyleForLatex();
     }
     return false; // Default to standard LaTeX if no input handler
@@ -777,7 +840,7 @@ export class LatexConverter {
             result.push({
               id: this.generateElementId(),
               type: "text",
-              value: "\\displaystyle"
+              value: "\\displaystyle",
             });
           }
         }
@@ -976,7 +1039,7 @@ export class LatexConverter {
           i = contentGroup.endIndex;
           const formattedElements = this.parseLatexToEquation(contentGroup.content);
           const wrapperGroupId = this.generateElementId();
-          
+
           // Apply color wrapper using multi-wrapper system
           this.applyWrapperToElements(formattedElements, "color", colorGroup.content);
           result.push(...formattedElements);
@@ -987,7 +1050,7 @@ export class LatexConverter {
           const contentGroup = this.parseLatexGroup(latex, i);
           i = contentGroup.endIndex;
           const formattedElements = this.parseLatexToEquation(contentGroup.content);
-        formattedElements.forEach(element => {
+          formattedElements.forEach((element) => {
             if (element.type === "text") {
               element.color = colorGroup.content;
             }
@@ -1003,7 +1066,7 @@ export class LatexConverter {
             group.content.startsWith("\\underline{") && group.content.endsWith("}");
 
           const wrapperGroupId = this.generateElementId();
-          
+
           if (isDoubleUnderline) {
             // Parse the inner content for double underline
             const innerContent = group.content.slice(11, -1); // Remove \underline{ and }
@@ -1024,19 +1087,21 @@ export class LatexConverter {
           i = group.endIndex;
           // Parse the content and apply wrapper group metadata to each element
           const wrappedElements = this.parseLatexToEquation(group.content);
-          
+
           // Apply cancel wrapper using multi-wrapper system
           this.applyWrapperToElements(wrappedElements, "cancel");
-          
+
           // Add the elements directly to the result (not as a wrapper)
           result.push(...wrappedElements);
+        } else if (this.tryParseAccentCommand(latex, i, result)) {
+          i = this.lastAccentCommandEndIndex!;
         } else if (latex.substr(i, 6) === "\\text{") {
           // Handle \text{} commands specially
           if (latex.substr(i, 9) === "\\text{＆}") {
             result.push({
               id: this.generateElementId(),
               type: "text",
-              value: "&"
+              value: "&",
             });
             i += 9;
           } else {
@@ -1044,7 +1109,7 @@ export class LatexConverter {
             i += 6; // Skip \text{
             const group = this.parseLatexGroup(latex, i - 1); // Parse from the { we just skipped
             i = group.endIndex;
-            
+
             // Parse the content inside \text{} and mark each character as text mode
             const textContent = group.content;
             for (let j = 0; j < textContent.length; j++) {
@@ -1054,7 +1119,7 @@ export class LatexConverter {
                 type: "text",
                 value: char,
                 textMode: true,
-                italic: false // Text mode should be roman (non-italic)
+                italic: false, // Text mode should be roman
               });
             }
           }
@@ -1066,21 +1131,21 @@ export class LatexConverter {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "^"
+          value: "^",
         });
         i += 10;
       } else if (latex.substr(i, 5) === "{\\_}") {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "_"
+          value: "_",
         });
         i += 5;
       } else if (latex.substr(i, 17) === "\\textasciitilde") {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "~"
+          value: "~",
         });
         i += 17;
         // Skip the {} if present
@@ -1091,28 +1156,28 @@ export class LatexConverter {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "{"
+          value: "{",
         });
         i += 2;
       } else if (latex.substr(i, 2) === "\\}") {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "}"
+          value: "}",
         });
         i += 2;
       } else if (latex.substr(i, 2) === "\\#") {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "#"
+          value: "#",
         });
         i += 2;
       } else if (latex.substr(i, 2) === "\\%") {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: "%"
+          value: "%",
         });
         i += 2;
       } else if (latex.substr(i, 5) === "\\left") {
@@ -1124,14 +1189,14 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth
+            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
           result.push({
             id: this.generateElementId(),
             type: "text",
-            value: latex[i]
+            value: latex[i],
           });
           i++;
         }
@@ -1144,7 +1209,7 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth
+            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
@@ -1156,7 +1221,7 @@ export class LatexConverter {
             result.push({
               id: this.generateElementId(),
               type: "text",
-              value: latex[i]
+              value: latex[i],
             });
             i++;
           }
@@ -1165,7 +1230,7 @@ export class LatexConverter {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: latex[i]
+          value: latex[i],
         });
         i++;
       }
@@ -1178,7 +1243,7 @@ export class LatexConverter {
     if (latex[startIndex] !== "{") {
       return {
         content: latex[startIndex] || "",
-        endIndex: startIndex + 1
+        endIndex: startIndex + 1,
       };
     }
 
@@ -1193,7 +1258,7 @@ export class LatexConverter {
         if (braceCount === 0) {
           return {
             content: latex.substring(startIndex + 1, i),
-            endIndex: i + 1
+            endIndex: i + 1,
           };
         }
       }
@@ -1202,7 +1267,7 @@ export class LatexConverter {
 
     return {
       content: latex.substring(startIndex + 1),
-      endIndex: latex.length
+      endIndex: latex.length,
     };
   }
 
@@ -1253,14 +1318,15 @@ export class LatexConverter {
 
     while (j < latex.length && depth > 0) {
       // Check for right bracket commands
-      if (latex.substr(j, 6) === "\\right" || 
+      if (
+        latex.substr(j, 6) === "\\right" ||
         latex.substr(j, 5) === "\\bigr" ||
         latex.substr(j, 5) === "\\Bigr" ||
         latex.substr(j, 6) === "\\biggr" ||
-        latex.substr(j, 6) === "\\Biggr") {
-        
+        latex.substr(j, 6) === "\\Biggr"
+      ) {
         let rightCommandLength = latex.substr(j, 6) === "\\right" ? 6 : 
-                                latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr" ? 6 : 5;
+          latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr" ? 6 : 5;
 
         const rightBracketInfo = this.extractBracketSymbol(latex, j + rightCommandLength);
         if (rightBracketInfo) {
@@ -1272,7 +1338,7 @@ export class LatexConverter {
               rightSymbol: rightBracketInfo.symbol,
               content,
               endIndex: rightBracketInfo.endIndex,
-              nestingDepth
+              nestingDepth,
             };
           }
           j = rightBracketInfo.endIndex;
@@ -1408,26 +1474,28 @@ export class LatexConverter {
 
   private hasEqualFormatting(element: EquationElement, formatting: any): boolean {
     // First check legacy formatting properties
-    const legacyFormattingMatch = (element.bold === formatting.bold &&
-      this.getEffectiveItalicFormatting(element.italic) === this.getEffectiveItalicFormatting(formatting.italic) &&
+    const legacyFormattingMatch =
+      element.bold === formatting.bold &&
+      this.getEffectiveItalicFormatting(element.italic) ===
+        this.getEffectiveItalicFormatting(formatting.italic) &&
       element.color === formatting.color &&
       element.underline === formatting.underline &&
       element.cancel === formatting.cancel &&
-      element.textMode === formatting.textMode);
-    
+      element.textMode === formatting.textMode;
+
     // Then check if wrappers match
     // If either element has wrappers, they must match exactly
     if (element.wrappers || formatting.wrappers) {
       // Create a dummy element with formatting's wrappers for comparison
       const formattingElement: EquationElement = {
-        id: '',
-        type: 'text',
-        value: '',
-        wrappers: formatting.wrappers
+        id: "",
+        type: "text",
+        value: "",
+        wrappers: formatting.wrappers,
       };
       return legacyFormattingMatch && this.haveSameWrappers(element, formattingElement);
     }
-    
+
     return legacyFormattingMatch;
   }
 
@@ -1659,52 +1727,52 @@ export class LatexConverter {
   }
 
   private getEffectiveItalicFormatting(italic: boolean | undefined): string {
-    if (italic === true) return 'mathit';
-    if (italic === false) return 'mathrm'; 
-    return 'plain'; // undefined = naturally italic, no wrapping needed
+    if (italic === true) return "mathit";
+    if (italic === false) return "mathrm";
+    return "plain"; // undefined = naturally italic, no wrapping needed
   }
 
   private isOperatorSymbol(text: string): boolean {
     // Trim whitespace to handle cases like " = " or " + "
     const trimmedText = text.trim();
-    
+
     // Check if the text is a known mathematical operator using symbol config
     // First check direct matches (like "=" which has unicode "=")
-    const directMatch = Object.values(SYMBOL_CONFIG).find(info => info.unicode === trimmedText);
+    const directMatch = Object.values(SYMBOL_CONFIG).find((info) => info.unicode === trimmedText);
     if (directMatch && !directMatch.defaultItalic) {
       return true;
     }
-    
+
     // Also check if text is a latex command that maps to an operator
     const symbolInfo = SYMBOL_CONFIG[trimmedText];
     if (symbolInfo && !symbolInfo.defaultItalic) {
       return true;
     }
-    
+
     // Check if the entire text (with spaces) consists only of operators and whitespace
     if (text !== trimmedText && trimmedText.length === 1) {
       // This handles cases like " = " where we want to treat the whole thing as an operator
       return this.isOperatorSymbol(trimmedText);
     }
-    
+
     return false;
   }
 
   private applyWrapperToElements(elements: EquationElement[], wrapperType: "cancel" | "underline" | "color", wrapperValue?: string): void {
     // Apply wrapper using multi-wrapper system, preserving existing wrappers and tracking order
     const wrapperGroupId = this.generateElementId();
-    
-    elements.forEach(element => {
+
+    elements.forEach((element) => {
       if (!element.wrappers) element.wrappers = {};
-      
+
       // Initialize wrapperOrder if it doesn't exist
       if (!element.wrapperOrder) element.wrapperOrder = [];
-      
+
       // Only add to order if this wrapper type doesn't already exist
       if (!element.wrappers[wrapperType]) {
         element.wrapperOrder.push(wrapperType);
       }
-      
+
       if (wrapperType === "cancel") {
         element.wrappers.cancel = { id: wrapperGroupId };
       } else if (wrapperType === "underline") {
@@ -1731,7 +1799,7 @@ export class LatexConverter {
     } else if (formatting.italic === false) {
       // Don't apply \mathrm{} to text mode elements (they should use \text{} wrapper instead)
       // Also don't apply to LaTeX commands or known operator symbols as it removes proper spacing
-      if (!formatting.textMode && !result.startsWith('\\') && !this.isOperatorSymbol(result)) {
+      if (!formatting.textMode && !result.startsWith("\\") && !this.isOperatorSymbol(result)) {
         result = `\\mathrm{${result}}`;
       }
     }
@@ -1774,7 +1842,7 @@ export class LatexConverter {
 
   private isLatexCommand(latex: string, index: number): boolean {
     // Check if this is the start of a LaTeX command (backslash followed by letters)
-    if (latex[index] !== '\\') return false;
+    if (latex[index] !== "\\") return false;
     let pos = index + 1;
     while (pos < latex.length && latex[pos].match(/[a-zA-Z]/)) {
       pos++;
@@ -1784,7 +1852,7 @@ export class LatexConverter {
 
   private isLargeOperator(latex: string, index: number): boolean {
     // Use the centralized LARGE_OPERATORS list
-    return LARGE_OPERATORS.some(op => {
+    return LARGE_OPERATORS.some((op) => {
       if (latex.substr(index, op.length) === op) {
         // Make sure the next character is not a letter (to avoid partial matches)
         const nextCharIndex = index + op.length;
@@ -1874,7 +1942,7 @@ export class LatexConverter {
       displayMode,
       lowerLimit,
       upperLimit,
-      operand
+      operand,
     };
 
     return { element, endIndex: pos };
@@ -1886,24 +1954,24 @@ export class LatexConverter {
     let result = text;
 
     // Don't escape if the text is already a LaTeX command (starts with \)
-    if (result.startsWith('\\')) {
+    if (result.startsWith("\\")) {
       return result;
     }
 
     // Escape special characters that could break LaTeX parsing
     // Backslash is blocked from input due to MathJax spacing issues
-    result = result.replace(/\{/g, '\\{');              // Opening brace
-    result = result.replace(/\}/g, '\\}');              // Closing brace
-    result = result.replace(/#/g, '\\#');               // Hash
+    result = result.replace(/\{/g, "\\{"); // Opening brace
+    result = result.replace(/\}/g, "\\}"); // Closing brace
+    result = result.replace(/#/g, "\\#"); // Hash
     // Replace & with similar Unicode character that MathJax can handle
-    result = result.replace(/&/g, '\\text{＆}');         // Fullwidth ampersand (U+FF06)
-    result = result.replace(/%/g, '\\%');               // Percent (comment character)
-    result = result.replace(/~/g, '\\textasciitilde{}'); // Tilde
+    result = result.replace(/&/g, "\\text{＆}"); // Fullwidth ampersand (U+FF06)
+    result = result.replace(/%/g, "\\%"); // Percent (comment character)
+    result = result.replace(/~/g, "\\textasciitilde{}"); // Tilde
 
     // Escape ^ and _ when they should be literal characters (not superscript/subscript)
     // In math mode, these are special operators, so we need to escape them for literal display
-    result = result.replace(/\^/g, '{\\text{^}}'); // Caret in text mode without backslash
-    result = result.replace(/_/g, '{\\_}');        // Underscore escaped in math mode
+    result = result.replace(/\^/g, "{\\text{^}}"); // Caret in text mode without backslash
+    result = result.replace(/_/g, "{\\_}"); // Underscore escaped in math mode
 
     return result;
   }
@@ -1918,7 +1986,7 @@ export class LatexConverter {
         result.push({
           id: this.generateElementId(),
           type: "text",
-          value: unicode
+          value: unicode,
         });
         return index + commandLength;
       }
@@ -1931,7 +1999,13 @@ export class LatexConverter {
       if (latex.substr(index, cmd.length) === cmd) {
         // Make sure it's not part of a longer command
         const nextChar = latex[index + cmd.length];
-        if (!nextChar || nextChar === '{' || nextChar === '[' || nextChar === ' ' || nextChar === '\\') {
+        if (
+          !nextChar ||
+          nextChar === "{" ||
+          nextChar === "[" ||
+          nextChar === " " ||
+          nextChar === "\\"
+        ) {
           return true;
         }
       }
@@ -1954,12 +2028,12 @@ export class LatexConverter {
     }
 
     // Parse numerator {num}
-    if (i >= latex.length || latex[i] !== '{') return null;
+    if (i >= latex.length || latex[i] !== "{") return null;
     const numerator = this.parseLatexGroup(latex, i);
     i = numerator.endIndex;
 
     // Parse denominator {den}
-    if (i >= latex.length || latex[i] !== '{') return null;
+    if (i >= latex.length || latex[i] !== "{") return null;
     const denominator = this.parseLatexGroup(latex, i);
     i = denominator.endIndex;
 
@@ -1968,7 +2042,7 @@ export class LatexConverter {
       type: "fraction",
       numerator: this.parseLatexToEquation(numerator.content),
       denominator: this.parseLatexToEquation(denominator.content),
-      displayMode: forceInlineMode ? "inline" : (isDisplayFrac ? "display" : undefined)
+      displayMode: forceInlineMode ? "inline" : isDisplayFrac ? "display" : undefined,
     };
 
     return { element, endIndex: i };
@@ -1984,77 +2058,77 @@ export class LatexConverter {
     let isDefinite = false;
 
     // Check for definite integral commands first (longer commands)
-    if (latex.substr(i, 8) === '\\iiintdl') {
+    if (latex.substr(i, 8) === "\\iiintdl") {
       integralType = "triple";
       integralStyle = "roman";
       commandLength = 8;
       isDefinite = true;
-    } else if (latex.substr(i, 8) === '\\iiintil') {
+    } else if (latex.substr(i, 8) === "\\iiintil") {
       integralType = "triple";
       integralStyle = "italic";
       commandLength = 8;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === '\\iintdl') {
+    } else if (latex.substr(i, 7) === "\\iintdl") {
       integralType = "double";
       integralStyle = "roman";
       commandLength = 7;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === '\\iintil') {
+    } else if (latex.substr(i, 7) === "\\iintil") {
       integralType = "double";
       integralStyle = "italic";
       commandLength = 7;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === '\\ointdl') {
+    } else if (latex.substr(i, 7) === "\\ointdl") {
       integralType = "contour";
       integralStyle = "roman";
       commandLength = 7;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === '\\ointil') {
+    } else if (latex.substr(i, 7) === "\\ointil") {
       integralType = "contour";
       integralStyle = "italic";
       commandLength = 7;
       isDefinite = true;
-    } else if (latex.substr(i, 6) === '\\intdl') {
+    } else if (latex.substr(i, 6) === "\\intdl") {
       integralType = "single";
       integralStyle = "roman";
       commandLength = 6;
       isDefinite = true;
-    } else if (latex.substr(i, 6) === '\\intil') {
+    } else if (latex.substr(i, 6) === "\\intil") {
       integralType = "single";
       integralStyle = "italic";
       commandLength = 6;
       isDefinite = true;
     }
     // Check for indefinite integral commands (shorter commands)
-    else if (latex.substr(i, 7) === '\\iiintd') {
+    else if (latex.substr(i, 7) === "\\iiintd") {
       integralType = "triple";
       integralStyle = "roman";
       commandLength = 7;
-    } else if (latex.substr(i, 7) === '\\iiinti') {
+    } else if (latex.substr(i, 7) === "\\iiinti") {
       integralType = "triple";
       integralStyle = "italic";
       commandLength = 7;
-    } else if (latex.substr(i, 6) === '\\iintd') {
+    } else if (latex.substr(i, 6) === "\\iintd") {
       integralType = "double";
       integralStyle = "roman";
       commandLength = 6;
-    } else if (latex.substr(i, 6) === '\\iinti') {
+    } else if (latex.substr(i, 6) === "\\iinti") {
       integralType = "double";
       integralStyle = "italic";
       commandLength = 6;
-    } else if (latex.substr(i, 6) === '\\ointd') {
+    } else if (latex.substr(i, 6) === "\\ointd") {
       integralType = "contour";
       integralStyle = "roman";
       commandLength = 6;
-    } else if (latex.substr(i, 6) === '\\ointi') {
+    } else if (latex.substr(i, 6) === "\\ointi") {
       integralType = "contour";
       integralStyle = "italic";
       commandLength = 6;
-    } else if (latex.substr(i, 5) === '\\intd') {
+    } else if (latex.substr(i, 5) === "\\intd") {
       integralType = "single";
       integralStyle = "roman";
       commandLength = 5;
-    } else if (latex.substr(i, 5) === '\\inti') {
+    } else if (latex.substr(i, 5) === "\\inti") {
       integralType = "single";
       integralStyle = "italic";
       commandLength = 5;
@@ -2065,7 +2139,7 @@ export class LatexConverter {
     i += commandLength;
 
     // Skip whitespace
-    while (i < latex.length && latex[i] === ' ') i++;
+    while (i < latex.length && latex[i] === " ") i++;
 
     let integrand: EquationElement[] = [];
     let differentialVariable: EquationElement[] = [];
@@ -2075,50 +2149,50 @@ export class LatexConverter {
     if (isDefinite) {
       // For definite integrals: \intil{integrand}{variable}{lower}{upper}
       // Parse integrand {f(x)}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const integrandGroup = this.parseLatexGroup(latex, i);
       integrand = this.parseLatexToEquation(integrandGroup.content);
       i = integrandGroup.endIndex;
 
       // Skip whitespace
-      while (i < latex.length && latex[i] === ' ') i++;
+      while (i < latex.length && latex[i] === " ") i++;
 
       // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const variableGroup = this.parseLatexGroup(latex, i);
       differentialVariable = this.parseLatexToEquation(variableGroup.content);
       i = variableGroup.endIndex;
 
       // Skip whitespace
-      while (i < latex.length && latex[i] === ' ') i++;
+      while (i < latex.length && latex[i] === " ") i++;
 
       // Parse lower limit {a}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const lowerGroup = this.parseLatexGroup(latex, i);
       lowerLimit = this.parseLatexToEquation(lowerGroup.content);
       i = lowerGroup.endIndex;
 
       // Skip whitespace
-      while (i < latex.length && latex[i] === ' ') i++;
+      while (i < latex.length && latex[i] === " ") i++;
 
       // Parse upper limit {b}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const upperGroup = this.parseLatexGroup(latex, i);
       upperLimit = this.parseLatexToEquation(upperGroup.content);
       i = upperGroup.endIndex;
     } else {
       // For indefinite integrals: \inti{integrand}{variable}
       // Parse integrand {f(x)}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const integrandGroup = this.parseLatexGroup(latex, i);
       integrand = this.parseLatexToEquation(integrandGroup.content);
       i = integrandGroup.endIndex;
 
       // Skip whitespace
-      while (i < latex.length && latex[i] === ' ') i++;
+      while (i < latex.length && latex[i] === " ") i++;
 
       // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== '{') return null;
+      if (i >= latex.length || latex[i] !== "{") return null;
       const variableGroup = this.parseLatexGroup(latex, i);
       differentialVariable = this.parseLatexToEquation(variableGroup.content);
       i = variableGroup.endIndex;
@@ -2132,7 +2206,7 @@ export class LatexConverter {
       hasLimits: isDefinite,
       integrand: integrand,
       differentialVariable: differentialVariable,
-      displayMode: "inline" // Default to inline
+      displayMode: "inline", // Default to inline
     };
 
     if (isDefinite) {
@@ -2142,7 +2216,7 @@ export class LatexConverter {
 
     return {
       element: element,
-      endIndex: i
+      endIndex: i,
     };
   }
 
@@ -2292,8 +2366,8 @@ export class LatexConverter {
     if (numMatch && denMatch) {
       const orderFromNum = numMatch[2]; // From d^{n}
       const orderFromDen = denMatch[3]; // From x^{n}
-      let functionPart = numMatch[3] || '';
-      const variablePart = denMatch[1] || '';
+      let functionPart = numMatch[3] || "";
+      const variablePart = denMatch[1] || "";
 
       // Clean up the function part - handle cases like "{ e }^{2x}"
       functionPart = functionPart.trim();
@@ -2332,7 +2406,7 @@ export class LatexConverter {
         order: order,
         displayMode: displayMode,
         function: this.parseLatexToEquation(functionPart),
-        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, '')) // Remove any trailing exponent
+        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
       };
     }
 
@@ -2349,7 +2423,7 @@ export class LatexConverter {
     if (numMatch && denMatch) {
       const orderFromNum = numMatch[2]; // From d^{n}
       const orderFromDen = denMatch[3]; // From x^{n}
-      const variablePart = denMatch[1] || '';
+      const variablePart = denMatch[1] || "";
 
       // Determine order (prefer from numerator, fallback to denominator, default to 1)
       let order: number | EquationElement[] = 1;
@@ -2375,8 +2449,8 @@ export class LatexConverter {
         order: order,
         displayMode: displayMode,
         function: this.parseLatexToEquation(functionLatex),
-        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, '')), // Remove any trailing exponent
-        isLongForm: true
+        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
+        isLongForm: true,
       };
     }
 
@@ -2389,6 +2463,8 @@ export class LatexConverter {
   private lastDerivativeCommandEndIndex: number | null = null;
   // Track end index for style wrapper
   private lastStyleWrapperEndIndex: number | null = null;
+  // Track end index for accent commands
+  private lastAccentCommandEndIndex: number | null = null;
 
   // Helper method to parse derivative commands
   private tryParseDerivativeCommand(
@@ -2573,6 +2649,76 @@ export class LatexConverter {
     return false;
   }
 
+  private tryParseAccentCommand(latex: string, index: number, result: EquationElement[]): boolean {
+    const accentCommands: {
+      command: string;
+      length: number;
+      type: string;
+      position: "over" | "under";
+    }[] = [
+      { command: "\\hat", length: 4, type: "hat", position: "over" },
+      { command: "\\tilde", length: 6, type: "tilde", position: "over" },
+      { command: "\\bar", length: 4, type: "bar", position: "over" },
+      { command: "\\dot", length: 4, type: "dot", position: "over" },
+      { command: "\\ddot", length: 5, type: "ddot", position: "over" },
+      { command: "\\vec", length: 4, type: "vec", position: "over" },
+      { command: "\\widehat", length: 8, type: "widehat", position: "over" },
+      { command: "\\widetilde", length: 10, type: "widetilde", position: "over" },
+      { command: "\\overline", length: 9, type: "widebar", position: "over" },
+      { command: "\\overrightarrow", length: 15, type: "overrightarrow", position: "over" },
+      { command: "\\overleftarrow", length: 14, type: "overleftarrow", position: "over" },
+      { command: "\\overleftrightarrow", length: 19, type: "overleftrightarrow", position: "over" },
+      { command: "\\overbrace", length: 10, type: "overbrace", position: "over" },
+      { command: "\\underbrace", length: 11, type: "underbrace", position: "under" },
+      { command: "\\overparen", length: 10, type: "overparen", position: "over" },
+      { command: "\\underparen", length: 11, type: "underparen", position: "under" },
+    ];
+
+    for (const accentCmd of accentCommands) {
+      if (latex.substr(index, accentCmd.length) === accentCmd.command) {
+        let i = index + accentCmd.length;
+        const group = this.parseLatexGroup(latex, i);
+        i = group.endIndex;
+        const baseContent = this.parseLatexToEquation(group.content);
+
+        let accentLabel: EquationElement[] = [];
+        let finalAccentType = accentCmd.type;
+        
+        if (accentCmd.type === "overbrace" && i < latex.length && latex[i] === "^") {
+          // Check for ^{label} after overbrace
+          if (i + 1 < latex.length && latex[i + 1] === "{") {
+            const labelGroup = this.parseLatexGroup(latex, i + 1);
+            i = labelGroup.endIndex;
+            accentLabel = this.parseLatexToEquation(labelGroup.content);
+            finalAccentType = "labeledoverbrace";
+          }
+        } else if (accentCmd.type === "underbrace" && i < latex.length && latex[i] === "_") {
+          // Check for _{label} after underbrace
+          if (i + 1 < latex.length && latex[i + 1] === "{") {
+            const labelGroup = this.parseLatexGroup(latex, i + 1);
+            i = labelGroup.endIndex;
+            accentLabel = this.parseLatexToEquation(labelGroup.content);
+            finalAccentType = "labeledunderbrace";
+          }
+        }
+
+        const accentElement: EquationElement = {
+          id: this.generateElementId(),
+          type: "accent",
+          accentType: finalAccentType as any,
+          accentPosition: accentCmd.position,
+          accentBase: baseContent,
+          accentLabel: accentLabel.length > 0 ? accentLabel : (finalAccentType.includes("labeled") ? [] : undefined),
+        };
+
+        result.push(accentElement);
+        this.lastAccentCommandEndIndex = i;
+        return true;
+      }
+    }
+    return false;
+  }
+
   private parseMatrixStackCasesEnvironment(
     latex: string,
     startIndex: number
@@ -2594,7 +2740,7 @@ export class LatexConverter {
       // Stack environments (array)
       { pattern: "\\begin{array}", end: "\\end{array}", type: "stack", subtype: "plain" },
       // Cases environments
-      { pattern: "\\begin{cases}", end: "\\end{cases}", type: "cases", subtype: "cases" }
+      { pattern: "\\begin{cases}", end: "\\end{cases}", type: "cases", subtype: "cases" },
     ];
 
     let environmentType: "matrix" | "stack" | "cases" | null = null;
@@ -2636,11 +2782,11 @@ export class LatexConverter {
     const environmentContent = latex.substring(currentIndex, endIndex).trim();
 
     // Parse content into rows and cells
-    const rows = environmentContent.split('\\\\').map(row => row.trim()).filter(row => row.length > 0);
+    const rows = environmentContent.split("\\\\").map((row) => row.trim()).filter((row) => row.length > 0);
     const cellData: { [key: string]: EquationElement[] } = {};
 
     rows.forEach((row, rowIndex) => {
-      const cells = row.split('&').map(cell => cell.trim());
+      const cells = row.split("&").map((cell) => cell.trim());
       cells.forEach((cell, colIndex) => {
         const cellKey = `cell_${rowIndex}_${colIndex}`;
         cellData[cellKey] = this.parseLatexToEquation(cell);
@@ -2649,7 +2795,7 @@ export class LatexConverter {
 
     // Determine dimensions
     const numRows = rows.length;
-    const numCols = rows.length > 0 ? rows[0].split('&').length : 1;
+    const numCols = rows.length > 0 ? rows[0].split("&").length : 1;
 
     // Create appropriate element based on environment type
     let resultElement: EquationElement;
@@ -2661,7 +2807,7 @@ export class LatexConverter {
         matrixType: environmentSubtype as "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none",
         rows: numRows,
         cols: numCols,
-        cells: cellData
+        cells: cellData,
       };
     } else if (environmentType === "stack") {
       resultElement = {
@@ -2670,7 +2816,7 @@ export class LatexConverter {
         stackType: "plain",
         rows: numRows,
         cols: numCols,
-        cells: cellData
+        cells: cellData,
       };
     } else { // environmentType === "cases"
       resultElement = {
@@ -2679,13 +2825,13 @@ export class LatexConverter {
         casesType: "cases",
         rows: numRows,
         cols: numCols,
-        cells: cellData
+        cells: cellData,
       };
     }
 
     return {
       element: resultElement,
-      endIndex: endIndex + endPattern.length
+      endIndex: endIndex + endPattern.length,
     };
   }
 }

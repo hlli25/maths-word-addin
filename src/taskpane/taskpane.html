@@ -257,9 +257,11 @@
                     <button class="tab-btn active" data-tab="structures">Structures</button>
                     <button class="tab-btn" data-tab="brackets">Brackets</button>
                     <button class="tab-btn" data-tab="operators">Operators</button>
-                    <button class="tab-btn" data-tab="larger-operators">Larger Operators</button>
+                    <button class="tab-btn" data-tab="large-operators">Large Operators</button>
                     <button class="tab-btn" data-tab="calculus">Calculus</button>
                     <button class="tab-btn" data-tab="greek-letters">Greek Letters</button>
+                    <button class="tab-btn" data-tab="accents">Accents</button>
+                    <button class="tab-btn" data-tab="arrows">Arrows</button>
                     <button class="tab-btn" data-tab="matrices">Matrices</button>
                 </div>
                 <button class="tab-scroll-btn tab-scroll-right" id="tabScrollRight">
@@ -510,7 +512,7 @@
                         <button class="builder-btn operator-btn" data-operator="\because"><math><mo>∵</mo></math></button>
                     </div>
                 </div>
-                <div id="larger-operators" class="tab-pane">
+                <div id="large-operators" class="tab-pane">
                     <div class="button-row">
                         <button class="builder-btn large-operator-btn sum-display-nolimit-btn" title="Summation (Side limits) (Large)">
                             <math displaystyle="true">
@@ -855,6 +857,110 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div id="accents" class="tab-pane">
+                    <!-- Single-character accents -->
+                    <div class="button-row">
+                        <button class="builder-btn accent-btn" data-accent="hat" data-position="over" title="Hat">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>^</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="tilde" data-position="over" title="Tilde">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>~</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="bar" data-position="over" title="Bar">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>‾</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="dot" data-position="over" title="Dot">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>·</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="ddot" data-position="over" title="Double Dot">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>¨</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="vec" data-position="over" title="Vector">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px;"><mi>x</mi></mrow><mo>→</mo></mover></math>
+                        </button>
+                    </div>
+                    <!-- Wide accents -->
+                    <div class="button-row">
+                        <button class="builder-btn accent-btn" data-accent="widehat" data-position="over" title="Wide Hat">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo>^</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="widetilde" data-position="over" title="Wide Tilde">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo>∼</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="widebar" data-position="over" title="Wide Bar">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">‾</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="overrightarrow" data-position="over" title="Over Right Arrow">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⟶</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="overleftarrow" data-position="over" title="Over Left Arrow">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⟵</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="overleftrightarrow" data-position="over" title="Over Left-Right Arrow">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⟷</mo></mover></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn accent-btn" data-accent="overbrace" data-position="over" title="Overbrace">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏞</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="underbrace" data-position="under" title="Underbrace">
+                            <math><munder><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏟</mo></munder></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="labeledoverbrace" data-position="over" title="Overbrace with Label">
+                            <math><mover><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏞</mo></mover><mrow style="border: 1px solid #999; padding: 1px 2px; font-size: 0.8em;">□</mrow></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="labeledunderbrace" data-position="under" title="Underbrace with Label">
+                            <math><munder><munder><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏟</mo></munder><mrow style="border: 1px solid #999; padding: 1px 2px; font-size: 0.8em;">□</mrow></munder></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="overparen" data-position="over" title="Over Parenthesis">
+                            <math><mover><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏜</mo></mover></math>
+                        </button>
+                        <button class="builder-btn accent-btn" data-accent="underparen" data-position="under" title="Under Parenthesis">
+                            <math><munder><mrow style="border: 1px solid #666; padding: 2px 4px; background-color: #f0f0f0;"><mi>x</mi><mi>y</mi><mi>z</mi></mrow><mo stretchy="true">⏝</mo></munder></math>
+                        </button>
+                    </div>
+                </div>
+                <div id="arrows" class="tab-pane">
+                    <!-- Basic arrows -->
+                    <div class="button-row">
+                        <button class="builder-btn arrow-btn" data-arrow="\rightarrow" title="Right Arrow">→</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\leftarrow" title="Left Arrow">←</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\uparrow" title="Up Arrow">↑</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\downarrow" title="Down Arrow">↓</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\leftrightarrow" title="Left-Right Arrow">↔</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\updownarrow" title="Up-Down Arrow">↕</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\nearrow" title="Northeast Arrow">↗</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\searrow" title="Southeast Arrow">↘</button>
+                    </div>
+                    <!-- Double arrows -->
+                    <div class="button-row">
+                        <button class="builder-btn arrow-btn" data-arrow="\Rightarrow" title="Double Right Arrow">⇒</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Leftarrow" title="Double Left Arrow">⇐</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Uparrow" title="Double Up Arrow">⇑</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Downarrow" title="Double Down Arrow">⇓</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Leftrightarrow" title="Double Left-Right Arrow">⇔</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Updownarrow" title="Double Up-Down Arrow">⇕</button>
+                    </div>
+                    <!-- Long and special arrows -->
+                    <div class="button-row">
+                        <button class="builder-btn arrow-btn" data-arrow="\longrightarrow" title="Long Right Arrow">⟶</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\longleftarrow" title="Long Left Arrow">⟵</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\longleftrightarrow" title="Long Left-Right Arrow">⟷</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Longrightarrow" title="Long Double Right Arrow">⟹</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Longleftarrow" title="Long Double Left Arrow">⟸</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\Longleftrightarrow" title="Long Double Left-Right Arrow">⟺</button>
+                    </div>
+                    <!-- Curved arrows -->
+                    <div class="button-row">
+                        <button class="builder-btn arrow-btn" data-arrow="\circlearrowleft" title="Circle Arrow Left">↺</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\circlearrowright" title="Circle Arrow Right">↻</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\curvearrowleft" title="Curve Arrow Left">↶</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\curvearrowright" title="Curve Arrow Right">↷</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\hookleftarrow" title="Hook Left Arrow">↩</button>
+                        <button class="builder-btn arrow-btn" data-arrow="\hookrightarrow" title="Hook Right Arrow">↪</button>
                     </div>
                 </div>
             </div>

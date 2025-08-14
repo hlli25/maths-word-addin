@@ -42,7 +42,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\chi": { unicode: "χ", defaultItalic: true },
   "\\psi": { unicode: "ψ", defaultItalic: true },
   "\\omega": { unicode: "ω", defaultItalic: true },
-  
+
   // Greek uppercase letters (upright by default)
   "\\Gamma": { unicode: "Γ", defaultItalic: false },
   "\\Delta": { unicode: "Δ", defaultItalic: false },
@@ -60,10 +60,10 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\partial": { unicode: "∂", defaultItalic: true },
   "\\nabla": { unicode: "∇", defaultItalic: false },
   "\\infty": { unicode: "∞", defaultItalic: false },
-  
+
   // Arithmetic operators (upright by default)
   "\\times": { unicode: "×", defaultItalic: false },
-  "\\divsymbol": { unicode: "÷", defaultItalic: false },  // Division symbol (Physics package - MathJax 3.0)
+  "\\divsymbol": { unicode: "÷", defaultItalic: false }, // Division symbol (Physics package - MathJax 3.0)
   "\\pm": { unicode: "±", defaultItalic: false },
   "\\mp": { unicode: "∓", defaultItalic: false },
   "\\cdot": { unicode: "·", defaultItalic: false },
@@ -71,7 +71,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\star": { unicode: "⋆", defaultItalic: false },
   "\\circ": { unicode: "∘", defaultItalic: false },
   "\\bullet": { unicode: "•", defaultItalic: false },
-  
+
   // Comparison and relations (upright by default)
   "=": { unicode: "=", defaultItalic: false },
   "<": { unicode: "<", defaultItalic: false },
@@ -98,7 +98,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\succeq": { unicode: "⪰", defaultItalic: false },
   "\\ll": { unicode: "≪", defaultItalic: false },
   "\\gg": { unicode: "≫", defaultItalic: false },
-  
+
   // Set operations (upright by default)
   "\\cap": { unicode: "∩", defaultItalic: false },
   "\\cup": { unicode: "∪", defaultItalic: false },
@@ -114,7 +114,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\nsupseteq": { unicode: "⊉", defaultItalic: false },
   "\\subsetneq": { unicode: "⊊", defaultItalic: false },
   "\\supsetneq": { unicode: "⊋", defaultItalic: false },
-  
+
   // Binary operators (upright by default)
   "\\oplus": { unicode: "⊕", defaultItalic: false },
   "\\ominus": { unicode: "⊖", defaultItalic: false },
@@ -124,7 +124,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\triangleleft": { unicode: "◁", defaultItalic: false },
   "\\triangleright": { unicode: "▷", defaultItalic: false },
   "\\wr": { unicode: "≀", defaultItalic: false },
-  
+
   // Logic operators (upright by default)
   "\\wedge": { unicode: "∧", defaultItalic: false },
   "\\vee": { unicode: "∨", defaultItalic: false },
@@ -132,7 +132,35 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\models": { unicode: "⊨", defaultItalic: false },
   "\\top": { unicode: "⊤", defaultItalic: false },
   "\\bot": { unicode: "⊥", defaultItalic: false },
-  
+
+  // Arrow symbols (upright by default)
+  "\\rightarrow": { unicode: "→", defaultItalic: false },
+  "\\leftarrow": { unicode: "←", defaultItalic: false },
+  "\\uparrow": { unicode: "↑", defaultItalic: false },
+  "\\downarrow": { unicode: "↓", defaultItalic: false },
+  "\\leftrightarrow": { unicode: "↔", defaultItalic: false },
+  "\\updownarrow": { unicode: "↕", defaultItalic: false },
+  "\\nearrow": { unicode: "↗", defaultItalic: false },
+  "\\searrow": { unicode: "↘", defaultItalic: false },
+  "\\Rightarrow": { unicode: "⇒", defaultItalic: false },
+  "\\Leftarrow": { unicode: "⇐", defaultItalic: false },
+  "\\Uparrow": { unicode: "⇑", defaultItalic: false },
+  "\\Downarrow": { unicode: "⇓", defaultItalic: false },
+  "\\Leftrightarrow": { unicode: "⇔", defaultItalic: false },
+  "\\Updownarrow": { unicode: "⇕", defaultItalic: false },
+  "\\longrightarrow": { unicode: "⟶", defaultItalic: false },
+  "\\longleftarrow": { unicode: "⟵", defaultItalic: false },
+  "\\longleftrightarrow": { unicode: "⟷", defaultItalic: false },
+  "\\Longrightarrow": { unicode: "⟹", defaultItalic: false },
+  "\\Longleftarrow": { unicode: "⟸", defaultItalic: false },
+  "\\Longleftrightarrow": { unicode: "⟺", defaultItalic: false },
+  "\\circlearrowleft": { unicode: "↺", defaultItalic: false },
+  "\\circlearrowright": { unicode: "↻", defaultItalic: false },
+  "\\curvearrowleft": { unicode: "↶", defaultItalic: false },
+  "\\curvearrowright": { unicode: "↷", defaultItalic: false },
+  "\\hookleftarrow": { unicode: "↩", defaultItalic: false },
+  "\\hookrightarrow": { unicode: "↪", defaultItalic: false },
+
   // Miscellaneous symbols (upright by default)
   "\\bowtie": { unicode: "⋈", defaultItalic: false },
   "\\diamond": { unicode: "⋄", defaultItalic: false },
@@ -140,7 +168,7 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\triangleq": { unicode: "≜", defaultItalic: false },
   "\\therefore": { unicode: "∴", defaultItalic: false },
   "\\because": { unicode: "∵", defaultItalic: false },
-  
+
   // Large operators (upright by default)
   "\\sum": {
     unicode: "∑",
@@ -219,19 +247,19 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
     dataAttribute: "biguplus",
     needsInlineScaling: true,
   },
-  "\\int": { 
+  "\\int": {
     unicode: "∫",
-    defaultItalic: false, 
-    isLargeOperator: true, 
+    defaultItalic: false,
+    isLargeOperator: true,
     dataAttribute: "int",
     // No inline scaling needed
-  }, 
-  "\\oint": { 
-    unicode: "∮", 
-    defaultItalic: false, 
-    isLargeOperator: true, 
+  },
+  "\\oint": {
+    unicode: "∮",
+    defaultItalic: false,
+    isLargeOperator: true,
     dataAttribute: "oint",
-    // No inline scaling needed 
+    // No inline scaling needed
   },
 };
 
@@ -338,34 +366,34 @@ export const BRACKET_PAIRS: BracketPair[] = [
   { left: "\\lvert", right: "\\rvert" },
   { left: "\\lVert", right: "\\rVert" },
   { left: "|", right: "|" },
-  { left: "\\|", right: "\\|" }
+  { left: "\\|", right: "\\|" },
 ];
 
 // Integral commands for LaTeX processing
 export const INTEGRAL_COMMANDS = [
-  '\\inti', '\\intd',
-  '\\iinti', '\\iintd', 
-  '\\iiinti', '\\iiintd',
-  '\\ointi', '\\ointd',
-  '\\intil', '\\intdl',
-  '\\iintil', '\\iintdl',
-  '\\iiintil', '\\iiintdl', 
-  '\\ointil', '\\ointdl'
+  "\\inti", "\\intd",
+  "\\iinti", "\\iintd",
+  "\\iiinti", "\\iiintd",
+  "\\ointi", "\\ointd",
+  "\\intil", "\\intdl",
+  "\\iintil", "\\iintdl",
+  "\\iiintil", "\\iiintdl",
+  "\\ointil", "\\ointdl",
 ];
 
 // Validate brackets in text for mixed bracket pairs
 export function hasMixedBrackets(text: string): boolean {
   if (!text || text.length === 0) return false;
-  
+
   const foundBracketTypes = new Set<string>();
-  
+
   // Check which bracket types are present in the text
   for (const pair of BRACKET_PAIRS) {
     if (text.includes(pair.left) || text.includes(pair.right)) {
       foundBracketTypes.add(`${pair.left}-${pair.right}`);
     }
   }
-  
+
   // If more than one bracket type is found, it's mixed
   return foundBracketTypes.size > 1;
 }

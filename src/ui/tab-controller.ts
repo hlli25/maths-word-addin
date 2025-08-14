@@ -102,18 +102,18 @@ export class TabController {
   private scrollTabs(amount: number): void {
     this.tabNav.scrollBy({
       left: amount,
-      behavior: "smooth"
+      behavior: "smooth",
     });
   }
 
   private updateScrollButtons(): void {
     const { scrollLeft, scrollWidth, clientWidth } = this.tabNav;
-    
+
     // Update left button state
     if (this.leftScrollBtn) {
       this.leftScrollBtn.disabled = scrollLeft <= 0;
     }
-    
+
     // Update right button state
     if (this.rightScrollBtn) {
       this.rightScrollBtn.disabled = scrollLeft >= scrollWidth - clientWidth - 1;

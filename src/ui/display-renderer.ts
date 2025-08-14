@@ -1,6 +1,6 @@
-import { EquationElement } from '../core/equation-builder';
-import { ContextManager } from '../core/context-manager';
-import { getIntegralSymbol, UNICODE_TO_LATEX } from '../core/symbol-config';
+import { EquationElement } from "../core/equation-builder";
+import { ContextManager } from "../core/context-manager";
+import { getIntegralSymbol, UNICODE_TO_LATEX } from "../core/symbol-config";
 
 export class DisplayRenderer {
   private contextManager: ContextManager;
@@ -37,7 +37,8 @@ export class DisplayRenderer {
     const activeContextPath = this.contextManager.getActiveContextPath();
 
     if (activeContextPath === null && elements.length === 0) {
-      displayElement.innerHTML = '<span class="empty-state">Click here and start typing your equation</span>';
+      displayElement.innerHTML =
+        '<span class="empty-state">Click here and start typing your equation</span>';
       displayElement.classList.remove("active");
       return;
     }
@@ -60,7 +61,6 @@ export class DisplayRenderer {
     });
   }
 
-
   private generateMathML(elements: EquationElement[], contextPath: string): string {
     const activeContextPath = this.contextManager.getActiveContextPath();
     const cursorPosition = this.contextManager.getCursorPosition();
@@ -68,8 +68,8 @@ export class DisplayRenderer {
 
     // Add active-context class to the container mrow if this is the active context
     const isActiveContext = activeContextPath === contextPath;
-    const containerClass = isActiveContext ? 'active-context' : '';
-    const containerClassAttr = containerClass ? ` class="${containerClass}"` : '';
+    const containerClass = isActiveContext ? "active-context" : "";
+    const containerClassAttr = containerClass ? ` class="${containerClass}"` : "";
 
     let mathmlContent = `<math><mrow data-context-path="${contextPath}"${containerClassAttr}>`;
 
@@ -96,7 +96,7 @@ export class DisplayRenderer {
       mathmlContent += '<mspace class="cursor" data-context-path="' + contextPath + '" data-position="' + elements.length + '" />';
     }
 
-    mathmlContent += '</mrow></math>';
+    mathmlContent += "</mrow></math>";
     return mathmlContent;
   }
 
@@ -105,34 +105,36 @@ export class DisplayRenderer {
     const isActive = activeContextPath === contextPath;
 
     switch (element.type) {
-      case 'text':
+      case "text":
         return this.textToMathML(element, isActive, contextPath, position, isSelected);
-      case 'fraction':
+      case "fraction":
         return this.fractionToMathML(element, contextPath, isActive, position, isSelected);
-      case 'bevelled-fraction':
+      case "bevelled-fraction":
         return this.bevelledFractionToMathML(element, contextPath, isActive, position, isSelected);
-      case 'sqrt':
+      case "sqrt":
         return this.sqrtToMathML(element, contextPath, isActive, position, isSelected);
-      case 'nthroot':
+      case "nthroot":
         return this.nthRootToMathML(element, contextPath, isActive, position, isSelected);
-      case 'script':
+      case "script":
         return this.scriptToMathML(element, contextPath, isActive, position, isSelected);
-      case 'bracket':
+      case "bracket":
         return this.bracketToMathML(element, contextPath, isActive, position, isSelected);
-      case 'large-operator':
+      case "large-operator":
         return this.largeOperatorToMathML(element, contextPath, isActive, position, isSelected);
-      case 'derivative':
+      case "derivative":
         return this.derivativeToMathML(element, contextPath, isActive, position, isSelected);
-      case 'integral':
+      case "integral":
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
-      case 'matrix':
+      case "matrix":
         return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
-      case 'stack':
+      case "stack":
         return this.stackToMathML(element, contextPath, isActive, position, isSelected);
-      case 'cases':
+      case "cases":
         return this.casesToMathML(element, contextPath, isActive, position, isSelected);
+      case "accent":
+        return this.accentToMathML(element, contextPath, isActive, position, isSelected);
       default:
-        return '';
+        return "";
     }
   }
 
@@ -141,43 +143,40 @@ export class DisplayRenderer {
     
     // Check if element is in text mode early to handle space escaping
     const isTextMode = element.textMode === true || (element.wrappers && element.wrappers.textMode);
-    
-    
+
     // In text mode, convert spaces to non-breaking spaces for proper display
-    if (isTextMode && value === ' ') {
-      value = '&#160;'; // Non-breaking space
+    if (isTextMode && value === " ") {
+      value = "&#160;"; // Non-breaking space
     }
     const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
     const isVariable = /[a-zA-Z]/.test(value);
     const isNumber = /[0-9]/.test(value);
     const isSymbol = /[^\w\s]/.test(value);
 
-    let tag = 'mi';
+    let tag = "mi";
     // In text mode, use mtext tag for proper text rendering
     if (isTextMode) {
-      tag = 'mtext';
+      tag = "mtext";
     } else if (isOperator) {
-      tag = 'mo';
+      tag = "mo";
     } else if (isNumber) {
-      tag = 'mn';
+      tag = "mn";
     }
 
-    let style = '';
+    let style = "";
     if (element.color) style += `color: ${element.color};`;
-    if (element.bold) style += 'font-weight: bold;';
-
-    
+    if (element.bold) style += "font-weight: bold;";
 
     // Add selection highlighting
     if (isSelected) {
-      style += 'background-color: #0078d4; color: white; border-radius: 2px; padding: 1px 2px;';
+      style += "background-color: #0078d4; color: white; border-radius: 2px; padding: 1px 2px;";
     }
 
-    const styleAttr = style ? `style="${style}"` : '';
+    const styleAttr = style ? `style="${style}"` : "";
 
     // Handle italic styling using mathvariant attribute for mi elements, inline styles for others
-    let mathVariantAttr = '';
-    if (tag === 'mi') {
+    let mathVariantAttr = "";
+    if (tag === "mi") {
       // For <mi> elements, use mathvariant attribute to control italic behavior
       let shouldBeItalic = false;
 
@@ -195,37 +194,36 @@ export class DisplayRenderer {
         mathVariantAttr = 'mathvariant="normal"';
       }
       // If shouldBeItalic is true, we don't set mathvariant and let <mi> use its default italic
-    } else if (tag === 'mtext') {
+    } else if (tag === "mtext") {
       // For mtext elements, ensure roman (non-italic) font by default
       mathVariantAttr = 'mathvariant="normal"';
     } else {
       // For non-mi elements (mo, mn), use inline styles as before
       if (element.italic === true) {
-        style += 'font-style: italic;';
+        style += "font-style: italic;";
       } else if (element.italic === false) {
-        style += 'font-style: normal;';
+        style += "font-style: normal;";
       } else if (isVariable && !element.bold && element.italic !== false && !isTextMode) {
         // Variables default to italic unless bold or explicitly set to normal or in text mode
-        style += 'font-style: italic;';
+        style += "font-style: italic;";
       }
     }
 
     const classNames = [];
-    if (isActive) classNames.push('active-element');
-    if (isSelected) classNames.push('selected');
-    
+    if (isActive) classNames.push("active-element");
+    if (isSelected) classNames.push("selected");
 
     // Add active-context class if this is the active context
     const activeContextPath = this.contextManager.getActiveContextPath();
     if (activeContextPath === contextPath) {
-      classNames.push('active-context');
+      classNames.push("active-context");
     }
 
-    const classAttr = classNames.length > 0 ? `class="${classNames.join(' ')}"` : '';
+    const classAttr = classNames.length > 0 ? `class="${classNames.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${contextPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Update styleAttr if we modified style for non-mi elements
-    const finalStyleAttr = style ? `style="${style}"` : '';
+    const finalStyleAttr = style ? `style="${style}"` : "";
 
     return `<${tag} ${finalStyleAttr} ${mathVariantAttr} ${classAttr} ${dataAttrs}>${value}</${tag}>`;
   }
@@ -236,17 +234,17 @@ export class DisplayRenderer {
 
     // Add classes for active element, selection, and display mode
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    if (element.displayMode === 'display') classes.push('display-fraction');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    if (element.displayMode === "display") classes.push("display-fraction");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    const style = '';
+    const style = "";
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode fractions
-    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    const displayStyle = element.displayMode === "display" ? 'displaystyle="true"' : "";
 
     return `<mfrac ${displayStyle} ${classAttr} ${style} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
@@ -270,9 +268,9 @@ export class DisplayRenderer {
   private sqrtToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
     const styleAttr = "";
@@ -288,9 +286,9 @@ export class DisplayRenderer {
     const indexML = this.generateMathMLContent(`${elementPath}/index`, element.index);
     const radicandML = this.generateMathMLContent(`${elementPath}/radicand`, element.radicand);
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     return `<mroot ${classAttr} ${dataAttrs}>
@@ -302,11 +300,11 @@ export class DisplayRenderer {
   private scriptToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const baseML = this.generateMathMLContent(`${elementPath}/base`, element.base);
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    const style = '';
+    const style = "";
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
@@ -358,9 +356,9 @@ export class DisplayRenderer {
       `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.rightBracketSymbol}</mo>` : '';
 
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
 
     return `<mrow ${classAttr} ${dataAttrs}>
@@ -374,9 +372,9 @@ export class DisplayRenderer {
     const operator = element.operator || '&#x2211;';
     const operandML = this.generateMathMLContent(`${elementPath}/operand`, element.operand);
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Check if this is marked as an indefinite integral
@@ -388,18 +386,18 @@ export class DisplayRenderer {
     // Get data-operator attribute for all operator types
     const operatorData = this.getOperatorDataAttribute(operator);
 
-    let operatorML = '';
+    let operatorML = "";
     if (isIndefiniteIntegral) {
       // Simple indefinite integral without limits
       operatorML = `<mo ${classAttr} ${dataAttrs}>${operator}</mo>`;
-    } else if (element.limitMode === 'limits') {
+    } else if (element.limitMode === "limits") {
       const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
       const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
       // Distinguish regular limits from display limits for sizing
-      const limitsClass = element.displayMode === 'display' ? 'display-limits' : 'inline-limits';
+      const limitsClass = element.displayMode === "display" ? "display-limits" : "inline-limits";
       const limitsClasses = [limitsClass];
-      if (isSelected) limitsClasses.push('selected-structure');
-      operatorML = `<munderover class="${limitsClasses.join(' ')}" ${operatorData} ${dataAttrs}>
+      if (isSelected) limitsClasses.push("selected-structure");
+      operatorML = `<munderover class="${limitsClasses.join(" ")}" ${operatorData} ${dataAttrs}>
         <mo>${operator}</mo>
         <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
         <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
@@ -417,8 +415,9 @@ export class DisplayRenderer {
     // Wrap everything in mrow with displaystyle and include operand
     // Add data-operator to the wrapper so CSS can target cursors within any integral
     const wrapperClasses = [];
-    if (isSelected) wrapperClasses.push('selected-structure');
-    const wrapperClassAttr = wrapperClasses.length > 0 ? ` class="${wrapperClasses.join(' ')}"` : '';
+    if (isSelected) wrapperClasses.push("selected-structure");
+    const wrapperClassAttr =
+      wrapperClasses.length > 0 ? ` class="${wrapperClasses.join(" ")}"` : "";
     return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr} data-element-id="${element.id}">
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
@@ -428,23 +427,23 @@ export class DisplayRenderer {
   private getOperatorDataAttribute(operator: string): string {
     // Convert operator symbol to LaTeX command, then use that as the name
     const latexCommand = UNICODE_TO_LATEX[operator];
-    const operatorName = latexCommand ? latexCommand.substring(1) : 'unknown'; // Remove the backslash
+    const operatorName = latexCommand ? latexCommand.substring(1) : "unknown"; // Remove the backslash
     return `data-operator="${operatorName}"`;
   }
 
   private derivativeToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode derivatives
-    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    const displayStyle = element.displayMode === "display" ? 'displaystyle="true"' : "";
 
     // Check current differential style preference from context manager
     const isDifferentialItalic = this.getDifferentialStylePreference();
-    const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
+    const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
 
     // Check if this is long form derivative
     if (element.isLongForm) {
@@ -455,10 +454,10 @@ export class DisplayRenderer {
     const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
     const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
 
-    let numeratorContent = '';
-    let denominatorContent = '';
+    let numeratorContent = "";
+    let denominatorContent = "";
 
-    if (typeof element.order === 'number') {
+    if (typeof element.order === "number") {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
         numeratorContent = `<mi ${mathVariantAttr}>d</mi>${functionML}`;
@@ -486,7 +485,7 @@ export class DisplayRenderer {
         element.order.map(el => el.value || '').join('') : '';
       denominatorContent = `<mi ${mathVariantAttr}>d</mi><msup>
         ${variableML}
-        <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
+        <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
       </msup>`;
     }
 
@@ -498,7 +497,7 @@ export class DisplayRenderer {
 
   private getDifferentialStylePreference(): boolean {
     // Get differential style from input handler (true = italic, false = roman)
-    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === 'function') {
+    if (this.inputHandler && typeof this.inputHandler.getDifferentialStyleForLatex === "function") {
       // Invert the logic since getDifferentialStyleForLatex returns true for roman (physics package)
       // but we need true for italic display
       return !this.inputHandler.getDifferentialStyleForLatex();
@@ -508,18 +507,18 @@ export class DisplayRenderer {
 
   private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string): string {
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Generate content for each part
     const functionML = this.generateMathMLContent(`${elementPath}/function`, element.function);
     const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
 
-    let fractionContent = '';
+    let fractionContent = "";
 
-    if (typeof element.order === 'number') {
+    if (typeof element.order === "number") {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
         // d/dx format
@@ -563,7 +562,7 @@ export class DisplayRenderer {
           <mi ${mathVariantAttr}>d</mi>
           <msup>
             ${variableML}
-            <mi>${readOnlyOrderML || '&#x25A1;'}</mi>
+            <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
           </msup>
         </mrow>
       </mfrac>`;
@@ -578,26 +577,26 @@ export class DisplayRenderer {
 
   private integralToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const classes = [];
-    if (isActive) classes.push('active-element');
-    if (isSelected) classes.push('selected-structure');
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode integrals
-    const displayStyle = element.displayMode === 'display' ? 'displaystyle="true"' : '';
+    const displayStyle = element.displayMode === "display" ? 'displaystyle="true"' : "";
 
     // Get the integral symbol based on type
-    const integralSymbol = getIntegralSymbol(element.integralType || 'single');
+    const integralSymbol = getIntegralSymbol(element.integralType || "single");
 
     // Check differential style preference
-    const isDifferentialItalic = element.integralStyle === 'italic';
-    const mathVariantAttr = isDifferentialItalic ? '' : 'mathvariant="normal"';
+    const isDifferentialItalic = element.integralStyle === "italic";
+    const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
 
     // Generate content for integrand and differential variable
     const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
     const differentialVariableML = this.generateMathMLContent(`${elementPath}/differentialVariable`, element.differentialVariable);
 
-    let integralOperatorML = '';
+    let integralOperatorML = "";
 
     if (element.hasLimits) {
       // Definite integral with limits
@@ -641,14 +640,14 @@ export class DisplayRenderer {
     const { rows, cols, cells, matrixType } = element;
 
     if (!rows || !cols || !cells) {
-      return '<mtext>Invalid Matrix</mtext>';
+      return "<mtext>Invalid Matrix</mtext>";
     }
 
     // Generate the matrix content
-    let matrixContent = '<mtable>';
+    let matrixContent = "<mtable>";
 
     for (let row = 0; row < rows; row++) {
-      matrixContent += '<mtr>';
+      matrixContent += "<mtr>";
       for (let col = 0; col < cols; col++) {
         const cellPath = `${elementPath}/cell_${row}_${col}`;
         const cellElements = cells[`cell_${row}_${col}`] || [];
@@ -656,10 +655,10 @@ export class DisplayRenderer {
         const cellContent = this.generateMathMLContent(cellPath, cellElements);
         matrixContent += `<mtd>${cellContent}</mtd>`;
       }
-      matrixContent += '</mtr>';
+      matrixContent += "</mtr>";
     }
 
-    matrixContent += '</mtable>';
+    matrixContent += "</mtable>";
 
     // Wrap with brackets based on matrix type
     return this.wrapMatrixWithBrackets(matrixContent, matrixType || 'parentheses', elementPath, position, isSelected, element);
@@ -669,14 +668,14 @@ export class DisplayRenderer {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
-      return '<mtext>Invalid Stack</mtext>';
+      return "<mtext>Invalid Stack</mtext>";
     }
 
     // Generate the stack content using mtable
-    let stackContent = '<mtable>';
+    let stackContent = "<mtable>";
 
     for (let row = 0; row < rows; row++) {
-      stackContent += '<mtr>';
+      stackContent += "<mtr>";
       for (let col = 0; col < cols; col++) {
         const cellPath = `${elementPath}/cell_${row}_${col}`;
         const cellElements = cells[`cell_${row}_${col}`] || [];
@@ -684,16 +683,16 @@ export class DisplayRenderer {
         const cellContent = this.generateMathMLContent(cellPath, cellElements);
         stackContent += `<mtd>${cellContent}</mtd>`;
       }
-      stackContent += '</mtr>';
+      stackContent += "</mtr>";
     }
 
-    stackContent += '</mtable>';
+    stackContent += "</mtable>";
 
     // Stack has no brackets - just return the table content
     const classes: string[] = [];
-    if (isSelected) classes.push('selected-structure');
+    if (isSelected) classes.push("selected-structure");
 
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     return `<mrow ${classAttr} ${dataAttrs}>${stackContent}</mrow>`;
@@ -703,14 +702,14 @@ export class DisplayRenderer {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
-      return '<mtext>Invalid Cases</mtext>';
+      return "<mtext>Invalid Cases</mtext>";
     }
 
     // Generate the cases content using mtable
-    let casesContent = '<mtable>';
+    let casesContent = "<mtable>";
 
     for (let row = 0; row < rows; row++) {
-      casesContent += '<mtr>';
+      casesContent += "<mtr>";
       for (let col = 0; col < cols; col++) {
         const cellPath = `${elementPath}/cell_${row}_${col}`;
         const cellElements = cells[`cell_${row}_${col}`] || [];
@@ -718,10 +717,10 @@ export class DisplayRenderer {
         const cellContent = this.generateMathMLContent(cellPath, cellElements);
         casesContent += `<mtd>${cellContent}</mtd>`;
       }
-      casesContent += '</mtr>';
+      casesContent += "</mtr>";
     }
 
-    casesContent += '</mtable>';
+    casesContent += "</mtable>";
 
     // Wrap with left brace only
     return this.wrapCasesWithBrace(casesContent, elementPath, position, isSelected, element);
@@ -729,17 +728,17 @@ export class DisplayRenderer {
 
   private wrapCasesWithBrace(casesContent: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
     const classes: string[] = [];
-    if (isSelected) classes.push('selected-structure');
+    if (isSelected) classes.push("selected-structure");
 
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
     // Build inline styles for structure-level formatting
-    let style = '';
+    let style = "";
     if (isSelected) {
-      style += 'background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;';
+      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
     }
 
-    const styleAttr = style ? `style="${style}"` : '';
+    const styleAttr = style ? `style="${style}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Cases only have a left brace
@@ -751,62 +750,224 @@ export class DisplayRenderer {
 
   private wrapMatrixWithBrackets(matrixContent: string, matrixType: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
     const classes: string[] = [];
-    if (isSelected) classes.push('selected-structure');
+    if (isSelected) classes.push("selected-structure");
 
-    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
     // Build inline styles for structure-level formatting
-    let style = '';
+    let style = "";
     if (isSelected) {
-      style += 'background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;';
+      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
     }
 
-    const styleAttr = style ? `style="${style}"` : '';
+    const styleAttr = style ? `style="${style}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     switch (matrixType) {
-      case 'parentheses':
+      case "parentheses":
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
           <mo stretchy="true">(</mo>
           ${matrixContent}
           <mo stretchy="true">)</mo>
         </mrow>`;
-      case 'brackets':
+      case "brackets":
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
           <mo stretchy="true">[</mo>
           ${matrixContent}
           <mo stretchy="true">]</mo>
         </mrow>`;
-      case 'braces':
+      case "braces":
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
           <mo stretchy="true">{</mo>
           ${matrixContent}
           <mo stretchy="true">}</mo>
         </mrow>`;
-      case 'bars':
+      case "bars":
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
           <mo stretchy="true">|</mo>
           ${matrixContent}
           <mo stretchy="true">|</mo>
         </mrow>`;
-      case 'double-bars':
+      case "double-bars":
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
           <mo stretchy="true">∥</mo>
           ${matrixContent}
           <mo stretchy="true">∥</mo>
         </mrow>`;
-      case 'none':
+      case "none":
       default:
         return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>${matrixContent}</mrow>`;
     }
   }
 
+  private accentToMathML(
+    element: EquationElement,
+    elementPath: string,
+    isActive: boolean,
+    position: number,
+    isSelected: boolean = false
+  ): string {
+    const basePath = `${elementPath}/${element.id}/accentBase`;
+    const baseContent = this.generateMathMLContent(basePath, element.accentBase);
+
+    // Build attributes
+    const classes: string[] = [];
+    if (isSelected) classes.push("selected-structure");
+
+    let style = "";
+    if (isSelected) {
+      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
+    }
+
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const styleAttr = style ? `style="${style}"` : "";
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Get the accent symbol and determine if it should stretch
+    const accentSymbol = this.getAccentSymbol(element.accentType || "hat");
+    const isStretchy = this.isStretchyAccent(element.accentType || "hat");
+    const stretchyAttr = isStretchy ? ' stretchy="true"' : '';
+
+    // For wide accents, apply background color directly
+    // For single accents, we'll use overlay approach for precise positioning
+    const isSingleAccent = !isStretchy;
+    let styledBaseContent = baseContent;
+    
+    if (!isSingleAccent) {
+      // Wide accents: apply light grey background directly
+      const baseStyle = 'style="background-color: #f0f0f0; border-radius: 2px; padding: 1px 2px; display: inline-block;"';
+      styledBaseContent = `<mrow ${baseStyle} data-context-path="${basePath}">${baseContent}</mrow>`;
+    } else {
+      // Single accents: use plain content
+      styledBaseContent = `<mrow data-context-path="${basePath}">${baseContent}</mrow>`;
+    }
+
+    if (element.accentPosition === "under") {
+      // Handle braces with labels
+      if (
+        (element.accentType === "underbrace" &&
+          element.accentLabel &&
+          element.accentLabel.length > 0) ||
+        element.accentType === "labeledunderbrace"
+      ) {
+        const labelPath = `${elementPath}/${element.id}/accentLabel`;
+        const labelContent = this.generateMathMLContent(labelPath, element.accentLabel);
+        return `<munder ${classAttr} ${styleAttr} ${dataAttrs}>
+          <munder>
+            ${styledBaseContent}
+            <mo${stretchyAttr}>${accentSymbol}</mo>
+          </munder>
+          ${labelContent}
+        </munder>`;
+      } else {
+        return `<munder ${classAttr} ${styleAttr} ${dataAttrs}>
+          ${styledBaseContent}
+          <mo${stretchyAttr}>${accentSymbol}</mo>
+        </munder>`;
+      }
+    } else {
+      // Handle braces with labels
+      if (
+        (element.accentType === "overbrace" &&
+          element.accentLabel &&
+          element.accentLabel.length > 0) ||
+        element.accentType === "labeledoverbrace"
+      ) {
+        const labelPath = `${elementPath}/${element.id}/accentLabel`;
+        const labelContent = this.generateMathMLContent(labelPath, element.accentLabel);
+        return `<mover ${classAttr} ${styleAttr} ${dataAttrs}>
+          <mover>
+            ${styledBaseContent}
+            <mo${stretchyAttr}>${accentSymbol}</mo>
+          </mover>
+          ${labelContent}
+        </mover>`;
+      } else {
+        return `<mover ${classAttr} ${styleAttr} ${dataAttrs}>
+          ${styledBaseContent}
+          <mo${stretchyAttr}>${accentSymbol}</mo>
+        </mover>`;
+      }
+    }
+  }
+
+  private getAccentSymbol(accentType: string): string {
+    switch (accentType) {
+      case "hat":
+        return "^";
+      case "tilde":
+        return "~";
+      case "bar":
+        return "‾";
+      case "dot":
+        return "·";
+      case "ddot":
+        return "¨";
+      case "vec":
+        return "→";
+      case "widehat":
+        return "^"; // hat symbol for wide hat
+      case "widetilde":
+        return "∼"; // tilde operator for wide tilde
+      case "widebar":
+        return "‾"; // line for wide bar (will be stretchy)
+      case "overrightarrow":
+        return "⟶"; // long rightwards arrow for overrightarrow (more stretchable)
+      case "overleftarrow":
+        return "⟵"; // long leftwards arrow for overleftarrow (more stretchable)
+      case "overleftrightarrow":
+        return "⟷"; // left right arrow for overleftrightarrow (stretchable)
+      case "overbrace":
+        return "⏞";
+      case "underbrace":
+        return "⏟";
+      case "labeledoverbrace":
+        return "⏞"; // same symbol as overbrace
+      case "labeledunderbrace":
+        return "⏟"; // same symbol as underbrace
+      case "overparen":
+        return "⏜"; // arc over symbol for overparen
+      case "underparen":
+        return "⏝"; // arc under symbol for underparen
+      default:
+        return "^";
+    }
+  }
+
+  private isStretchyAccent(accentType: string): boolean {
+    // Wide accents and line-based accents should stretch
+    switch (accentType) {
+      case "widehat":
+      case "widetilde":
+      case "widebar":
+      case "overrightarrow":
+      case "overleftarrow":
+      case "overleftrightarrow":
+      case "overbrace":
+      case "underbrace":
+      case "labeledoverbrace":
+      case "labeledunderbrace":
+      case "overparen":
+      case "underparen":
+        return true;
+      // Single-character accents should NOT stretch (maintain fixed size)
+      case "hat":
+      case "tilde":
+      case "bar":
+      case "dot":
+      case "ddot":
+      case "vec":
+      default:
+        return false;
+    }
+  }
+
   private createWrapperOverlays(displayElement: HTMLElement, elements: EquationElement[]): void {
-    const overlayContainer = displayElement.querySelector('.wrapper-overlays') as HTMLElement;
+    const overlayContainer = displayElement.querySelector(".wrapper-overlays") as HTMLElement;
     if (!overlayContainer) return;
 
     // Clear existing overlays
-    overlayContainer.innerHTML = '';
+    overlayContainer.innerHTML = "";
 
     // Collect all underlined elements and group them by wrapper ID
     const underlineGroups = new Map<string, { elements: HTMLElement[], type: "single" | "double" }>();
@@ -821,12 +982,12 @@ export class DisplayRenderer {
           if (!underlineGroups.has(wrapperId)) {
             underlineGroups.set(wrapperId, {
               elements: [],
-              type: element.wrappers.underline.type
+              type: element.wrappers.underline.type,
             });
           }
           underlineGroups.get(wrapperId)!.elements.push(domElement);
         }
-        
+
         // Handle cancel wrappers
         if (element.wrappers.cancel) {
           const wrapperId = element.wrappers.cancel.id;
@@ -842,15 +1003,18 @@ export class DisplayRenderer {
     underlineGroups.forEach((group, wrapperId) => {
       this.createGroupedUnderlineOverlay(overlayContainer, group.elements, group.type);
     });
-    
+
     // Create cancel overlays for each group
     cancelGroups.forEach((elements, wrapperId) => {
       this.createGroupedCancelOverlay(overlayContainer, elements);
     });
   }
 
-  private findElementsWithWrappers(elements: EquationElement[], callback: (element: EquationElement, domElement: HTMLElement) => void): void {
-    elements.forEach(element => {
+  private findElementsWithWrappers(
+    elements: EquationElement[],
+    callback: (element: EquationElement, domElement: HTMLElement) => void
+  ): void {
+    elements.forEach((element) => {
       if (element.wrappers && Object.keys(element.wrappers).length > 0) {
         // Find the DOM element for this equation element
         const domElement = document.querySelector(`[data-element-id="${element.id}"]`) as HTMLElement;
@@ -875,10 +1039,14 @@ export class DisplayRenderer {
       if (element.operand) this.findElementsWithWrappers(element.operand, callback);
       if (element.upperLimit) this.findElementsWithWrappers(element.upperLimit, callback);
       if (element.lowerLimit) this.findElementsWithWrappers(element.lowerLimit, callback);
-      
+
+      // Handle accent elements
+      if (element.accentBase) this.findElementsWithWrappers(element.accentBase, callback);
+      if (element.accentLabel) this.findElementsWithWrappers(element.accentLabel, callback);
+
       // Handle matrix, stack, and cases cells
       if (element.cells) {
-        Object.values(element.cells).forEach(cellElements => {
+        Object.values(element.cells).forEach((cellElements) => {
           this.findElementsWithWrappers(cellElements, callback);
         });
       }
@@ -889,13 +1057,13 @@ export class DisplayRenderer {
     if (elements.length === 0) return;
 
     const containerRect = overlayContainer.getBoundingClientRect();
-    
+
     // Find the leftmost position, rightmost position, and lowest bottom
     let leftmost = Infinity;
     let rightmost = -Infinity;
     let lowestBottom = -Infinity;
 
-    elements.forEach(element => {
+    elements.forEach((element) => {
       const rect = element.getBoundingClientRect();
       leftmost = Math.min(leftmost, rect.left);
       rightmost = Math.max(rightmost, rect.right);
@@ -907,9 +1075,9 @@ export class DisplayRenderer {
     const width = rightmost - leftmost;
     const top = lowestBottom - containerRect.top + 1; // Position slightly below the lowest element
 
-    if (type === 'double') {
+    if (type === "double") {
       // Create double underline
-      const underline1 = document.createElement('div');
+      const underline1 = document.createElement("div");
       underline1.style.cssText = `
         position: absolute;
         left: ${left}px;
@@ -919,8 +1087,8 @@ export class DisplayRenderer {
         background-color: currentColor;
         pointer-events: none;
       `;
-      
-      const underline2 = document.createElement('div');
+
+      const underline2 = document.createElement("div");
       underline2.style.cssText = `
         position: absolute;
         left: ${left}px;
@@ -930,12 +1098,12 @@ export class DisplayRenderer {
         background-color: currentColor;
         pointer-events: none;
       `;
-      
+
       overlayContainer.appendChild(underline1);
       overlayContainer.appendChild(underline2);
     } else {
       // Create single underline
-      const underline = document.createElement('div');
+      const underline = document.createElement("div");
       underline.style.cssText = `
         position: absolute;
         left: ${left}px;
@@ -945,7 +1113,7 @@ export class DisplayRenderer {
         background-color: currentColor;
         pointer-events: none;
       `;
-      
+
       overlayContainer.appendChild(underline);
     }
   }
@@ -954,14 +1122,14 @@ export class DisplayRenderer {
     if (elements.length === 0) return;
 
     const containerRect = overlayContainer.getBoundingClientRect();
-    
+
     // Find the bounding box of all elements
     let leftmost = Infinity;
     let rightmost = -Infinity;
     let topmost = Infinity;
     let bottommost = -Infinity;
 
-    elements.forEach(element => {
+    elements.forEach((element) => {
       const rect = element.getBoundingClientRect();
       leftmost = Math.min(leftmost, rect.left);
       rightmost = Math.max(rightmost, rect.right);
@@ -976,7 +1144,7 @@ export class DisplayRenderer {
     const height = bottommost - topmost;
 
     // Create SVG for the diagonal line
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.style.cssText = `
       position: absolute;
       left: ${left}px;
@@ -986,16 +1154,16 @@ export class DisplayRenderer {
       pointer-events: none;
       overflow: visible;
     `;
-    
+
     // Create the diagonal line from top-left to bottom-right
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', String(width));
-    line.setAttribute('x2', '0');
-    line.setAttribute('y1', '0');
-    line.setAttribute('y2', String(height));
-    line.setAttribute('stroke', 'black');
-    line.setAttribute('stroke-width', '1.5');
-    
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", String(width));
+    line.setAttribute("x2", "0");
+    line.setAttribute("y1", "0");
+    line.setAttribute("y2", String(height));
+    line.setAttribute("stroke", "black");
+    line.setAttribute("stroke-width", "1.5");
+
     svg.appendChild(line);
     overlayContainer.appendChild(svg);
   }
@@ -1008,7 +1176,7 @@ export class DisplayRenderer {
       }
       // Add active-context class to empty placeholder squares when they're in the active context
       const isActiveContext = activeContextPath === contextPath;
-      const activeClass = isActiveContext ? ' active-context' : '';
+      const activeClass = isActiveContext ? " active-context" : "";
       return `<mi class="placeholder-square${activeClass}" data-context-path="${contextPath}" data-position="0">&#x25A1;</mi>`;
     }
     return this.generateMathML(elements, contextPath);

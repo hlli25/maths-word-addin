@@ -1,4 +1,4 @@
-import { SvgPositionInfo } from './mathjax-service';
+import { SvgPositionInfo } from "./mathjax-service";
 
 export interface ProcessedSvgResult {
   svgString: string;
@@ -34,7 +34,7 @@ export class SvgProcessor {
     }
 
     const [minX, minY, vbWidth, vbHeight] = viewBox.split(" ").map(parseFloat);
-    
+
     // Scale the SVG so that 1em in MathJax's internal units maps to the target font size in pixels
     const targetPxSize = targetPtSize * (96 / 72);
     const internalUnitsPerEm = 1000;
@@ -45,13 +45,13 @@ export class SvgProcessor {
 
     // Calculate baseline adjustment for proper text alignment
     let baselineOffsetPt = 0;
-    
+
     if (positionInfo) {
       const baselineOffsetPx = positionInfo.baseline * 0.5 * targetPtSize * (96 / 72);
-      
-      if (positionInfo.mainFractionBar) {    
+
+      if (positionInfo.mainFractionBar) {
         baselineOffsetPt = baselineOffsetPx * (72 / 96);
-        
+
         const svgCenterY = minY + vbHeight / 2;
         const mainBarY = positionInfo.mainFractionBar.y;
         const fractionBarOffsetFromCenter = mainBarY + (positionInfo.mainFractionBar.height / 2) - svgCenterY;
@@ -103,18 +103,17 @@ export class SvgProcessor {
   private fixColors(svgClone: SVGElement): void {
     // First, check if there are any actual color values in the SVG
     const allElements = svgClone.querySelectorAll("*");
-    const hasActualColors = Array.from(allElements).some(element => {
+    const hasActualColors = Array.from(allElements).some((element) => {
       const fill = element.getAttribute("fill");
       const stroke = element.getAttribute("stroke");
       return (fill && fill !== "black" && fill !== "white" && fill !== "currentColor") ||
              (stroke && stroke !== "black" && stroke !== "white" && stroke !== "currentColor");
     });
-    
-    
+
     allElements.forEach((element) => {
       const fill = element.getAttribute("fill");
       const stroke = element.getAttribute("stroke");
-      
+
       // If there are actual colors in the SVG, be more careful with currentColor
       if (hasActualColors) {
         // Only fix currentColor if the element doesn't have a parent with actual colors
@@ -137,14 +136,14 @@ export class SvgProcessor {
             element.removeAttribute("stroke");
           }
         }
-        
+
         // If child elements have no color attributes under a colored parent, 
         // explicitly set the parent's color
         const parentWithColor = this.findParentWithColor(element);
         if (hasActualColors && parentWithColor) {
           const currentFill = element.getAttribute("fill");
           const currentStroke = element.getAttribute("stroke");
-          
+
           // If element has null/empty color attributes, set explicit colors from parent
           if (currentFill === "" || currentFill === "null" || currentFill === null) {
             const parentFill = parentWithColor.getAttribute("fill");
@@ -168,7 +167,6 @@ export class SvgProcessor {
           element.setAttribute("stroke", "black");
         }
       }
-      
     });
   }
 
@@ -193,8 +191,7 @@ export class SvgProcessor {
     bgRect.setAttribute("width", String(vbWidth));
     bgRect.setAttribute("height", String(vbHeight));
     bgRect.setAttribute("fill", "white");
-    
-    
+
     // Insert background as first child (behind other elements)
     svgClone.insertBefore(bgRect, svgClone.firstChild);
   }
@@ -214,7 +211,7 @@ export class SvgProcessor {
           if (useElement.hasAttribute("transform")) {
             newPath.setAttribute("transform", useElement.getAttribute("transform")!);
           }
-          
+
           // Preserve colors from the use element or referenced element
           const fillColor = useElement.getAttribute("fill") || referencedElement.getAttribute("fill") || "black";
           const strokeColor = useElement.getAttribute("stroke") || referencedElement.getAttribute("stroke");
@@ -223,7 +220,7 @@ export class SvgProcessor {
           if (strokeColor) {
             newPath.setAttribute("stroke", strokeColor);
           }
-          
+
           useElement.parentNode?.replaceChild(newPath, useElement);
         }
       }

@@ -81,16 +81,16 @@ export class FontMeasurementService {
 
   private createMeasurementElements(operatorSymbol: string) {
     // Create invisible container
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '-9999px';
-    container.style.visibility = 'hidden';
-    container.style.pointerEvents = 'none';
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    container.style.visibility = "hidden";
+    container.style.pointerEvents = "none";
 
     // Create nolimits element (target size)
-    const nolimitsWrapper = document.createElement('div');
-    nolimitsWrapper.className = 'visual-equation-container';
+    const nolimitsWrapper = document.createElement("div");
+    nolimitsWrapper.className = "visual-equation-container";
     nolimitsWrapper.innerHTML = `
       <math>
         <mrow>
@@ -104,8 +104,8 @@ export class FontMeasurementService {
     `;
 
     // Create displaystyle limits element (current size)
-    const displaylimitsWrapper = document.createElement('div');
-    displaylimitsWrapper.className = 'visual-equation-container';
+    const displaylimitsWrapper = document.createElement("div");
+    displaylimitsWrapper.className = "visual-equation-container";
     displaylimitsWrapper.innerHTML = `
       <math>
         <mrow displaystyle="true">
@@ -125,28 +125,28 @@ export class FontMeasurementService {
     return {
       nolimitsElement: nolimitsWrapper,
       displaylimitsElement: displaylimitsWrapper,
-      container
+      container,
     };
   }
 
   private getOperatorSize(container: HTMLElement): { width: number; height: number } {
-    const operator = container.querySelector('mo');
+    const operator = container.querySelector("mo");
     if (!operator) {
-      throw new Error('Operator element not found');
+      throw new Error("Operator element not found");
     }
 
     const rect = operator.getBoundingClientRect();
     return {
       width: rect.width,
-      height: rect.height
+      height: rect.height,
     };
   }
 
   private getCurrentFontKey(): string {
     // Create a key based on current font settings
     const computedStyle = window.getComputedStyle(document.body);
-    const fontFamily = computedStyle.getPropertyValue('font-family');
-    const fontSize = computedStyle.getPropertyValue('font-size');
+    const fontFamily = computedStyle.getPropertyValue("font-family");
+    const fontSize = computedStyle.getPropertyValue("font-size");
 
     return `${fontFamily}-${fontSize}`;
   }
@@ -154,7 +154,10 @@ export class FontMeasurementService {
   private applyScaleRatios(ratios: Map<string, number>): void {
     // Create or update CSS custom properties for each operator
     ratios.forEach((ratio, operatorName) => {
-      document.documentElement.style.setProperty(`--inline-limits-scale-${operatorName}`, ratio.toString());
+      document.documentElement.style.setProperty(
+        `--inline-limits-scale-${operatorName}`,
+        ratio.toString()
+      );
     });
 
     // Ensure CSS rules exist
@@ -162,11 +165,11 @@ export class FontMeasurementService {
   }
 
   private ensureScaleCSSRules(): void {
-    const styleId = 'inline-limits-dynamic-scale';
+    const styleId = "inline-limits-dynamic-scale";
     let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
     if (!styleElement) {
-      styleElement = document.createElement('style');
+      styleElement = document.createElement("style");
       styleElement.id = styleId;
 
       // Get operators that need scaling from symbol config

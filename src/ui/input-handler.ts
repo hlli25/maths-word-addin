@@ -1,7 +1,7 @@
-import { EquationBuilder, EquationElement } from '../core/equation-builder';
-import { ContextManager } from '../core/context-manager';
-import { DisplayRenderer } from './display-renderer';
-import { LATEX_TO_UNICODE, getSymbolInfo, isSymbolDefaultItalic, hasMixedBrackets } from '../core/symbol-config';
+import { EquationBuilder, EquationElement } from "../core/equation-builder";
+import { ContextManager } from "../core/context-manager";
+import { DisplayRenderer } from "./display-renderer";
+import { LATEX_TO_UNICODE, getSymbolInfo, isSymbolDefaultItalic, hasMixedBrackets,} from "../core/symbol-config";
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -96,20 +96,20 @@ export class InputHandler {
       }
       this.contextManager.navigateUpDown(e.shiftKey ? "ArrowUp" : "ArrowDown");
       this.updateDisplay();
-    } else if (e.ctrlKey && key.toLowerCase() === 'a') {
+    } else if (e.ctrlKey && key.toLowerCase() === "a") {
       e.preventDefault();
       this.selectAll();
-    } else if (e.ctrlKey && key.toLowerCase() === 'b') {
+    } else if (e.ctrlKey && key.toLowerCase() === "b") {
       e.preventDefault();
       this.toggleBold();
-    } else if (e.ctrlKey && e.shiftKey && key.toLowerCase() === 't') {
+    } else if (e.ctrlKey && e.shiftKey && key.toLowerCase() === "t") {
       e.preventDefault();
       this.toggleTextMode();
-    } else if (e.ctrlKey && e.shiftKey && key === ' ') {
+    } else if (e.ctrlKey && e.shiftKey && key === " ") {
       // Ctrl+Shift+Space: Select entire matrix when inside matrix cell
       e.preventDefault();
       this.selectEntireMatrix();
-    } else if (e.ctrlKey && key === ' ') {
+    } else if (e.ctrlKey && key === " ") {
       // Ctrl+Space: Select structure at cursor
       e.preventDefault();
       if (this.contextManager.selectStructureAtCursor()) {
@@ -123,10 +123,10 @@ export class InputHandler {
     if (!context) return;
 
     const currentPos = this.contextManager.getCursorPosition();
-    
+
     if (direction > 0 && currentPos < context.array.length) {
       const element = context.array[currentPos];
-      if (element && element.type !== 'text') {
+      if (element && element.type !== "text") {
         // Skip over entire structure
         this.contextManager.setCursorPosition(currentPos + 1);
       } else {
@@ -135,7 +135,7 @@ export class InputHandler {
       }
     } else if (direction < 0 && currentPos > 0) {
       const element = context.array[currentPos - 1];
-      if (element && element.type !== 'text') {
+      if (element && element.type !== "text") {
         // Skip over entire structure
         this.contextManager.setCursorPosition(currentPos - 1);
       } else {
@@ -155,23 +155,23 @@ export class InputHandler {
 
     if (this.contextManager.isActive() && char) {
       let processedChar = char;
-      
+
       // Only convert operators in math mode
       if (!this.isTextMode) {
         // Convert + and - to proper mathematical operator symbols
-        if (char === '+') {
-          processedChar = '+'; // Keep as regular plus but ensure it's treated as operator
-        } else if (char === '-') {
-          processedChar = '−'; // Proper minus sign (U+2212), not hyphen-minus
+        if (char === "+") {
+          processedChar = "+"; // Keep as regular plus but ensure it's treated as operator
+        } else if (char === "-") {
+          processedChar = "−"; // Proper minus sign (U+2212), not hyphen-minus
         }
       }
-      
+
       // Sanitize the character before inserting
       const sanitizedChar = this.sanitizeInputChar(processedChar);
       if (sanitizedChar) {
         // Create text element with default styling
         const element = this.equationBuilder.createTextElement(sanitizedChar);
-        
+
         // In text mode, apply text wrapper formatting and don't apply italic
         if (this.isTextMode) {
           element.textMode = true;
@@ -183,7 +183,7 @@ export class InputHandler {
             element.italic = shouldBeItalic;
           }
         }
-        
+
         // Insert the element instead of just the text
         this.contextManager.insertElementAtCursor(element);
         this.updateDisplay();
@@ -194,88 +194,92 @@ export class InputHandler {
   handleDisplayClick(e: MouseEvent): void {
     e.stopPropagation();
     const target = e.target as HTMLElement;
-    
+
     // Check if click is on scrollbar area more precisely
     const rect = this.displayElement.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    
+
     // Check if click is in the horizontal scrollbar area (bottom of the element)
     if (clickY > this.displayElement.clientHeight) {
       return; // Don't move cursor when clicking on horizontal scrollbar
     }
-    
-    // Check if click is in the vertical scrollbar area (right edge)  
+
+    // Check if click is in the vertical scrollbar area (right edge)
     if (clickX > this.displayElement.clientWidth) {
       return; // Don't move cursor when clicking on vertical scrollbar
     }
-    
+
     // Find an element with a context path, starting from the clicked element
     let contextElement: HTMLElement | null = null;
-    
+
     // Strategy: Find the most appropriate context level for editing
     // We want to find the container that represents an editable context (root, numerator, denominator, etc.)
-    
+
     // Start with the clicked target and traverse up to find the right context level
     let currentElement: HTMLElement | null = target;
-    
+
     while (currentElement) {
       const contextPath = currentElement.dataset.contextPath;
-      
+
       if (contextPath) {
         // Check if this is an appropriate editing context level
-        if (contextPath === 'root' || 
-            contextPath.endsWith('/numerator') || 
-            contextPath.endsWith('/denominator') ||
-            contextPath.endsWith('/radicand') ||
-            contextPath.endsWith('/index') ||
-            contextPath.endsWith('/base') ||
-            contextPath.endsWith('/superscript') ||
-            contextPath.endsWith('/subscript') ||
-            contextPath.match(/\/cell_\d+_\d+$/) ||  // Matrix, stack, and cases cell pattern
-            contextPath.endsWith('/content') ||
-            contextPath.endsWith('/lowerLimit') ||
-            contextPath.endsWith('/upperLimit') ||
-            contextPath.endsWith('/operand') ||
-            contextPath.endsWith('/function') ||
-            contextPath.endsWith('/variable') ||
-            contextPath.endsWith('/order') ||
-            contextPath.endsWith('/integrand') ||
-            contextPath.endsWith('/differentialVariable')) {
+        if (
+          contextPath === "root" ||
+          contextPath.endsWith("/numerator") ||
+          contextPath.endsWith("/denominator") ||
+          contextPath.endsWith("/radicand") ||
+          contextPath.endsWith("/index") ||
+          contextPath.endsWith("/base") ||
+          contextPath.endsWith("/superscript") ||
+          contextPath.endsWith("/subscript") ||
+          contextPath.match(/\/cell_\d+_\d+$/) || // Matrix, stack, and cases cell pattern
+          contextPath.endsWith("/content") ||
+          contextPath.endsWith("/lowerLimit") ||
+          contextPath.endsWith("/upperLimit") ||
+          contextPath.endsWith("/operand") ||
+          contextPath.endsWith("/function") ||
+          contextPath.endsWith("/variable") ||
+          contextPath.endsWith("/order") ||
+          contextPath.endsWith("/integrand") ||
+          contextPath.endsWith("/differentialVariable") ||
+          contextPath.endsWith("/accentBase") ||
+          contextPath.endsWith("/accentLabel")
+        ) {
           contextElement = currentElement;
           break;
         }
       }
-      
+
       // Move up to parent element
       currentElement = currentElement.parentElement;
     }
-    
+
     // If we still don't have one, look for the main equation container
     if (!contextElement) {
       contextElement = target.closest(".equation-container") as HTMLElement;
-      if (!contextElement && target.classList.contains('equation-container')) {
+      if (!contextElement && target.classList.contains("equation-container")) {
         contextElement = target;
       }
     }
-    
-    
+
     // Don't clear selection if clicking on formatting buttons, dropdowns, or tab panel
-    const isFormattingClick = target.closest('.format-btn') || 
-                             target.closest('.tab-panel') ||
-                             target.closest('.underline-dropdown-container') ||
-                             target.closest('.underline-dropdown') ||
-                             target.closest('.color-dropdown-container') ||
-                             target.closest('.color-panel') ||
-                             target.closest('.font-size-container') ||
-                             target.closest('.font-size-dropdown');
-    
+    const isFormattingClick =
+      target.closest(".format-btn") ||
+      target.closest(".tab-panel") ||
+      target.closest(".underline-dropdown-container") ||
+      target.closest(".underline-dropdown") ||
+      target.closest(".color-dropdown-container") ||
+      target.closest(".color-panel") ||
+      target.closest(".font-size-container") ||
+      target.closest(".font-size-dropdown");
+
     // Clear selection unless this is part of a drag operation or formatting click
     // Don't clear selection immediately on mouse down - wait to see if it's a drag
     if (!isFormattingClick) {
       // Only clear selection if this is not a mouse down event that could start a drag
       // We'll clear it in handleMouseUp if no dragging occurred
-      if (this.isDragging === false && e.type !== 'mousedown') {
+      if (this.isDragging === false && e.type !== "mousedown") {
         this.contextManager.clearSelection();
         // Notify that selection changed
         if (this.onSelectionChange) {
@@ -286,7 +290,7 @@ export class InputHandler {
 
     if (contextElement) {
       const path = contextElement.dataset.contextPath;
-      
+
       if (path) {
         // Enter the appropriate context
         if (path === "root") {
@@ -294,7 +298,7 @@ export class InputHandler {
         } else {
           this.contextManager.enterContextPath(path);
         }
-        
+
         // Get the context and calculate position
         const context = this.contextManager.getContext(path);
         if (context) {
@@ -305,7 +309,11 @@ export class InputHandler {
       } else {
         // No path found, default to root
         this.contextManager.enterRootContext();
-        const position = this.getClickPosition(e, contextElement, this.equationBuilder.getEquation());
+        const position = this.getClickPosition(
+          e,
+          contextElement,
+          this.equationBuilder.getEquation()
+        );
         this.contextManager.setCursorPosition(position);
         this.dragStartPosition = position;
       }
@@ -313,14 +321,16 @@ export class InputHandler {
       // No context element found - default to root context and try to position smartly
       this.contextManager.enterRootContext();
       const equation = this.equationBuilder.getEquation();
-      
+
       if (equation.length === 0) {
         // Empty equation, position at start
         this.contextManager.setCursorPosition(0);
         this.dragStartPosition = 0;
       } else {
         // Try to use the general click position logic for the main container
-        const mainContainer = this.displayElement.querySelector('[data-context-path="root"]') as HTMLElement;
+        const mainContainer = this.displayElement.querySelector(
+          '[data-context-path="root"]'
+        ) as HTMLElement;
         if (mainContainer) {
           const position = this.getClickPosition(e, mainContainer, equation);
           this.contextManager.setCursorPosition(position);
@@ -343,21 +353,22 @@ export class InputHandler {
     const target = event.target as HTMLElement;
 
     // Check if clicked element is a formatting button or dropdown
-    const isFormattingClick = target.closest('.format-btn') || 
-                             target.closest('.underline-dropdown-container') ||
-                             target.closest('.underline-dropdown') ||
-                             target.closest('.color-dropdown-container') ||
-                             target.closest('.color-panel') ||
-                             target.closest('.font-size-container') ||
-                             target.closest('.font-size-dropdown');
-    
+    const isFormattingClick =
+      target.closest(".format-btn") ||
+      target.closest(".underline-dropdown-container") ||
+      target.closest(".underline-dropdown") ||
+      target.closest(".color-dropdown-container") ||
+      target.closest(".color-panel") ||
+      target.closest(".font-size-container") ||
+      target.closest(".font-size-dropdown");
+
     if (
       this.contextManager.isActive() &&
       display &&
       !display.contains(target) &&
       tabPanel &&
       !tabPanel.contains(target) &&
-      !isFormattingClick  // Don't exit editing mode when clicking formatting buttons
+      !isFormattingClick // Don't exit editing mode when clicking formatting buttons
     ) {
       this.contextManager.exitEditingMode();
       this.blurHiddenInput();
@@ -368,7 +379,7 @@ export class InputHandler {
   handleFontSizeChange(e: Event): void {
     const input = e.target as HTMLInputElement;
     const newSize = parseInt(input.value);
-    
+
     if (!isNaN(newSize) && newSize >= 6 && newSize <= 144) {
       this.displayRenderer.setGlobalFontSize(newSize);
       this.updateDisplay();
@@ -382,16 +393,16 @@ export class InputHandler {
 
     // Convert LaTeX commands to Unicode symbols for display
     const unicodeSymbol = this.convertLatexToUnicode(symbol);
-    
+
     // Create text element with default styling based on symbol type
     const element = this.equationBuilder.createTextElement(unicodeSymbol);
-    
+
     // Apply default italic styling based on symbol configuration
     const shouldBeItalic = this.getDefaultItalicForSymbol(symbol, unicodeSymbol);
     if (shouldBeItalic !== undefined) {
       element.italic = shouldBeItalic;
     }
-    
+
     // Insert the element instead of just the text
     this.contextManager.insertElementAtCursor(element);
     this.updateDisplay();
@@ -404,7 +415,7 @@ export class InputHandler {
     if (symbolInfo) {
       return symbolInfo.defaultItalic;
     }
-    
+
     // Handle direct text input (English letters)
     if (originalSymbol === unicodeSymbol) {
       // English lowercase and uppercase letters are naturally italic
@@ -420,7 +431,7 @@ export class InputHandler {
         return false;
       }
     }
-    
+
     // No default - let normal rendering logic decide
     return undefined;
   }
@@ -567,14 +578,14 @@ export class InputHandler {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
     }
-    
+
     // Check if we're in a derivative function context and validate brackets
     const activeContextPath = this.contextManager.getActiveContextPath();
-    if (activeContextPath && activeContextPath.includes('function')) {
+    if (activeContextPath && activeContextPath.includes("function")) {
       const context = this.contextManager.getContext(activeContextPath);
-      if (context && context.parent?.type === 'derivative') {
+      if (context && context.parent?.type === "derivative") {
         // Check if this creates mixed brackets
-        const currentText = context.array.map((el: any) => el.value || '').join('');
+        const currentText = context.array.map((el: any) => el.value || "").join("");
         const newText = currentText + leftBracket + rightBracket;
         if (hasMixedBrackets(newText)) {
           this.contextManager.showMixedBracketsError();
@@ -582,13 +593,13 @@ export class InputHandler {
         }
       }
     }
-    
+
     const bracketElement = this.equationBuilder.createBracketElement(leftBracket, rightBracket);
     this.contextManager.insertElementAtCursor(bracketElement);
-    
+
     // Update bracket nesting depths
     this.equationBuilder.updateBracketNesting();
-    
+
     // Move context into the new bracket's content
     const contentPath = this.contextManager.getElementContextPath(bracketElement.id, "content");
     this.contextManager.enterContextPath(contentPath, 0);
@@ -604,11 +615,11 @@ export class InputHandler {
 
     // Create the summation script element with both subscript and superscript
     const summationElement = this.equationBuilder.createScriptElement(true, true);
-    
+
     // Set the base to the summation symbol
     const sumSymbol = this.equationBuilder.createTextElement("∑");
     summationElement.base = [sumSymbol];
-    
+
     this.contextManager.insertElementAtCursor(summationElement);
 
     // Move context into the subscript first (lower limit)
@@ -620,8 +631,8 @@ export class InputHandler {
   }
 
   insertLargeOperator(
-    operator: string, 
-    displayMode: "inline" | "display" = "inline", 
+    operator: string,
+    displayMode: "inline" | "display" = "inline",
     limitMode: "default" | "nolimits" | "limits" = "default"
   ): void {
     if (!this.contextManager.isActive()) {
@@ -635,6 +646,44 @@ export class InputHandler {
     // Move context into the operand first for better UX
     const operandPath = this.contextManager.getElementContextPath(largeOperatorElement.id, "operand");
     this.contextManager.enterContextPath(operandPath, 0);
+
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
+  insertAccent(accentType: string, position: "over" | "under"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    if (this.contextManager.hasSelection()) {
+      // Apply to selection (extract and wrap)
+      const selectedElements = this.contextManager.extractSelection();
+      const accentElement = this.equationBuilder.createAccentElement(
+        accentType,
+        position,
+        selectedElements
+      );
+      this.contextManager.insertElementAtCursor(accentElement);
+
+      // For labeled braces, move cursor to label area
+      if (accentType === "labeledoverbrace" || accentType === "labeledunderbrace") {
+        const labelPath = this.contextManager.getElementContextPath(accentElement.id, "accentLabel");
+        this.contextManager.enterContextPath(labelPath, 0);
+      }
+    } else {
+      // Insert new with empty base (creates editable input box)
+      const accentElement = this.equationBuilder.createAccentElement(
+        accentType,
+        position,
+        [] // Empty array creates an input box like fractions
+      );
+      this.contextManager.insertElementAtCursor(accentElement);
+
+      // Set cursor inside accent base
+      const basePath = this.contextManager.getElementContextPath(accentElement.id, "accentBase");
+      this.contextManager.enterContextPath(basePath, 0);
+    }
 
     this.updateDisplay();
     this.focusHiddenInput();
@@ -663,7 +712,10 @@ export class InputHandler {
     this.contextManager.insertElementAtCursor(integralElement);
 
     // Move context into the integrand (first input block)
-    const integrandPath = this.contextManager.getElementContextPath(integralElement.id, "integrand");
+    const integrandPath = this.contextManager.getElementContextPath(
+      integralElement.id,
+      "integrand"
+    );
     this.contextManager.enterContextPath(integrandPath, 0);
 
     this.updateDisplay();
@@ -701,13 +753,12 @@ export class InputHandler {
     this.insertSingleIntegral(displayMode);
   }
 
-
   private updateDisplay(): void {
     // Recalculate bracket nesting depths before rendering to ensure visual sizing is correct
     this.equationBuilder.updateBracketNesting();
-    
+
     this.displayRenderer.updateDisplay(this.displayElement, this.equationBuilder.getEquation());
-    
+
     // Ensure the hidden input is focused if we are in an active context
     // Use setTimeout to ensure focus happens after DOM updates are complete
     if (this.contextManager.isActive()) {
@@ -733,13 +784,13 @@ export class InputHandler {
   }
 
   private scrollCursorIntoView(): void {
-    const cursor = this.displayElement.querySelector('.cursor') as HTMLElement;
+    const cursor = this.displayElement.querySelector(".cursor") as HTMLElement;
     if (cursor) {
       // Scroll the cursor into view horizontally
       cursor.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'nearest'
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
       });
     }
   }
@@ -748,28 +799,30 @@ export class InputHandler {
     return /\/cell_\d+_\d+$/.test(contextPath);
   }
 
-  private getMatrixElementFromCellPath(cellPath: string): { matrixPath: string; matrixElement: any } | null {
+  private getMatrixElementFromCellPath(
+    cellPath: string
+  ): { matrixPath: string; matrixElement: any } | null {
     const match = cellPath.match(/^(.*?)\/cell_\d+_\d+$/);
     if (!match) return null;
-    
+
     const matrixPath = match[1];
-    
+
     // Find the matrix element by traversing the path
-    const pathParts = matrixPath.split('/');
+    const pathParts = matrixPath.split("/");
     let currentContext = this.equationBuilder.getEquation();
-    
+
     // Skip 'root' if present
-    let startIndex = pathParts[0] === 'root' ? 1 : 0;
-    
+    let startIndex = pathParts[0] === "root" ? 1 : 0;
+
     for (let i = startIndex; i < pathParts.length; i++) {
       const part = pathParts[i];
       const element = currentContext.find((el: any) => el.id === part);
-      
+
       if (!element) return null;
-      
+
       if (i === pathParts.length - 1) {
         // This should be the matrix element
-        if (element.type === 'matrix') {
+        if (element.type === "matrix") {
           return { matrixPath, matrixElement: element };
         }
       } else {
@@ -779,7 +832,7 @@ export class InputHandler {
         if (!currentContext) return null;
       }
     }
-    
+
     return null;
   }
 
@@ -788,10 +841,10 @@ export class InputHandler {
     if (!currentPath || !this.isMatrixCellPath(currentPath)) {
       return;
     }
-    
+
     const matrixInfo = this.getMatrixElementFromCellPath(currentPath);
     if (!matrixInfo) return;
-    
+
     // Use Ctrl+Space functionality to select the entire matrix structure
     if (this.contextManager.selectStructureAtCursor()) {
       this.updateDisplay();
@@ -800,40 +853,40 @@ export class InputHandler {
 
   handleMouseDown(e: MouseEvent): void {
     this.isDragging = false;
-    
+
     this.handleDisplayClick(e);
   }
 
-
   handleMouseMove(e: MouseEvent): void {
-    if (e.buttons === 1 && this.contextManager.isActive()) { // Left mouse button is down
+    if (e.buttons === 1 && this.contextManager.isActive()) {
+      // Left mouse button is down
       this.isDragging = true;
       const target = e.target as HTMLElement;
-      
+
       // Find an element with a context path, starting from the clicked element
-      let contextElement = target.closest('[data-context-path]') as HTMLElement;
-      
+      let contextElement = target.closest("[data-context-path]") as HTMLElement;
+
       // If we didn't find a context element, look for the main equation container
       if (!contextElement) {
         contextElement = target.closest(".equation-container") as HTMLElement;
       }
-      
+
       if (contextElement) {
         const path = contextElement.dataset.contextPath;
         const currentPath = this.contextManager.getActiveContextPath();
-        
+
         // Only allow selection within the same context
         if (path === currentPath) {
           const context = this.contextManager.getContext(path!);
           if (context) {
             const currentPosition = this.getClickPosition(e, contextElement, context.array);
-            
+
             this.contextManager.setSelection(this.dragStartPosition, currentPosition, path!);
-            
+
             // Update cursor position to the end of selection for consistent state
             const selection = this.contextManager.getSelection();
             this.contextManager.setCursorPosition(selection.endPosition);
-            
+
             this.updateDisplay();
           }
         }
@@ -846,22 +899,23 @@ export class InputHandler {
     if (!this.isDragging) {
       // Don't clear selection if clicking on formatting buttons
       const target = e.target as HTMLElement;
-      const isFormattingClick = target.closest('.format-btn') || 
-                               target.closest('.tab-panel') ||
-                               target.closest('.underline-dropdown-container') ||
-                               target.closest('.underline-dropdown') ||
-                               target.closest('.color-dropdown-container') ||
-                               target.closest('.color-panel') ||
-                               target.closest('.font-size-container') ||
-                               target.closest('.font-size-dropdown');
-      
+      const isFormattingClick =
+        target.closest(".format-btn") ||
+        target.closest(".tab-panel") ||
+        target.closest(".underline-dropdown-container") ||
+        target.closest(".underline-dropdown") ||
+        target.closest(".color-dropdown-container") ||
+        target.closest(".color-panel") ||
+        target.closest(".font-size-container") ||
+        target.closest(".font-size-dropdown");
+
       if (!isFormattingClick) {
         this.contextManager.clearSelection();
       }
     }
-    
+
     this.isDragging = false;
-    
+
     // Notify that selection may have changed
     if (this.onSelectionChange) {
       this.onSelectionChange();
@@ -873,77 +927,77 @@ export class InputHandler {
     if (elements.length === 0) {
       return 0;
     }
-    
+
     const clickX = e.clientX;
     const containerRect = container.getBoundingClientRect();
     const containerPath = container.dataset.contextPath;
-    
+
     // For character-level positioning, we need to look at ALL visible elements in the container
     // regardless of their exact context path, but prioritize those that match our context
     const allVisibleElements = Array.from(container.querySelectorAll('mi, mo, mn, mfrac, msqrt, msup, msub, msubsup, mroot')).filter(el => {
       const element = el as HTMLElement;
-      return !element.classList.contains('cursor') && element.dataset.position !== undefined;
+      return !element.classList.contains("cursor") && element.dataset.position !== undefined;
     });
-    
+
     if (allVisibleElements.length === 0) {
       // No visible elements, determine position based on click location
       const relativeX = clickX - containerRect.left;
       return relativeX < containerRect.width / 2 ? 0 : elements.length;
     }
-    
+
     // Sort elements by their visual position (left to right)
     allVisibleElements.sort((a, b) => {
       const aRect = a.getBoundingClientRect();
       const bRect = b.getBoundingClientRect();
       return aRect.left - bRect.left;
     });
-    
+
     // Get the rightmost element to check if we're clicking far to the right
     const lastElement = allVisibleElements[allVisibleElements.length - 1] as HTMLElement;
     const lastElementRect = lastElement.getBoundingClientRect();
-    
+
     // If clicking far to the right of the last element (beyond its right edge + some margin),
     // position at the end of the equation
     if (clickX > lastElementRect.right + 10) {
       return elements.length;
     }
-    
+
     // Find the closest insertion point based on visual position
     for (let i = 0; i < allVisibleElements.length; i++) {
       const element = allVisibleElements[i] as HTMLElement;
       const elementRect = element.getBoundingClientRect();
-      
+
       // For fine-grained positioning, check both left edge and center
       const elementLeft = elementRect.left;
       const elementCenter = elementRect.left + elementRect.width / 2;
       const elementRight = elementRect.right;
-      
+
       // If click is very close to the left edge, position before this element
       if (clickX <= elementLeft + 2) {
-        const position = parseInt(element.dataset.position || '0', 10);
+        const position = parseInt(element.dataset.position || "0", 10);
         return Math.max(0, Math.min(position, elements.length));
       }
-      
+
       // If click is before the center, position before this element
       if (clickX < elementCenter) {
-        const position = parseInt(element.dataset.position || '0', 10);
+        const position = parseInt(element.dataset.position || "0", 10);
         return Math.max(0, Math.min(position, elements.length));
       }
-      
+
       // If this is the last element and click is after its center, position after it
       if (i === allVisibleElements.length - 1 && clickX >= elementCenter) {
-        const position = parseInt(element.dataset.position || '0', 10);
+        const position = parseInt(element.dataset.position || "0", 10);
         return Math.max(0, Math.min(position + 1, elements.length));
       }
     }
-    
+
     // If we get here, click was after all elements
     return elements.length;
   }
 
   private selectAll(): void {
     if (!this.contextManager.isActive()) return;
-    
+
     const context = this.contextManager.getCurrentContext();
     if (context) {
       this.contextManager.setSelection(0, context.array.length);
@@ -955,16 +1009,16 @@ export class InputHandler {
     if (!this.contextManager.hasSelection()) {
       return;
     }
-    
+
     // Check if selected text is already bold to determine toggle action
     const isBold = this.contextManager.isSelectionBold();
-    
+
     if (isBold) {
       this.contextManager.applyFormattingToSelection({ bold: false });
     } else {
       this.contextManager.applyFormattingToSelection({ bold: true });
     }
-    
+
     this.contextManager.clearSelection(); // Clear selection after formatting
     this.updateDisplay();
   }
@@ -973,16 +1027,16 @@ export class InputHandler {
     if (!this.contextManager.hasSelection()) {
       return;
     }
-    
+
     // Check if selected text is already italic to determine toggle action
     const isItalic = this.contextManager.isSelectionItalic();
-    
+
     if (isItalic) {
       this.contextManager.applyFormattingToSelection({ italic: false });
     } else {
       this.contextManager.applyFormattingToSelection({ italic: true });
     }
-    
+
     this.contextManager.clearSelection(); // Clear selection after formatting
     this.updateDisplay();
   }
@@ -994,14 +1048,13 @@ export class InputHandler {
 
     // Check if selection already has cancel formatting
     const isAlreadyCancelled = this.contextManager.isSelectionCancel();
-    
+
     if (isAlreadyCancelled) {
       // Remove cancel formatting
       this.contextManager.removeWrapperFormattingFromSelection("cancel");
     } else {
       // Apply cancel formatting
       const success = this.contextManager.applyWrapperFormattingToSelection({ cancel: true });
-      
     }
 
     this.updateDisplay();
@@ -1011,14 +1064,14 @@ export class InputHandler {
     if (!this.contextManager.hasSelection()) {
       return;
     }
-    
+
     if (underlineType === "none") {
       // Remove underline wrapper formatting
       this.contextManager.removeWrapperFormattingFromSelection("underline");
     } else {
       // Check if selection already has the same underline style
       const currentUnderline = this.contextManager.isSelectionUnderlined();
-      
+
       if (currentUnderline === underlineType) {
         // Toggle off if clicking the same style
         this.contextManager.removeWrapperFormattingFromSelection("underline");
@@ -1041,7 +1094,7 @@ export class InputHandler {
     if (!this.contextManager.hasSelection()) {
       return;
     }
-    
+
     // If black is selected, remove color formatting (toggle off)
     if (color === "black" || color === "#000000") {
       this.contextManager.removeWrapperFormattingFromSelection("color");
@@ -1049,10 +1102,10 @@ export class InputHandler {
       // Use wrapper formatting for color to enable structural-level coloring
       this.contextManager.applyWrapperFormattingToSelection({ color: color });
     }
-    
+
     this.updateDisplay();
   }
-  
+
   toggleTextMode(): void {
     this.isTextMode = !this.isTextMode;
     // Apply or remove text mode formatting to selection if there is one
@@ -1066,7 +1119,7 @@ export class InputHandler {
     // Always update display to reflect the mode change
     this.updateDisplay();
   }
-  
+
   getTextMode(): boolean {
     return this.isTextMode;
   }
@@ -1099,22 +1152,22 @@ export class InputHandler {
 
   private sanitizeInputChar(char: string): string {
     const charCode = char.charCodeAt(0);
-    
+
     // Block backslash ('\') due to issues in MathJax
-    if (char === '\\') {
-      return '';
+    if (char === "\\") {
+      return "";
     }
-    
+
     // Allow space (32) only in text mode
-    if (char === ' ') {
-      return this.isTextMode ? char : '';
+    if (char === " ") {
+      return this.isTextMode ? char : "";
     }
-    
+
     // Block control characters (0-31, 127)
     if (charCode < 32 || charCode === 127) {
-      return '';
+      return "";
     }
-    
+
     // Allow all other characters including $ % ^ _ ~ # & { }
     // The LaTeX converter will handle proper escaping when converting to LaTeX
     return char;
@@ -1138,7 +1191,7 @@ export class InputHandler {
     // Find all existing 'd' elements in the equation and update their style
     const equation = this.equationBuilder.getEquation();
     this.updateDifferentialStyleRecursive(equation, style);
-    
+
     // Refresh the display to show the changes
     this.updateDisplay();
   }
@@ -1154,7 +1207,7 @@ export class InputHandler {
           delete element.italic;
         }
       }
-      
+
       // Recursively check child elements
       if (element.numerator) this.updateDifferentialStyleRecursive(element.numerator, style);
       if (element.denominator) this.updateDifferentialStyleRecursive(element.denominator, style);
@@ -1264,7 +1317,7 @@ export class InputHandler {
 
     // Get the current context path before insertion
     const currentContextPath = this.contextManager.getActiveContextPath() || "root";
-    
+
     // Insert matrix into equation
     this.contextManager.insertElementAtCursor(matrixElement);
 
@@ -1287,7 +1340,7 @@ export class InputHandler {
 
     // Get the current context path before insertion
     const currentContextPath = this.contextManager.getActiveContextPath() || "root";
-    
+
     // Insert stack into equation
     this.contextManager.insertElementAtCursor(stackElement);
 
@@ -1310,7 +1363,7 @@ export class InputHandler {
 
     // Get the current context path before insertion
     const currentContextPath = this.contextManager.getActiveContextPath() || "root";
-    
+
     // Insert cases into equation
     this.contextManager.insertElementAtCursor(casesElement);
 

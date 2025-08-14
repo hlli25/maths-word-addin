@@ -1,6 +1,6 @@
-import { EquationElement, EquationBuilder } from './equation-builder';
-import { LatexConverter } from './latex-converter';
-import { hasMixedBrackets } from './symbol-config';
+import { EquationElement, EquationBuilder } from "./equation-builder";
+import { LatexConverter } from "./latex-converter";
+import { hasMixedBrackets } from "./symbol-config";
 
 export interface ContextInfo {
   array: EquationElement[];
@@ -22,8 +22,8 @@ export class ContextManager {
   private selection: SelectionState = {
     startPosition: 0,
     endPosition: 0,
-    contextPath: '',
-    isActive: false
+    contextPath: "",
+    isActive: false,
   };
 
   constructor(equationBuilder: EquationBuilder, latexConverter: LatexConverter) {
@@ -111,6 +111,16 @@ export class ContextManager {
         if (element.cells[cellKey]) {
           return { array: element.cells[cellKey], parent: element };
         }
+      }
+      return null;
+    }
+
+    // Handle accent element containers
+    if (element.type === "accent") {
+      if (containerName === "accentBase") {
+        return { array: element.accentBase || [], parent: element };
+      } else if (containerName === "accentLabel") {
+        return { array: element.accentLabel || [], parent: element };
       }
       return null;
     }
@@ -393,7 +403,7 @@ export class ContextManager {
 
     try {
       // Check if we're in a derivative function context
-      if (this.activeContextPath.includes('function') && context.parent?.type === 'derivative') {
+      if (this.activeContextPath.includes("function") && context.parent?.type === "derivative") {
         const currentContent = this.getContextText(context.array);
         const newContent = currentContent.slice(0, this.cursorPosition) + text + currentContent.slice(this.cursorPosition);
 
@@ -414,7 +424,7 @@ export class ContextManager {
   }
 
   private getContextText(elements: EquationElement[]): string {
-    return elements.map(el => el.value || '').join('');
+    return elements.map((el) => el.value || "").join("");
   }
 
   showMixedBracketsError(): void {
@@ -460,13 +470,13 @@ export class ContextManager {
   }
 
   setSelection(startPosition: number, endPosition: number, contextPath?: string): void {
-    const finalContextPath = contextPath || this.activeContextPath || 'root';
-    
+    const finalContextPath = contextPath || this.activeContextPath || "root";
+
     this.selection = {
       startPosition: Math.min(startPosition, endPosition),
       endPosition: Math.max(startPosition, endPosition),
       contextPath: finalContextPath,
-      isActive: true
+      isActive: true,
     };
   }
 
@@ -487,7 +497,7 @@ export class ContextManager {
     // Find the element at or before cursor position
     if (this.cursorPosition > 0 && this.cursorPosition <= context.array.length) {
       const element = context.array[this.cursorPosition - 1];
-      if (element && element.type !== 'text') {
+      if (element && element.type !== "text") {
         // Select the entire structure
         this.setSelection(this.cursorPosition - 1, this.cursorPosition);
         return true;
@@ -538,7 +548,7 @@ export class ContextManager {
       // Start new selection
       if (direction > 0 && this.cursorPosition < context.array.length) {
         const element = context.array[this.cursorPosition];
-        if (element && element.type !== 'text') {
+        if (element && element.type !== "text") {
           // Select entire structure forward
           this.setSelection(this.cursorPosition, this.cursorPosition + 1);
           this.cursorPosition = this.cursorPosition + 1;
@@ -548,7 +558,7 @@ export class ContextManager {
         }
       } else if (direction < 0 && this.cursorPosition > 0) {
         const element = context.array[this.cursorPosition - 1];
-        if (element && element.type !== 'text') {
+        if (element && element.type !== "text") {
           // Select entire structure backward
           this.setSelection(this.cursorPosition - 1, this.cursorPosition);
           this.cursorPosition = this.cursorPosition - 1;
@@ -563,13 +573,14 @@ export class ContextManager {
 
       if (direction > 0 && this.cursorPosition < context.array.length) {
         const element = context.array[this.cursorPosition];
-        newPosition = element && element.type !== 'text' ? 
-          this.cursorPosition + 1 : this.cursorPosition + direction;
+        newPosition = element && element.type !== "text"
+            ? this.cursorPosition + 1
+            : this.cursorPosition + direction;
       } else if (direction < 0 && this.cursorPosition > 0) {
         const checkPos = Math.max(0, this.cursorPosition + direction);
         const element = context.array[checkPos];
-        newPosition = element && element.type !== 'text' ? 
-          checkPos : this.cursorPosition + direction;
+        newPosition =
+          element && element.type !== "text" ? checkPos : this.cursorPosition + direction;
       }
 
       // Update selection boundaries
@@ -655,7 +666,32 @@ export class ContextManager {
     return true;
   }
 
-  getSelectionFormatting(): { bold?: boolean; italic?: boolean; underline?: string | boolean; cancel?: boolean; color?: string } | null {
+  extractSelection(): EquationElement[] {
+    if (!this.hasSelection() || !this.activeContextPath) return [];
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return [];
+
+    // Extract elements in selection range
+    const extractedElements = context.array.splice(
+      this.selection.startPosition,
+      this.selection.endPosition - this.selection.startPosition
+    );
+
+    // Move cursor to start of extracted selection
+    this.cursorPosition = this.selection.startPosition;
+    this.clearSelection();
+
+    return extractedElements;
+  }
+
+  getSelectionFormatting(): {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: string | boolean;
+    cancel?: boolean;
+    color?: string;
+  } | null {
     if (!this.hasSelection() || !this.activeContextPath) {
       return null;
     }
@@ -671,7 +707,7 @@ export class ContextManager {
       italic: { true: 0, false: 0 },
       underline: {} as Record<string, number>,
       cancel: { true: 0, false: 0 },
-      color: {} as Record<string, number>
+      color: {} as Record<string, number>,
     };
 
     let totalTextElements = 0;
@@ -680,7 +716,7 @@ export class ContextManager {
       if (i < context.array.length) {
         const element = context.array[i];
 
-        if (element.type === 'text') {
+        if (element.type === "text") {
           totalTextElements++;
 
           // Count bold
@@ -692,7 +728,7 @@ export class ContextManager {
           formattingCounts.italic[italic as any]++;
 
           // Count underline
-          let underline = 'none';
+          let underline = "none";
           if (element.wrappers?.underline) {
             underline = element.wrappers.underline.type;
           } else if (element.underline) {
@@ -710,7 +746,7 @@ export class ContextManager {
           formattingCounts.cancel[cancel as any]++;
 
           // Count color
-          let color = 'default';
+          let color = "default";
           if (element.wrappers?.color) {
             color = element.wrappers.color.value;
           } else if (element.color) {
@@ -769,23 +805,22 @@ export class ContextManager {
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        
+
         if (element.wrappers) {
           // Remove the specific wrapper type
           delete element.wrappers[wrapperType];
-          
+
           // Remove from order array
           if (element.wrapperOrder) {
-            element.wrapperOrder = element.wrapperOrder.filter(w => w !== wrapperType);
+            element.wrapperOrder = element.wrapperOrder.filter((w) => w !== wrapperType);
           }
-          
+
           // Clean up empty wrappers object and order array
           if (Object.keys(element.wrappers).length === 0) {
             delete element.wrappers;
             delete element.wrapperOrder;
           }
         }
-        
       }
     }
 
@@ -807,9 +842,9 @@ export class ContextManager {
 
     // Use the selection's context path, not the active context path
     const selectionContextPath = this.selection.contextPath || this.activeContextPath;
-    
+
     const context = this.getContext(selectionContextPath);
-    
+
     if (!context) {
       return false;
     }
@@ -820,57 +855,57 @@ export class ContextManager {
       cancel: this.equationBuilder.generateElementId(),
       underline: this.equationBuilder.generateElementId(),
       color: this.equationBuilder.generateElementId(),
-      textMode: this.equationBuilder.generateElementId()
+      textMode: this.equationBuilder.generateElementId(),
     };
 
     // Apply wrapper formatting to selected elements using new multi-wrapper system
     let elementsProcessed = 0;
-    
+
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
         elementsProcessed++;
-        
+
         // Initialize wrappers object if it doesn't exist
         if (!element.wrappers) {
           element.wrappers = {};
         }
-        
+
         // Apply each wrapper type independently with order tracking
         if (formatting.cancel !== undefined) {
           if (formatting.cancel) {
             // Always use new ID to override any existing formatting
             element.wrappers.cancel = { id: sharedWrapperIds.cancel };
             // If cancel doesn't exist, add it to order tracking
-            if (!element.wrapperOrder || !element.wrapperOrder.includes('cancel')) {
+            if (!element.wrapperOrder || !element.wrapperOrder.includes("cancel")) {
               element.wrapperOrder = element.wrapperOrder || [];
-              element.wrapperOrder.push('cancel');
+              element.wrapperOrder.push("cancel");
             }
             // Keep existing order position if already present
           } else {
             delete element.wrappers.cancel;
             // Remove from order array
             if (element.wrapperOrder) {
-              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'cancel');
+              element.wrapperOrder = element.wrapperOrder.filter((w) => w !== "cancel");
             }
           }
         }
-        
+
         if (formatting.underline !== undefined) {
           if (formatting.underline) {
             // If underline doesn't exist, add it and track order
             if (!element.wrappers.underline) {
-              element.wrappers.underline = { 
-                id: sharedWrapperIds.underline, 
-                type: formatting.underline 
+              element.wrappers.underline = {
+                id: sharedWrapperIds.underline,
+                type: formatting.underline,
               };
               element.wrapperOrder = element.wrapperOrder || [];
-              element.wrapperOrder.push('underline');
+              element.wrapperOrder.push("underline");
             } else {
               // If underline already exists, update with new ID and type to override
               element.wrappers.underline = {
                 id: sharedWrapperIds.underline,
-                type: formatting.underline
+                type: formatting.underline,
               };
               // Keep existing order position
             }
@@ -878,54 +913,54 @@ export class ContextManager {
             delete element.wrappers.underline;
             // Remove from order array
             if (element.wrapperOrder) {
-              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'underline');
+              element.wrapperOrder = element.wrapperOrder.filter((w) => w !== "underline");
             }
           }
         }
-        
+
         if (formatting.color !== undefined) {
           if (formatting.color) {
             // Always use new ID to override any existing formatting
-            element.wrappers.color = { 
-              id: sharedWrapperIds.color, 
-              value: formatting.color 
+            element.wrappers.color = {
+              id: sharedWrapperIds.color,
+              value: formatting.color,
             };
             // If color doesn't exist, add it to order tracking
-            if (!element.wrapperOrder || !element.wrapperOrder.includes('color')) {
+            if (!element.wrapperOrder || !element.wrapperOrder.includes("color")) {
               element.wrapperOrder = element.wrapperOrder || [];
-              element.wrapperOrder.push('color');
+              element.wrapperOrder.push("color");
             }
             // Keep existing order position if already present
           } else {
             delete element.wrappers.color;
             // Remove from order array
             if (element.wrapperOrder) {
-              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'color');
+              element.wrapperOrder = element.wrapperOrder.filter((w) => w !== "color");
             }
           }
         }
-        
+
         if (formatting.textMode !== undefined) {
           if (formatting.textMode) {
             // Apply text mode wrapper
-            element.wrappers.textMode = { 
-              id: sharedWrapperIds.textMode
+            element.wrappers.textMode = {
+              id: sharedWrapperIds.textMode,
             };
             // If textMode doesn't exist, add it to order tracking
-            if (!element.wrapperOrder || !element.wrapperOrder.includes('textMode')) {
+            if (!element.wrapperOrder || !element.wrapperOrder.includes("textMode")) {
               element.wrapperOrder = element.wrapperOrder || [];
-              element.wrapperOrder.push('textMode');
+              element.wrapperOrder.push("textMode");
             }
             // Keep existing order position if already present
           } else {
             delete element.wrappers.textMode;
             // Remove from order array
             if (element.wrapperOrder) {
-              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'textMode');
+              element.wrapperOrder = element.wrapperOrder.filter((w) => w !== "textMode");
             }
           }
         }
-        
+
         // Clean up empty wrappers object and order array
         if (Object.keys(element.wrappers).length === 0) {
           delete element.wrappers;
@@ -933,7 +968,7 @@ export class ContextManager {
         }
       }
     }
-    
+
     // Clear selection after applying wrapper formatting
     this.clearSelection();
 
@@ -960,11 +995,11 @@ export class ContextManager {
       if (i < context.array.length) {
         const element = context.array[i];
 
-        if (element.type === 'text') {
+        if (element.type === "text") {
           // For text elements, apply all formatting normally
           const isOperator = /[+\-×÷=<>≤≥≠]/.test(element.value || "");
 
-          if (isOperator && (formatting.bold !== undefined)) {
+          if (isOperator && formatting.bold !== undefined) {
             // Skip bold for operators, but allow other formatting
             const filteredFormatting = { ...formatting };
             delete filteredFormatting.bold;
@@ -975,13 +1010,13 @@ export class ContextManager {
           elementsModified++;
         } else {
           // For structures (fraction, sqrt, etc.), handle formatting differently
-          if (element.type === 'matrix') {
+          if (element.type === "matrix") {
             // For matrices, handle different formatting types appropriately
             if (formatting.bold !== undefined || formatting.italic !== undefined) {
               // Bold and italic should apply to all matrix entries, not the structure
               const entryFormatting = {
                 bold: formatting.bold,
-                italic: formatting.italic
+                italic: formatting.italic,
               };
               this.applyFormattingToStructureContents(element, entryFormatting);
               elementsModified++;
@@ -1026,7 +1061,7 @@ export class ContextManager {
 
   private applyFormattingToElement(element: EquationElement, formatting: any): void {
     // Apply formatting properties (including false values for explicit roman/off states)
-    Object.keys(formatting).forEach(key => {
+    Object.keys(formatting).forEach((key) => {
       if (formatting[key] !== undefined) {
         (element as any)[key] = formatting[key];
       }
@@ -1044,7 +1079,7 @@ export class ContextManager {
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        if (element.type === 'text') {
+        if (element.type === "text") {
           hasTextElements = true;
           // If any text element is not bold, selection is not fully bold
           if (!element.bold) {
@@ -1069,7 +1104,7 @@ export class ContextManager {
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
-        if (element.type === 'text') {
+        if (element.type === "text") {
           hasTextElements = true;
           // Check if element is explicitly italic
           if (element.italic === true) {
@@ -1078,7 +1113,7 @@ export class ContextManager {
           // Check if element is naturally italic when not explicitly set
           if (element.italic === undefined) {
             // English letters are naturally italic in LaTeX math mode
-            if (/^[a-zA-Z]$/.test(element.value || '')) {
+            if (/^[a-zA-Z]$/.test(element.value || "")) {
               continue;
             }
           }
@@ -1123,21 +1158,21 @@ export class ContextManager {
     // Check if all selected elements have underline wrapper (multi-wrapper system)
     let hasElements = false;
     let underlineStyle: "single" | "double" | undefined;
-    
+
     for (let i = this.selection.startPosition; i < this.selection.endPosition; i++) {
       if (i < context.array.length) {
         const element = context.array[i];
         hasElements = true;
-        
+
         let elementUnderlineStyle: "single" | "double" | undefined;
-        
+
         // Check new wrapper system
         if (element.wrappers?.underline) {
           elementUnderlineStyle = element.wrappers.underline.type;
         } else {
           return false; // This element doesn't have underline
         }
-        
+
         // Check consistency of underline style
         if (!underlineStyle) {
           underlineStyle = elementUnderlineStyle;
@@ -1166,13 +1201,13 @@ export class ContextManager {
 
   private applyFormattingToStructureContents(
     element: EquationElement,
-    formatting: Partial<Pick<EquationElement, 'bold' | 'italic' | 'cancel' | 'color'>>
+    formatting: Partial<Pick<EquationElement, "bold" | "italic" | "cancel" | "color">>
   ): void {
     // Recursively apply formatting to all text elements within the structure
     const applyToArray = (array?: EquationElement[]) => {
       if (!array) return;
-      array.forEach(el => {
-        if (el.type === 'text') {
+      array.forEach((el) => {
+        if (el.type === "text") {
           const isOperator = /[+\-×÷=<>≤≥≠]/.test(el.value || "");
           if (isOperator && formatting.bold !== undefined) {
             const filteredFormatting = { ...formatting };
@@ -1209,9 +1244,9 @@ export class ContextManager {
     applyToArray(element.differentialVariable);
 
     // Apply to matrix cells
-    if (element.cells && typeof element.cells === 'object') {
-      Object.keys(element.cells).forEach(cellKey => {
-        if (cellKey.startsWith('cell_')) {
+    if (element.cells && typeof element.cells === "object") {
+      Object.keys(element.cells).forEach((cellKey) => {
+        if (cellKey.startsWith("cell_")) {
           applyToArray(element.cells[cellKey]);
         }
       });

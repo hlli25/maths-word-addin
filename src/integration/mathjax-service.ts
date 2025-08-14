@@ -18,7 +18,7 @@ export class MathJaxService {
 
       // Detect if LaTeX contains \displaystyle operators
       // If so, use display mode; otherwise, use inline mode
-      const hasDisplayStyle = latex.includes('\\displaystyle');
+      const hasDisplayStyle = latex.includes("\\displaystyle");
       const mathMode = hasDisplayStyle ? `\\[${latex}\\]` : `\\(${latex}\\)`;
 
       tempDiv.innerHTML = mathMode;
@@ -47,9 +47,9 @@ export class MathJaxService {
     if (!viewBox) {
       throw new Error("SVG missing viewBox attribute.");
     }
-    
+
     const [minX, minY, vbWidth, vbHeight] = viewBox.split(" ").map(parseFloat);
-    
+
     // Extract baseline from MathJax style
     const originalStyle = svg.getAttribute("style") || "";
     let baseline = 0;
@@ -57,17 +57,17 @@ export class MathJaxService {
     if (verticalAlignMatch) {
       baseline = parseFloat(verticalAlignMatch[1]);
     }
-    
+
     // Find all fraction bars (thin horizontal rectangles)
     const fractionBars: Array<{ y: number; width: number; height: number; x: number; isMain: boolean }> = [];
     const rects = svg.querySelectorAll("rect");
-    
+
     rects.forEach((rect) => {
       const rectHeight = parseFloat(rect.getAttribute("height") || "0");
       const rectWidth = parseFloat(rect.getAttribute("width") || "0");
       const rectY = parseFloat(rect.getAttribute("y") || "0");
       const rectX = parseFloat(rect.getAttribute("x") || "0");
-      
+
       // Identify fraction bars as thin horizontal rectangles
       if (rectHeight < vbHeight * 0.05 && rectWidth > vbWidth * 0.1) {
         fractionBars.push({
@@ -75,17 +75,17 @@ export class MathJaxService {
           width: rectWidth,
           height: rectHeight,
           x: rectX,
-          isMain: false
+          isMain: false,
         });
       }
     });
-    
+
     // Identify the main fraction bar
     let mainFractionBar: { y: number; width: number; height: number; x: number } | null = null;
-    
+
     if (fractionBars.length > 0) {
       const centerY = minY + vbHeight / 2;
-      
+
       const sortedBars = [...fractionBars].sort((a, b) => {
         const widthDiff = b.width - a.width;
         if (Math.abs(widthDiff) > vbWidth * 0.1) {
@@ -95,25 +95,25 @@ export class MathJaxService {
         const bDistFromCenter = Math.abs(b.y - centerY);
         return aDistFromCenter - bDistFromCenter;
       });
-      
+
       mainFractionBar = sortedBars[0];
-      
-      const mainIndex = fractionBars.findIndex(bar => 
-        bar.y === mainFractionBar!.y && 
-        bar.width === mainFractionBar!.width && 
-        bar.x === mainFractionBar!.x
+
+      const mainIndex = fractionBars.findIndex((bar) =>
+          bar.y === mainFractionBar!.y &&
+          bar.width === mainFractionBar!.width &&
+          bar.x === mainFractionBar!.x
       );
       if (mainIndex !== -1) {
         fractionBars[mainIndex].isMain = true;
       }
     }
-    
+
     return {
       baseline,
       fractionBars,
       mainFractionBar,
       totalHeight: vbHeight,
-      totalWidth: vbWidth
+      totalWidth: vbWidth,
     };
   }
 

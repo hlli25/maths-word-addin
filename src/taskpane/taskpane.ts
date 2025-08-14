@@ -4,20 +4,20 @@
  */
 
 // Core modules
-import { EquationBuilder } from '../core/equation-builder';
-import { LatexConverter } from '../core/latex-converter';
-import { ContextManager } from '../core/context-manager';
-import { FontMeasurementService } from '../core/font-measurement';
+import { EquationBuilder } from "../core/equation-builder";
+import { LatexConverter } from "../core/latex-converter";
+import { ContextManager } from "../core/context-manager";
+import { FontMeasurementService } from "../core/font-measurement";
 
 // UI modules
-import { DisplayRenderer } from '../ui/display-renderer';
-import { InputHandler } from '../ui/input-handler';
-import { TabController } from '../ui/tab-controller';
+import { DisplayRenderer } from "../ui/display-renderer";
+import { InputHandler } from "../ui/input-handler";
+import { TabController } from "../ui/tab-controller";
 
 // Integration modules
-import { MathJaxService } from '../integration/mathjax-service';
-import { OfficeService } from '../integration/office-service';
-import { SvgProcessor } from '../integration/svg-processor';
+import { MathJaxService } from "../integration/mathjax-service";
+import { OfficeService } from "../integration/office-service";
+import { SvgProcessor } from "../integration/svg-processor";
 
 // Application state
 class MathAddinApp {
@@ -158,11 +158,11 @@ class MathAddinApp {
       hexInput,
       hexColorPreview,
       colorOkBtn,
-      colorCancelBtn
+      colorCancelBtn,
     };
   }
 
-  private setupEventListeners(elements: ReturnType<MathAddinApp['getDOMElements']>) {
+  private setupEventListeners(elements: ReturnType<MathAddinApp["getDOMElements"]>) {
     if (!elements) return;
 
     // Primary action buttons
@@ -253,6 +253,13 @@ class MathAddinApp {
     } else if (button.classList.contains("greek-letter-btn") || button.classList.contains("greek-letter-capital-btn")) {
       const greekLetter = (button as HTMLElement).dataset.greek || "";
       this.inputHandler.insertSymbol(greekLetter);
+    } else if (button.classList.contains("accent-btn")) {
+      const accentType = (button as HTMLElement).dataset.accent || "";
+      const position = ((button as HTMLElement).dataset.position as "over" | "under") || "over";
+      this.inputHandler.insertAccent(accentType, position);
+    } else if (button.classList.contains("arrow-btn")) {
+      const arrow = (button as HTMLElement).dataset.arrow || "";
+      this.inputHandler.insertSymbol(arrow);
     } else if (button.classList.contains("matrix-btn")) {
       const matrixType = (button as HTMLElement).dataset.matrixType as "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" || "parentheses";
       this.handleMatrixButtonClick(matrixType);
@@ -402,7 +409,7 @@ class MathAddinApp {
       const currentSize = document.getElementById("fontSizeInput") as HTMLInputElement;
       const currentValue = currentSize.value;
 
-      document.querySelectorAll(".font-size-option").forEach(option => {
+      document.querySelectorAll(".font-size-option").forEach((option) => {
         option.classList.remove("selected");
         if (option.getAttribute("data-size") === currentValue) {
           option.classList.add("selected");
@@ -425,7 +432,7 @@ class MathAddinApp {
       fontSizeInput.dispatchEvent(event);
 
       // Update selection display
-      document.querySelectorAll(".font-size-option").forEach(opt => opt.classList.remove("selected"));
+      document.querySelectorAll(".font-size-option").forEach((opt) => opt.classList.remove("selected"));
       target.classList.add("selected");
     }
 
@@ -436,10 +443,10 @@ class MathAddinApp {
     // Check if all selected text is underlined with the same style
     const formatting = this.inputHandler.getSelectionFormatting();
 
-    if (formatting && formatting.underline && formatting.underline !== 'none') {
+    if (formatting && formatting.underline && formatting.underline !== "none") {
       // All selected text is underlined - remove underlines
-      this.inputHandler.setUnderlineStyle('none');
-      this.updateUnderlineUI('none');
+      this.inputHandler.setUnderlineStyle("none");
+      this.updateUnderlineUI("none");
     } else {
       // Apply the current underline style
       this.inputHandler.setUnderlineStyle(this.currentUnderlineStyle);
@@ -465,7 +472,7 @@ class MathAddinApp {
     e.preventDefault();
 
     const target = e.target as HTMLElement;
-    const optionElement = target.closest('.underline-option') as HTMLElement;
+    const optionElement = target.closest(".underline-option") as HTMLElement;
     if (!optionElement) return;
 
     const underlineType = optionElement.dataset.underline;
@@ -493,7 +500,7 @@ class MathAddinApp {
     }
 
     // Update dropdown selection
-    document.querySelectorAll(".underline-option").forEach(opt => opt.classList.remove("selected"));
+    document.querySelectorAll(".underline-option").forEach((opt) => opt.classList.remove("selected"));
     const selectedOption = document.querySelector(`[data-underline="${underlineType}"]`);
     if (selectedOption) {
       selectedOption.classList.add("selected");
@@ -503,7 +510,7 @@ class MathAddinApp {
   private updateTextModeUI(): void {
     const button = document.getElementById("textModeBtn") as HTMLButtonElement;
     const isTextMode = this.inputHandler.getTextMode();
-    
+
     if (isTextMode) {
       button.classList.add("active");
     } else {
@@ -517,18 +524,20 @@ class MathAddinApp {
     if (formatting) {
       // Update underline UI based on selection
       if (formatting.underline !== undefined) {
-        const underlineType = formatting.underline === true ? 'single' : 
-                             formatting.underline === false ? 'none' : 
-                             formatting.underline;
+        const underlineType 
+        = formatting.underline === true ? 'single' : 
+          formatting.underline === false ? 'none' : 
+          formatting.underline;
 
         this.updateUnderlineUI(underlineType);
-        this.currentUnderlineStyle = underlineType === 'none' ? 'single' : (underlineType as "single" | "double");
+        this.currentUnderlineStyle =
+          underlineType === "none" ? "single" : (underlineType as "single" | "double");
       } else {
         // Mixed underline types - show none selected
-        this.updateUnderlineUI('none');
+        this.updateUnderlineUI("none");
       }
     }
-    
+
     // Update text mode UI
     this.updateTextModeUI();
   }
@@ -573,7 +582,7 @@ class MathAddinApp {
         this.updateHexColorPreview(color);
 
         // Update selection display
-        document.querySelectorAll(".color-square").forEach(sq => sq.classList.remove("selected"));
+        document.querySelectorAll(".color-square").forEach((sq) => sq.classList.remove("selected"));
         target.classList.add("selected");
 
         // Auto-close the panel
@@ -638,7 +647,7 @@ class MathAddinApp {
 
     // Update the display of derivative buttons
     const derivativeDElements = document.querySelectorAll(".derivative-d");
-    derivativeDElements.forEach(element => {
+    derivativeDElements.forEach((element) => {
       if (style === "roman") {
         element.classList.add("roman");
       } else {
@@ -695,7 +704,7 @@ class MathAddinApp {
 
     // Update derivative d elements in buttons
     const derivativeDElements = document.querySelectorAll(".derivative-d");
-    derivativeDElements.forEach(element => {
+    derivativeDElements.forEach((element) => {
       if (style === "roman") {
         element.classList.add("roman");
       } else {
@@ -746,11 +755,11 @@ class MathAddinApp {
       this.updateHexColorPreview(color);
 
       // Remove selection from color squares
-      document.querySelectorAll(".color-square").forEach(sq => sq.classList.remove("selected"));
+      document.querySelectorAll(".color-square").forEach((sq) => sq.classList.remove("selected"));
     }
   }
 
-  private handleOutsideClick(e: Event, elements: ReturnType<MathAddinApp['getDOMElements']>): void {
+  private handleOutsideClick(e: Event, elements: ReturnType<MathAddinApp["getDOMElements"]>): void {
     if (!elements) return;
 
     const target = e.target as HTMLElement;
@@ -831,7 +840,7 @@ class MathAddinApp {
 
       // Convert LaTeX back to equation structure
       const elements = this.latexConverter.parseFromLatex(latex);
-      
+
       // Clear current equation and load the parsed elements
       this.equationBuilder.clear();
       this.equationBuilder.setEquation(elements);
@@ -841,7 +850,7 @@ class MathAddinApp {
 
       // Enter editing mode
       this.contextManager.enterRootContext();
-      
+
       // Clear any stale selection state after loading equation
       this.contextManager.clearSelection();
 
@@ -897,7 +906,6 @@ class MathAddinApp {
       if (!latex) {
         throw new Error("Equation is empty or invalid.");
       }
-
 
       // Render LaTeX using MathJax
       statusDiv.textContent = "Rendering equation...";
@@ -995,22 +1003,22 @@ class MathAddinApp {
   }
 
   private promptForStackSize(cols: number): void {
-    this.showStackCasesSizePanel('stack', cols);
+    this.showStackCasesSizePanel("stack", cols);
   }
 
   private promptForCasesSize(cols: number): void {
-    this.showStackCasesSizePanel('cases', cols);
+    this.showStackCasesSizePanel("cases", cols);
   }
 
   private currentMatrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" = "parentheses";
   private pendingStackCasesType: 'stack' | 'cases' | null = null;
   private pendingStackCasesCols: number = 1;
 
-  private showStackCasesSizePanel(type: 'stack' | 'cases', cols: number): void {
+  private showStackCasesSizePanel(type: "stack" | "cases", cols: number): void {
     const panel = document.getElementById("stackCasesSizePanel") as HTMLDivElement;
     const header = document.getElementById("stackCasesHeader") as HTMLDivElement;
     const rowsInput = document.getElementById("stackCasesRows") as HTMLInputElement;
-    
+
     if (!panel || !header || !rowsInput) return;
 
     // Store the type and columns for later use
@@ -1018,8 +1026,8 @@ class MathAddinApp {
     this.pendingStackCasesCols = cols;
 
     // Update header text
-    const typeName = type === 'stack' ? 'Stack' : 'Cases';
-    header.textContent = `Select ${typeName} Size (${cols} column${cols > 1 ? 's' : ''})`;
+    const typeName = type === "stack" ? "Stack" : "Cases";
+    header.textContent = `Select ${typeName} Size (${cols} column${cols > 1 ? "s" : ""})`;
 
     // Reset input value
     rowsInput.value = "3";
@@ -1044,13 +1052,13 @@ class MathAddinApp {
     if (createBtn) {
       const newCreateBtn = createBtn.cloneNode(true) as HTMLButtonElement;
       createBtn.parentNode?.replaceChild(newCreateBtn, createBtn);
-      
+
       newCreateBtn.addEventListener("click", () => {
         // Get fresh reference to the input element
         const currentRowsInput = document.getElementById("stackCasesRows") as HTMLInputElement;
         const rows = parseInt(currentRowsInput.value);
         if (rows >= 3 && rows <= 10) {
-          if (this.pendingStackCasesType === 'stack') {
+          if (this.pendingStackCasesType === "stack") {
             this.inputHandler.insertStack(rows, this.pendingStackCasesCols);
           } else {
             this.inputHandler.insertCases(rows, this.pendingStackCasesCols);
@@ -1063,7 +1071,7 @@ class MathAddinApp {
     if (cancelBtn) {
       const newCancelBtn = cancelBtn.cloneNode(true) as HTMLButtonElement;
       cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
-      
+
       newCancelBtn.addEventListener("click", () => {
         panel.style.display = "none";
       });
@@ -1074,12 +1082,12 @@ class MathAddinApp {
     if (rowsInput) {
       const newRowsInput = rowsInput.cloneNode(true) as HTMLInputElement;
       rowsInput.parentNode?.replaceChild(newRowsInput, rowsInput);
-      
+
       newRowsInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
           const rows = parseInt(newRowsInput.value);
           if (rows >= 3 && rows <= 20) {
-            if (this.pendingStackCasesType === 'stack') {
+            if (this.pendingStackCasesType === "stack") {
               this.inputHandler.insertStack(rows, this.pendingStackCasesCols);
             } else {
               this.inputHandler.insertCases(rows, this.pendingStackCasesCols);
@@ -1129,7 +1137,7 @@ class MathAddinApp {
     });
 
     gridSelector.addEventListener("mouseleave", () => {
-      cells.forEach(cell => cell.classList.remove("highlighted"));
+      cells.forEach((cell) => cell.classList.remove("highlighted"));
     });
   }
 

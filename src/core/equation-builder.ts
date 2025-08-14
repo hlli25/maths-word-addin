@@ -15,7 +15,8 @@ export interface EquationElement {
     | "matrix"
     | "stack"
     | "cases"
-    | "wrapper";
+    | "wrapper"
+    | "accent";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -69,6 +70,29 @@ export interface EquationElement {
   stackType?: "plain"; // Plain vertical arrangement using array environment
   // for cases (piecewise functions with left brace)
   casesType?: "cases"; // Piecewise functions with left curly brace
+  // for accent
+  accentType?:
+    | "hat"
+    | "tilde"
+    | "bar"
+    | "dot"
+    | "ddot"
+    | "vec"
+    | "widehat"
+    | "widetilde"
+    | "widebar"
+    | "overrightarrow"
+    | "overleftarrow"
+    | "overleftrightarrow"
+    | "overbrace"
+    | "underbrace"
+    | "labeledoverbrace"
+    | "labeledunderbrace"
+    | "overparen"
+    | "underparen";
+  accentPosition?: "over" | "under";
+  accentBase?: EquationElement[]; // Content under/over the accent
+  accentLabel?: EquationElement[]; // Optional label for braces
   // For elements that are part of wrapper groups (multi-wrapper support)
   wrappers?: {
     underline?: { id: string; type: "single" | "double" };
@@ -244,7 +268,7 @@ export class EquationBuilder {
       integrand: [],
       differentialVariable: [],
       lowerLimit: hasLimits ? [] : undefined,
-      upperLimit: hasLimits ? [] : undefined
+      upperLimit: hasLimits ? [] : undefined,
     };
   }
 
@@ -372,17 +396,22 @@ export class EquationBuilder {
       if (el.type === "matrix" || el.type === "stack" || el.type === "cases") {
         if (el.cells) {
           for (const cellKey in el.cells) {
-            if (cellKey.startsWith('cell_')) {
+            if (cellKey.startsWith("cell_")) {
               const found = this.findElementById(el.cells[cellKey], id);
               if (found) return found;
             }
           }
         }
       }
+      if (el.type === "accent") {
+        const found =
+          this.findElementById(el.accentBase || [], id) ||
+          this.findElementById(el.accentLabel || [], id);
+        if (found) return found;
+      }
     }
     return null;
   }
-
 
   updateParenthesesScaling(): void {
     this.updateParenthesesScalingRecursive(this.equation);
@@ -481,7 +510,32 @@ export class EquationBuilder {
         if (element.variable) this.updateBracketNestingRecursive(element.variable, currentDepth);
         if (Array.isArray(element.order))
           this.updateBracketNestingRecursive(element.order, currentDepth);
+      } else if (element.type === "accent") {
+        if (element.accentBase)
+          this.updateBracketNestingRecursive(element.accentBase, currentDepth);
+        if (element.accentLabel)
+          this.updateBracketNestingRecursive(element.accentLabel, currentDepth);
       }
     });
+  }
+
+  createAccentElement(
+    accentType: string,
+    position: "over" | "under",
+    base?: EquationElement[],
+    label?: EquationElement[]
+  ): EquationElement {
+    // For labeled braces, always initialize an empty label array if none provided
+    const shouldInitializeLabel = accentType === "labeledoverbrace" || accentType === "labeledunderbrace";
+    const accentLabel = label || (shouldInitializeLabel ? [] : undefined);
+    
+    return {
+      id: this.generateElementId(),
+      type: "accent",
+      accentType: accentType as any,
+      accentPosition: position,
+      accentBase: base || [],
+      accentLabel: accentLabel,
+    };
   }
 }
