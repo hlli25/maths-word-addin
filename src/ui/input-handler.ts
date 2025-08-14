@@ -13,6 +13,7 @@ export class InputHandler {
   public onSelectionChange?: () => void;
   private differentialStyle: "italic" | "roman" = "italic"; // Default to italic
   private isInlineStyle: boolean = false; // Default to display style
+  private isTextMode: boolean = false; // Default to math mode
 
   constructor(
     equationBuilder: EquationBuilder,
@@ -101,6 +102,9 @@ export class InputHandler {
     } else if (e.ctrlKey && key.toLowerCase() === 'b') {
       e.preventDefault();
       this.toggleBold();
+    } else if (e.ctrlKey && e.shiftKey && key.toLowerCase() === 't') {
+      e.preventDefault();
+      this.toggleTextMode();
     } else if (e.ctrlKey && e.shiftKey && key === ' ') {
       // Ctrl+Shift+Space: Select entire matrix when inside matrix cell
       e.preventDefault();
@@ -150,12 +154,16 @@ export class InputHandler {
     input.value = "";
 
     if (this.contextManager.isActive() && char) {
-      // Convert + and - to proper mathematical operator symbols
       let processedChar = char;
-      if (char === '+') {
-        processedChar = '+'; // Keep as regular plus but ensure it's treated as operator
-      } else if (char === '-') {
-        processedChar = '−'; // Proper minus sign (U+2212), not hyphen-minus
+      
+      // Only convert operators in math mode
+      if (!this.isTextMode) {
+        // Convert + and - to proper mathematical operator symbols
+        if (char === '+') {
+          processedChar = '+'; // Keep as regular plus but ensure it's treated as operator
+        } else if (char === '-') {
+          processedChar = '−'; // Proper minus sign (U+2212), not hyphen-minus
+        }
       }
       
       // Sanitize the character before inserting
@@ -164,10 +172,16 @@ export class InputHandler {
         // Create text element with default styling
         const element = this.equationBuilder.createTextElement(sanitizedChar);
         
-        // Apply default italic styling based on character type
-        const shouldBeItalic = this.getDefaultItalicForSymbol(sanitizedChar, sanitizedChar);
-        if (shouldBeItalic !== undefined) {
-          element.italic = shouldBeItalic;
+        // In text mode, apply text wrapper formatting and don't apply italic
+        if (this.isTextMode) {
+          element.textMode = true;
+          element.italic = false;
+        } else {
+          // Apply default italic styling based on character type (math mode)
+          const shouldBeItalic = this.getDefaultItalicForSymbol(sanitizedChar, sanitizedChar);
+          if (shouldBeItalic !== undefined) {
+            element.italic = shouldBeItalic;
+          }
         }
         
         // Insert the element instead of just the text
@@ -218,7 +232,7 @@ export class InputHandler {
             contextPath.endsWith('/base') ||
             contextPath.endsWith('/superscript') ||
             contextPath.endsWith('/subscript') ||
-            contextPath.match(/\/cell_\d+_\d+$/) ||  // Matrix cell pattern
+            contextPath.match(/\/cell_\d+_\d+$/) ||  // Matrix, stack, and cases cell pattern
             contextPath.endsWith('/content') ||
             contextPath.endsWith('/lowerLimit') ||
             contextPath.endsWith('/upperLimit') ||
@@ -988,9 +1002,6 @@ export class InputHandler {
       // Apply cancel formatting
       const success = this.contextManager.applyWrapperFormattingToSelection({ cancel: true });
       
-      if (!success) {
-        console.warn("Failed to apply cancel formatting");
-      }
     }
 
     this.updateDisplay();
@@ -1041,6 +1052,24 @@ export class InputHandler {
     
     this.updateDisplay();
   }
+  
+  toggleTextMode(): void {
+    this.isTextMode = !this.isTextMode;
+    // Apply or remove text mode formatting to selection if there is one
+    if (this.contextManager.hasSelection()) {
+      if (this.isTextMode) {
+        this.contextManager.applyWrapperFormattingToSelection({ textMode: true });
+      } else {
+        this.contextManager.removeWrapperFormattingFromSelection("textMode");
+      }
+    }
+    // Always update display to reflect the mode change
+    this.updateDisplay();
+  }
+  
+  getTextMode(): boolean {
+    return this.isTextMode;
+  }
 
   private handleBackspace(): void {
     if (this.contextManager.hasSelection()) {
@@ -1069,16 +1098,20 @@ export class InputHandler {
   }
 
   private sanitizeInputChar(char: string): string {
-    // Only block control characters and backslash
     const charCode = char.charCodeAt(0);
-    
-    // Block control characters (0-31, 127)
-    if (charCode < 32 || charCode === 127) {
-      return '';
-    }
     
     // Block backslash ('\') due to issues in MathJax
     if (char === '\\') {
+      return '';
+    }
+    
+    // Allow space (32) only in text mode
+    if (char === ' ') {
+      return this.isTextMode ? char : '';
+    }
+    
+    // Block control characters (0-31, 127)
+    if (charCode < 32 || charCode === 127) {
       return '';
     }
     
@@ -1238,6 +1271,52 @@ export class InputHandler {
     // Navigate to first cell (top-left)
     const matrixPath = `${currentContextPath}/${matrixElement.id}`;
     this.contextManager.enterContextPath(`${matrixPath}/cell_0_0`, 0);
+
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  insertStack(rows: number, cols: number): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create stack element with empty cells
+    const stackElement = this.equationBuilder.createStackElement(rows, cols);
+
+    // Get the current context path before insertion
+    const currentContextPath = this.contextManager.getActiveContextPath() || "root";
+    
+    // Insert stack into equation
+    this.contextManager.insertElementAtCursor(stackElement);
+
+    // Navigate to first cell (top-left)
+    const stackPath = `${currentContextPath}/${stackElement.id}`;
+    this.contextManager.enterContextPath(`${stackPath}/cell_0_0`, 0);
+
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  insertCases(rows: number, cols: number): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create cases element with empty cells
+    const casesElement = this.equationBuilder.createCasesElement(rows, cols);
+
+    // Get the current context path before insertion
+    const currentContextPath = this.contextManager.getActiveContextPath() || "root";
+    
+    // Insert cases into equation
+    this.contextManager.insertElementAtCursor(casesElement);
+
+    // Navigate to first cell (top-left)
+    const casesPath = `${currentContextPath}/${casesElement.id}`;
+    this.contextManager.enterContextPath(`${casesPath}/cell_0_0`, 0);
 
     this.updateDisplay();
     this.equationBuilder.updateParenthesesScaling();

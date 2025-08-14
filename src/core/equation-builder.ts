@@ -13,6 +13,8 @@ export interface EquationElement {
     | "derivative"
     | "integral"
     | "matrix"
+    | "stack"
+    | "cases"
     | "wrapper";
   value?: string;
   // for fraction and bevelled-fraction
@@ -46,6 +48,7 @@ export interface EquationElement {
   strikethrough?: boolean;
   cancel?: boolean;
   color?: string;
+  textMode?: boolean;
   // for derivative (df/dx)
   order?: number | EquationElement[]; // derivative order (1 or n for nth)
   function?: EquationElement[]; // f in df/dx
@@ -62,11 +65,16 @@ export interface EquationElement {
   rows?: number;
   cols?: number;
   cells?: Record<string, EquationElement[]>; // Object with keys like cell_0_0, cell_1_0, etc.
+  // for stack (vertical arrangement without brackets)
+  stackType?: "plain"; // Plain vertical arrangement using array environment
+  // for cases (piecewise functions with left brace)
+  casesType?: "cases"; // Piecewise functions with left curly brace
   // For elements that are part of wrapper groups (multi-wrapper support)
   wrappers?: {
     underline?: { id: string; type: "single" | "double" };
     cancel?: { id: string };
     color?: { id: string; value: string };
+    textMode?: { id: string };
   };
   // Order in which wrappers were applied by the user
   wrapperOrder?: string[];
@@ -269,6 +277,50 @@ export class EquationBuilder {
     };
   }
 
+  createStackElement(
+    rows: number,
+    cols: number = 1
+  ): EquationElement {
+    // Create cells object with keys like "cell_0_0", "cell_0_1", etc.
+    const cells: { [key: string]: EquationElement[] } = {};
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        cells[`cell_${row}_${col}`] = [];
+      }
+    }
+
+    return {
+      id: this.generateElementId(),
+      type: "stack",
+      stackType: "plain",
+      rows: rows,
+      cols: cols,
+      cells: cells,
+    };
+  }
+
+  createCasesElement(
+    rows: number,
+    cols: number = 2
+  ): EquationElement {
+    // Create cells object with keys like "cell_0_0", "cell_0_1", etc.
+    const cells: { [key: string]: EquationElement[] } = {};
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        cells[`cell_${row}_${col}`] = [];
+      }
+    }
+
+    return {
+      id: this.generateElementId(),
+      type: "cases",
+      casesType: "cases",
+      rows: rows,
+      cols: cols,
+      cells: cells,
+    };
+  }
+
   findElementById(elements: EquationElement[], id: string): EquationElement | null {
     for (const el of elements) {
       if (el.id === id) return el;
@@ -317,11 +369,11 @@ export class EquationBuilder {
           this.findElementById(el.upperLimit || [], id);
         if (found) return found;
       }
-      if (el.type === "matrix") {
+      if (el.type === "matrix" || el.type === "stack" || el.type === "cases") {
         if (el.cells) {
-          for (let row = 0; row < el.cells.length; row++) {
-            for (let col = 0; col < el.cells[row].length; col++) {
-              const found = this.findElementById(el.cells[row][col], id);
+          for (const cellKey in el.cells) {
+            if (cellKey.startsWith('cell_')) {
+              const found = this.findElementById(el.cells[cellKey], id);
               if (found) return found;
             }
           }

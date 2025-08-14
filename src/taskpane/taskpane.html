@@ -238,6 +238,10 @@
                         </div>
                     </div>
                 </div>
+                <div class="format-separator"></div>
+                <button class="format-btn text-mode-btn" id="textModeBtn" title="Text Mode">
+                    <span class="text-mode-icon">Tt</span>
+                </button>
             </div>
         </div>
 
@@ -331,6 +335,49 @@
                             </math>
                         </button>
                     </div>
+                    <hr class="horizontal-separator">
+                    <!-- Row 1: 1-Column Stacks and Cases -->
+                    <div class="button-row">
+                        <button class="builder-btn stack-btn" data-stack="2x1" title="Stack 2×1">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn stack-btn" data-stack="3x1" title="Stack 3×1">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn stack-btn" data-stack="nx1" title="Stack n×1">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="2x1" title="Cases 2×1">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="3x1" title="Cases 3×1">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="nx1" title="Cases n×1">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                    </div>
+                    <!-- Row 2: 2-Column Stacks and Cases -->
+                    <div class="button-row">
+                        <button class="builder-btn stack-btn" data-stack="2x2" title="Stack 2×2">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn stack-btn" data-stack="3x2" title="Stack 3×2">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn stack-btn" data-stack="nx2" title="Stack n×2">
+                            <math><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="2x2" title="Cases 2×2">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="3x2" title="Cases 3×2">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                        <button class="builder-btn cases-btn" data-cases="nx2" title="Cases n×2">
+                            <math><mrow><mo stretchy="true">{</mo><mtable><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><mi>□</mi></mtd><mtd><mi>□</mi></mtd></mtr></mtable></mrow></math>
+                        </button>
+                    </div>
                 </div>
                 <div id="brackets" class="tab-pane">
                     <div class="builder-grid">
@@ -345,39 +392,41 @@
                     </div>
                     <hr class="bracket-separator">
                     <div class="bracket-builder">
-                        <div class="bracket-component">
-                            <select id="leftBracketSelect" class="bracket-select">
-                                <option value="(" selected>(</option>
-                                <option value="[">[</option>
-                                <option value="{">{</option>
-                                <option value="⌊">⌊</option>
-                                <option value="⌈">⌈</option>
-                                <option value="|">|</option>
-                                <option value="‖">‖</option>
-                                <option value="⟨">⟨</option>
-                            </select>
+                        <div class="bracket-left-section">
+                            <div class="bracket-component">
+                                <select id="leftBracketSelect" class="bracket-select">
+                                    <option value="(" selected>(</option>
+                                    <option value="[">[</option>
+                                    <option value="{">{</option>
+                                    <option value="⌊">⌊</option>
+                                    <option value="⌈">⌈</option>
+                                    <option value="|">|</option>
+                                    <option value="‖">‖</option>
+                                    <option value="⟨">⟨</option>
+                                </select>
+                            </div>
+                            
+                            <div class="bracket-component bracket-input">
+                                <div class="bracket-input-display">□</div>
+                            </div>
+                            
+                            <div class="bracket-component">
+                                <select id="rightBracketSelect" class="bracket-select">
+                                    <option value=")" selected>)</option>
+                                    <option value="]">]</option>
+                                    <option value="}">}</option>
+                                    <option value="⌋">⌋</option>
+                                    <option value="⌉">⌉</option>
+                                    <option value="|">|</option>
+                                    <option value="‖">‖</option>
+                                    <option value="⟩">⟩</option>
+                                </select>
+                            </div>
                         </div>
                         
-                        <div class="bracket-component bracket-input">
-                            <div class="bracket-input-display">□</div>
+                        <div class="bracket-actions">
+                            <button id="insertCustomBracket" class="builder-btn custom-bracket-btn">Insert<br>Brackets</button>
                         </div>
-                        
-                        <div class="bracket-component">
-                            <select id="rightBracketSelect" class="bracket-select">
-                                <option value=")" selected>)</option>
-                                <option value="]">]</option>
-                                <option value="}">}</option>
-                                <option value="⌋">⌋</option>
-                                <option value="⌉">⌉</option>
-                                <option value="|">|</option>
-                                <option value="‖">‖</option>
-                                <option value="⟩">⟩</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="bracket-actions">
-                        <button id="insertCustomBracket" class="builder-btn custom-bracket-btn">Insert Bracket(s)</button>
                     </div>
                 </div>
                 <div id="operators" class="tab-pane">
@@ -746,7 +795,7 @@
                         <button class="builder-btn greek-letter-btn" data-greek="\psi" title="Psi">ψ</button>
                         <button class="builder-btn greek-letter-btn" data-greek="\omega" title="Omega">ω</button>
                     </div>
-                    <hr class="greek-separator">
+                    <hr class="horizontal-separator">
                     <!-- Capital Greek Letters -->
                     <div class="button-row">
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Gamma" title="Capital Gamma">Γ</button>
@@ -806,6 +855,24 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stack/Cases Size Selection Panel (Initially Hidden) -->
+        <div class="stack-cases-size-panel" id="stackCasesSizePanel" style="display: none;">
+            <div class="stack-cases-size-header" id="stackCasesHeader">Select Size</div>
+            <div class="stack-cases-panel-content">
+                <div class="stack-cases-input-container">
+                    <div class="stack-cases-input-row">
+                        <label for="stackCasesRows">Number of rows:</label>
+                        <input type="number" id="stackCasesRows" min="3" max="10" value="3" class="stack-cases-size-input">
+                    </div>
+                    <div class="stack-cases-input-hint">Enter a value between 3 and 10</div>
+                    <div class="stack-cases-actions">
+                        <button id="createStackCasesBtn" class="stack-cases-action-btn stack-cases-create-btn">Create</button>
+                        <button id="cancelStackCasesBtn" class="stack-cases-action-btn stack-cases-cancel-btn">Cancel</button>
                     </div>
                 </div>
             </div>

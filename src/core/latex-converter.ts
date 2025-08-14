@@ -136,7 +136,7 @@ export class LatexConverter {
       }
       
       // Compare each wrapper type
-      const checkWrapper = (type: 'underline' | 'cancel' | 'color') => {
+      const checkWrapper = (type: 'underline' | 'cancel' | 'color' | 'textMode') => {
         const w1 = element1.wrappers![type];
         const w2 = element2.wrappers![type];
         
@@ -148,11 +148,11 @@ export class LatexConverter {
         } else if (type === 'color') {
           return (w1 as any).value === (w2 as any).value;
         } else {
-          return true; // cancel
+          return true; // cancel and textMode
         }
       };
       
-      return checkWrapper('underline') && checkWrapper('cancel') && checkWrapper('color');
+      return checkWrapper('underline') && checkWrapper('cancel') && checkWrapper('color') && checkWrapper('textMode');
     }
     
     return true;
@@ -234,7 +234,7 @@ export class LatexConverter {
         let wrappedContent = groupContent;
         
         // Use user's application order if available, otherwise fall back to default order
-        const wrapperOrder = element.wrapperOrder || ['underline', 'cancel', 'color'];
+        const wrapperOrder = element.wrapperOrder || ['underline', 'cancel', 'color', 'textMode'];
         
         // Apply wrappers in the order they were applied by the user
         for (const wrapperType of wrapperOrder) {
@@ -248,6 +248,8 @@ export class LatexConverter {
             wrappedContent = `\\cancel{${wrappedContent}}`;
           } else if (wrapperType === 'color' && element.wrappers.color) {
             wrappedContent = `\\textcolor{${element.wrappers.color.value}}{${wrappedContent}}`;
+          } else if (wrapperType === 'textMode' && element.wrappers.textMode) {
+            wrappedContent = `\\text{${wrappedContent}}`;
           }
         }
         
@@ -259,6 +261,9 @@ export class LatexConverter {
       }
 
       if (element.type === "text") {
+        // Check if element is in text mode
+        const isTextMode = element.textMode === true || (element.wrappers && element.wrappers.textMode);
+        
         // Look ahead to group consecutive text elements with same formatting
         let groupedText = "";
         let j = i;
@@ -269,6 +274,7 @@ export class LatexConverter {
           underline: element.underline,
           cancel: element.cancel,
           wrappers: element.wrappers, // Include wrappers in formatting comparison
+          textMode: element.textMode,
         };
 
         while (j < processedElements.length &&
@@ -276,19 +282,26 @@ export class LatexConverter {
           this.hasEqualFormatting(processedElements[j], currentFormatting)) {
           let value = processedElements[j].value || "";
 
-          // Convert Unicode symbols to LaTeX commands
-          const latexCommand = UNICODE_TO_LATEX[value];
-          if (latexCommand) {
-            value = latexCommand;
-          }
+          // In text mode, preserve spaces and don't convert to LaTeX symbols
+          if (!isTextMode) {
+            // Convert Unicode symbols to LaTeX commands
+            const latexCommand = UNICODE_TO_LATEX[value];
+            if (latexCommand) {
+              value = latexCommand;
+            }
 
-          // Escape LaTeX special characters that could break parsing
-          value = this.escapeLatexSpecialChars(value);
+            // Escape LaTeX special characters that could break parsing
+            value = this.escapeLatexSpecialChars(value);
 
-          // Add spacing for operators
-          if (/^[+\-=×÷]$/.test(value)) {
-            groupedText += ` ${value} `;
+            // Add spacing for operators
+            if (/^[+\-=×÷]$/.test(value)) {
+              groupedText += ` ${value} `;
+            } else {
+              groupedText += value;
+            }
           } else {
+            // In text mode, preserve the text as-is but still escape special chars
+            value = this.escapeLatexSpecialChars(value);
             groupedText += value;
           }
           j++;
@@ -297,7 +310,12 @@ export class LatexConverter {
         // Apply formatting to the grouped text (formatting should already be cleaned if uniform formatting detected)
         let formattedText = groupedText;
         formattedText = this.applyFormattingToLatex(formattedText, currentFormatting);
-
+        
+        // If in text mode, wrap the entire group in \text{}
+        if (isTextMode) {
+          formattedText = `\\text{${formattedText}}`;
+        }
+        
         latex += formattedText;
         i = j - 1; // Skip the elements which have been already processed
       } else if (element.type === "fraction") {
@@ -573,6 +591,12 @@ export class LatexConverter {
       } else if (element.type === "matrix") {
         const matrixLatex = this.matrixToLatex(element, maxDepth);
         latex += matrixLatex;
+      } else if (element.type === "stack") {
+        const stackLatex = this.stackToLatex(element, maxDepth);
+        latex += stackLatex;
+      } else if (element.type === "cases") {
+        const casesLatex = this.casesToLatex(element, maxDepth);
+        latex += casesLatex;
       }
     }
 
@@ -637,6 +661,70 @@ export class LatexConverter {
     delete matrixFormatting.italic;
 
     return this.applyFormattingToLatex(matrixLatex, matrixFormatting);
+  }
+
+  private stackToLatex(element: EquationElement, maxDepth: number): string {
+    const { rows, cols, cells } = element;
+
+    if (!rows || !cols || !cells) {
+      return '\\text{Invalid Stack}';
+    }
+
+    // Build the stack content from the cells object
+    const stackRows: string[] = [];
+    for (let row = 0; row < rows; row++) {
+      const cellsInRow: string[] = [];
+      for (let col = 0; col < cols; col++) {
+        const cellKey = `cell_${row}_${col}`;
+        const cellElements = cells[cellKey] || [];
+        const cellLatex = this.toLatexRecursive(cellElements, maxDepth - 1).trim();
+        cellsInRow.push(cellLatex);
+      }
+      stackRows.push(cellsInRow.join(' & '));
+    }
+    const stackContent = stackRows.join(' \\\\ ');
+
+    // Use array environment for plain stacks
+    let stackLatex = `\\begin{array}{${'c'.repeat(cols)}}${stackContent}\\end{array}`;
+
+    // Apply formatting to the entire stack structure
+    const stackFormatting = { ...element };
+    delete stackFormatting.bold;
+    delete stackFormatting.italic;
+
+    return this.applyFormattingToLatex(stackLatex, stackFormatting);
+  }
+
+  private casesToLatex(element: EquationElement, maxDepth: number): string {
+    const { rows, cols, cells } = element;
+
+    if (!rows || !cols || !cells) {
+      return '\\text{Invalid Cases}';
+    }
+
+    // Build the cases content from the cells object
+    const casesRows: string[] = [];
+    for (let row = 0; row < rows; row++) {
+      const cellsInRow: string[] = [];
+      for (let col = 0; col < cols; col++) {
+        const cellKey = `cell_${row}_${col}`;
+        const cellElements = cells[cellKey] || [];
+        const cellLatex = this.toLatexRecursive(cellElements, maxDepth - 1).trim();
+        cellsInRow.push(cellLatex);
+      }
+      casesRows.push(cellsInRow.join(' & '));
+    }
+    const casesContent = casesRows.join(' \\\\ ');
+
+    // Use cases environment for piecewise functions
+    let casesLatex = `\\begin{cases}${casesContent}\\end{cases}`;
+
+    // Apply formatting to the entire cases structure
+    const casesFormatting = { ...element };
+    delete casesFormatting.bold;
+    delete casesFormatting.italic;
+
+    return this.applyFormattingToLatex(casesLatex, casesFormatting);
   }
 
   private shouldUsePhysicsPackageForDerivative(): boolean {
@@ -748,13 +836,13 @@ export class LatexConverter {
           denominator: this.parseLatexToEquation(denominator.content),
         });
       } else if (latex.substr(i, 6) === "\\begin") {
-        // Parse matrix environments
-        const matrixResult = this.parseMatrixEnvironment(latex, i);
-        if (matrixResult) {
-          result.push(matrixResult.element);
-          i = matrixResult.endIndex;
+        // Parse matrix, stack, and cases environments
+        const environmentResult = this.parseMatrixStackCasesEnvironment(latex, i);
+        if (environmentResult) {
+          result.push(environmentResult.element);
+          i = environmentResult.endIndex;
         } else {
-          // Not a matrix environment, treat as text
+          // Not a matrix/stack/cases environment, treat as text
           result.push({
             id: this.generateElementId(),
             type: "text",
@@ -942,6 +1030,34 @@ export class LatexConverter {
           
           // Add the elements directly to the result (not as a wrapper)
           result.push(...wrappedElements);
+        } else if (latex.substr(i, 6) === "\\text{") {
+          // Handle \text{} commands specially
+          if (latex.substr(i, 9) === "\\text{＆}") {
+            result.push({
+              id: this.generateElementId(),
+              type: "text",
+              value: "&"
+            });
+            i += 9;
+          } else {
+            // Handle other \text{} commands
+            i += 6; // Skip \text{
+            const group = this.parseLatexGroup(latex, i - 1); // Parse from the { we just skipped
+            i = group.endIndex;
+            
+            // Parse the content inside \text{} and mark each character as text mode
+            const textContent = group.content;
+            for (let j = 0; j < textContent.length; j++) {
+              const char = textContent[j];
+              result.push({
+                id: this.generateElementId(),
+                type: "text",
+                value: char,
+                textMode: true,
+                italic: false // Text mode should be roman (non-italic)
+              });
+            }
+          }
         } else {
           // Unknown command - skip it
           i++;
@@ -960,26 +1076,6 @@ export class LatexConverter {
           value: "_"
         });
         i += 5;
-      } else if (latex.substr(i, 5) === "\\text") {
-        // Handle \text{} commands specially
-        if (latex.substr(i, 9) === "\\text{＆}") {
-          result.push({
-            id: this.generateElementId(),
-            type: "text",
-            value: "&"
-          });
-          i += 9;
-        } else {
-          // Handle other \text{} commands
-          i += 5; // Skip \text
-          const group = this.parseLatexGroup(latex, i);
-          i = group.endIndex;
-          result.push({
-            id: this.generateElementId(),
-            type: "text",
-            value: group.content
-          });
-        }
       } else if (latex.substr(i, 17) === "\\textasciitilde") {
         result.push({
           id: this.generateElementId(),
@@ -1316,7 +1412,8 @@ export class LatexConverter {
       this.getEffectiveItalicFormatting(element.italic) === this.getEffectiveItalicFormatting(formatting.italic) &&
       element.color === formatting.color &&
       element.underline === formatting.underline &&
-      element.cancel === formatting.cancel);
+      element.cancel === formatting.cancel &&
+      element.textMode === formatting.textMode);
     
     // Then check if wrappers match
     // If either element has wrappers, they must match exactly
@@ -1632,8 +1729,9 @@ export class LatexConverter {
     } else if (formatting.italic === true) {
       result = `\\mathit{${result}}`;
     } else if (formatting.italic === false) {
-      // Don't apply \mathrm{} to LaTeX commands or known operator symbols as it removes proper spacing
-      if (!result.startsWith('\\') && !this.isOperatorSymbol(result)) {
+      // Don't apply \mathrm{} to text mode elements (they should use \text{} wrapper instead)
+      // Also don't apply to LaTeX commands or known operator symbols as it removes proper spacing
+      if (!formatting.textMode && !result.startsWith('\\') && !this.isOperatorSymbol(result)) {
         result = `\\mathrm{${result}}`;
       }
     }
@@ -2475,74 +2573,118 @@ export class LatexConverter {
     return false;
   }
 
-  private parseMatrixEnvironment(
+  private parseMatrixStackCasesEnvironment(
     latex: string,
     startIndex: number
   ): { element: EquationElement; endIndex: number } | null {
-    // Check for matrix environment patterns
-    const matrixTypes = [
-      { pattern: "\\begin{pmatrix}", end: "\\end{pmatrix}", brackets: "parentheses" },
-      { pattern: "\\begin{bmatrix}", end: "\\end{bmatrix}", brackets: "brackets" },
-      { pattern: "\\begin{Bmatrix}", end: "\\end{Bmatrix}", brackets: "braces" },
-      { pattern: "\\begin{vmatrix}", end: "\\end{vmatrix}", brackets: "bars" },
-      { pattern: "\\begin{Vmatrix}", end: "\\end{Vmatrix}", brackets: "double-bars" },
-      { pattern: "\\begin{matrix}", end: "\\end{matrix}", brackets: "none" }
+    // Check for matrix, stack, and cases environment patterns
+    const environmentTypes: Array<{
+      pattern: string;
+      end: string;
+      type: "matrix" | "stack" | "cases";
+      subtype: string;
+    }> = [
+      // Matrix environments
+      { pattern: "\\begin{pmatrix}", end: "\\end{pmatrix}", type: "matrix", subtype: "parentheses" },
+      { pattern: "\\begin{bmatrix}", end: "\\end{bmatrix}", type: "matrix", subtype: "brackets" },
+      { pattern: "\\begin{Bmatrix}", end: "\\end{Bmatrix}", type: "matrix", subtype: "braces" },
+      { pattern: "\\begin{vmatrix}", end: "\\end{vmatrix}", type: "matrix", subtype: "bars" },
+      { pattern: "\\begin{Vmatrix}", end: "\\end{Vmatrix}", type: "matrix", subtype: "double-bars" },
+      { pattern: "\\begin{matrix}", end: "\\end{matrix}", type: "matrix", subtype: "none" },
+      // Stack environments (array)
+      { pattern: "\\begin{array}", end: "\\end{array}", type: "stack", subtype: "plain" },
+      // Cases environments
+      { pattern: "\\begin{cases}", end: "\\end{cases}", type: "cases", subtype: "cases" }
     ];
 
-    let matrixType: string | null = null;
+    let environmentType: "matrix" | "stack" | "cases" | null = null;
+    let environmentSubtype: string | null = null;
     let endPattern: string | null = null;
     let currentIndex = startIndex;
 
-    // Find which matrix type this is
-    for (const type of matrixTypes) {
+    // Find which environment type this is
+    for (const type of environmentTypes) {
       if (latex.substr(startIndex, type.pattern.length) === type.pattern) {
-        matrixType = type.brackets;
+        environmentType = type.type;
+        environmentSubtype = type.subtype;
         endPattern = type.end;
         currentIndex = startIndex + type.pattern.length;
         break;
       }
     }
 
-    if (!matrixType || !endPattern) {
-      return null; // Not a matrix environment
+    if (!environmentType || !endPattern) {
+      return null; // Not a supported environment
     }
 
-    // Find the end of the matrix environment
+    // Handle array environment column specification
+    if (environmentType === "stack" && latex.substr(currentIndex, 1) === "{") {
+      // Skip array column specification like {ccc}
+      const colSpecEnd = latex.indexOf("}", currentIndex);
+      if (colSpecEnd !== -1) {
+        currentIndex = colSpecEnd + 1;
+      }
+    }
+
+    // Find the end of the environment
     const endIndex = latex.indexOf(endPattern, currentIndex);
     if (endIndex === -1) {
-      return null; // Malformed matrix - no closing tag
+      return null; // Malformed environment - no closing tag
     }
 
-    // Extract matrix content between \begin{} and \end{}
-    const matrixContent = latex.substring(currentIndex, endIndex).trim();
+    // Extract content between \begin{} and \end{}
+    const environmentContent = latex.substring(currentIndex, endIndex).trim();
 
-    // Parse matrix content into rows and cells
-    const rows = matrixContent.split('\\\\').map(row => row.trim()).filter(row => row.length > 0);
-    const matrixData: { [key: string]: EquationElement[] } = {};
+    // Parse content into rows and cells
+    const rows = environmentContent.split('\\\\').map(row => row.trim()).filter(row => row.length > 0);
+    const cellData: { [key: string]: EquationElement[] } = {};
 
     rows.forEach((row, rowIndex) => {
       const cells = row.split('&').map(cell => cell.trim());
       cells.forEach((cell, colIndex) => {
         const cellKey = `cell_${rowIndex}_${colIndex}`;
-        matrixData[cellKey] = this.parseLatexToEquation(cell);
+        cellData[cellKey] = this.parseLatexToEquation(cell);
       });
     });
 
-    // Determine matrix dimensions
+    // Determine dimensions
     const numRows = rows.length;
     const numCols = rows.length > 0 ? rows[0].split('&').length : 1;
 
-    const matrixElement: EquationElement = {
-      id: this.generateElementId(),
-      type: "matrix",
-      matrixType: matrixType,
-      rows: numRows,
-      cols: numCols,
-      cells: matrixData
-    };
+    // Create appropriate element based on environment type
+    let resultElement: EquationElement;
+
+    if (environmentType === "matrix") {
+      resultElement = {
+        id: this.generateElementId(),
+        type: "matrix",
+        matrixType: environmentSubtype as "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none",
+        rows: numRows,
+        cols: numCols,
+        cells: cellData
+      };
+    } else if (environmentType === "stack") {
+      resultElement = {
+        id: this.generateElementId(),
+        type: "stack",
+        stackType: "plain",
+        rows: numRows,
+        cols: numCols,
+        cells: cellData
+      };
+    } else { // environmentType === "cases"
+      resultElement = {
+        id: this.generateElementId(),
+        type: "cases",
+        casesType: "cases",
+        rows: numRows,
+        cols: numCols,
+        cells: cellData
+      };
+    }
 
     return {
-      element: matrixElement,
+      element: resultElement,
       endIndex: endIndex + endPattern.length
     };
   }

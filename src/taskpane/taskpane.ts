@@ -54,7 +54,6 @@ class MathAddinApp {
     // Get DOM elements
     const elements = this.getDOMElements();
     if (!elements) {
-      console.error("One or more critical elements are missing from the DOM.");
       return;
     }
 
@@ -94,7 +93,6 @@ class MathAddinApp {
     try {
       await this.fontMeasurementService.measureAndSetScaleRatios();
     } catch (error) {
-      console.error('Font measurement failed:', error);
     }
   }
 
@@ -118,6 +116,7 @@ class MathAddinApp {
     const cancelBtn = document.getElementById("cancelBtn") as HTMLButtonElement;
     const colorBtn = document.getElementById("colorBtn") as HTMLButtonElement;
     const colorDropdownBtn = document.getElementById("colorDropdownBtn") as HTMLButtonElement;
+    const textModeBtn = document.getElementById("textModeBtn") as HTMLButtonElement;
     const underlineDropdown = document.getElementById("underlineDropdown") as HTMLDivElement;
     const colorPanel = document.getElementById("colorPanel") as HTMLDivElement;
     const colorPreview = document.getElementById("colorPreview") as HTMLDivElement;
@@ -152,6 +151,7 @@ class MathAddinApp {
       cancelBtn,
       colorBtn,
       colorDropdownBtn,
+      textModeBtn,
       underlineDropdown,
       colorPanel,
       colorPreview,
@@ -186,6 +186,7 @@ class MathAddinApp {
     elements.cancelBtn.addEventListener("click", () => this.inputHandler.toggleCancel());
     elements.colorBtn.addEventListener("click", () => this.handleColorApply());
     elements.colorDropdownBtn.addEventListener("click", (e) => this.handleColorDropdownClick(e));
+    elements.textModeBtn.addEventListener("click", () => this.handleTextModeToggle());
 
     // Color panel handlers
     elements.colorPanel.addEventListener("click", (e) => this.handleColorPanelClick(e));
@@ -300,6 +301,12 @@ class MathAddinApp {
       this.inputHandler.insertDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-indefinite-display-btn")) {
       this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("stack-btn")) {
+      const stackType = (button as HTMLElement).dataset.stack || "";
+      this.handleStackButtonClick(stackType);
+    } else if (button.classList.contains("cases-btn")) {
+      const casesType = (button as HTMLElement).dataset.cases || "";
+      this.handleCasesButtonClick(casesType);
     }
   }
 
@@ -371,7 +378,6 @@ class MathAddinApp {
     const rightSelect = document.getElementById("rightBracketSelect") as HTMLSelectElement;
 
     if (!leftSelect || !rightSelect) {
-      console.error("Bracket select elements not found");
       return;
     }
 
@@ -494,6 +500,17 @@ class MathAddinApp {
     }
   }
 
+  private updateTextModeUI(): void {
+    const button = document.getElementById("textModeBtn") as HTMLButtonElement;
+    const isTextMode = this.inputHandler.getTextMode();
+    
+    if (isTextMode) {
+      button.classList.add("active");
+    } else {
+      button.classList.remove("active");
+    }
+  }
+
   private updateFormattingUIBasedOnSelection(): void {
     const formatting = this.inputHandler.getSelectionFormatting();
 
@@ -511,11 +528,20 @@ class MathAddinApp {
         this.updateUnderlineUI('none');
       }
     }
+    
+    // Update text mode UI
+    this.updateTextModeUI();
   }
 
   private handleColorApply(): void {
     // Apply the current color directly to selected text
     this.inputHandler.setTextColor(this.currentColor);
+  }
+
+  private handleTextModeToggle(): void {
+    // Toggle text mode and update button state
+    this.inputHandler.toggleTextMode();
+    this.updateTextModeUI();
   }
 
   private handleColorDropdownClick(e: Event): void {
@@ -840,7 +866,6 @@ class MathAddinApp {
         }, 3000);
       }
     } catch (error) {
-      console.error("Error loading equation from LaTeX:", error);
       const statusDiv = document.getElementById("status") as HTMLDivElement;
       if (statusDiv) {
         statusDiv.textContent = "Error: Could not load equation for editing.";
@@ -900,11 +925,6 @@ class MathAddinApp {
       this.handleClearEquation();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      console.error("Error inserting equation:", error);
-      if (latex) {
-        console.error("LaTeX that failed:", latex);
-      }
-      console.error("Error details:", JSON.stringify(error, null, 2));
       statusDiv.textContent = `Error: ${errorMessage}`;
     } finally {
       // Reset button state
@@ -928,7 +948,148 @@ class MathAddinApp {
     this.showMatrixSizePanel();
   }
 
+  private handleStackButtonClick(stackType: string): void {
+    switch (stackType) {
+      case "2x1":
+        this.inputHandler.insertStack(2, 1);
+        break;
+      case "3x1":
+        this.inputHandler.insertStack(3, 1);
+        break;
+      case "2x2":
+        this.inputHandler.insertStack(2, 2);
+        break;
+      case "3x2":
+        this.inputHandler.insertStack(3, 2);
+        break;
+      case "nx1":
+        this.promptForStackSize(1);
+        break;
+      case "nx2":
+        this.promptForStackSize(2);
+        break;
+    }
+  }
+
+  private handleCasesButtonClick(casesType: string): void {
+    switch (casesType) {
+      case "2x1":
+        this.inputHandler.insertCases(2, 1);
+        break;
+      case "3x1":
+        this.inputHandler.insertCases(3, 1);
+        break;
+      case "2x2":
+        this.inputHandler.insertCases(2, 2);
+        break;
+      case "3x2":
+        this.inputHandler.insertCases(3, 2);
+        break;
+      case "nx1":
+        this.promptForCasesSize(1);
+        break;
+      case "nx2":
+        this.promptForCasesSize(2);
+        break;
+    }
+  }
+
+  private promptForStackSize(cols: number): void {
+    this.showStackCasesSizePanel('stack', cols);
+  }
+
+  private promptForCasesSize(cols: number): void {
+    this.showStackCasesSizePanel('cases', cols);
+  }
+
   private currentMatrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none" = "parentheses";
+  private pendingStackCasesType: 'stack' | 'cases' | null = null;
+  private pendingStackCasesCols: number = 1;
+
+  private showStackCasesSizePanel(type: 'stack' | 'cases', cols: number): void {
+    const panel = document.getElementById("stackCasesSizePanel") as HTMLDivElement;
+    const header = document.getElementById("stackCasesHeader") as HTMLDivElement;
+    const rowsInput = document.getElementById("stackCasesRows") as HTMLInputElement;
+    
+    if (!panel || !header || !rowsInput) return;
+
+    // Store the type and columns for later use
+    this.pendingStackCasesType = type;
+    this.pendingStackCasesCols = cols;
+
+    // Update header text
+    const typeName = type === 'stack' ? 'Stack' : 'Cases';
+    header.textContent = `Select ${typeName} Size (${cols} column${cols > 1 ? 's' : ''})`;
+
+    // Reset input value
+    rowsInput.value = "3";
+
+    // Set up event listeners if not already set
+    this.setupStackCasesPanelEventListeners();
+
+    // Show the panel
+    panel.style.display = "block";
+
+    // Focus the input
+    rowsInput.focus();
+    rowsInput.select();
+  }
+
+  private setupStackCasesPanelEventListeners(): void {
+    const createBtn = document.getElementById("createStackCasesBtn");
+    const cancelBtn = document.getElementById("cancelStackCasesBtn");
+    const panel = document.getElementById("stackCasesSizePanel") as HTMLDivElement;
+
+    // Remove existing listeners to avoid duplicates
+    if (createBtn) {
+      const newCreateBtn = createBtn.cloneNode(true) as HTMLButtonElement;
+      createBtn.parentNode?.replaceChild(newCreateBtn, createBtn);
+      
+      newCreateBtn.addEventListener("click", () => {
+        // Get fresh reference to the input element
+        const currentRowsInput = document.getElementById("stackCasesRows") as HTMLInputElement;
+        const rows = parseInt(currentRowsInput.value);
+        if (rows >= 3 && rows <= 10) {
+          if (this.pendingStackCasesType === 'stack') {
+            this.inputHandler.insertStack(rows, this.pendingStackCasesCols);
+          } else {
+            this.inputHandler.insertCases(rows, this.pendingStackCasesCols);
+          }
+          panel.style.display = "none";
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      const newCancelBtn = cancelBtn.cloneNode(true) as HTMLButtonElement;
+      cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
+      
+      newCancelBtn.addEventListener("click", () => {
+        panel.style.display = "none";
+      });
+    }
+
+    // Add Enter key support
+    const rowsInput = document.getElementById("stackCasesRows") as HTMLInputElement;
+    if (rowsInput) {
+      const newRowsInput = rowsInput.cloneNode(true) as HTMLInputElement;
+      rowsInput.parentNode?.replaceChild(newRowsInput, rowsInput);
+      
+      newRowsInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          const rows = parseInt(newRowsInput.value);
+          if (rows >= 3 && rows <= 20) {
+            if (this.pendingStackCasesType === 'stack') {
+              this.inputHandler.insertStack(rows, this.pendingStackCasesCols);
+            } else {
+              this.inputHandler.insertCases(rows, this.pendingStackCasesCols);
+            }
+            panel.style.display = "none";
+          }
+        }
+      });
+    }
+  }
 
   private showMatrixSizePanel(): void {
     const panel = document.getElementById("matrixSizePanel") as HTMLDivElement;
@@ -1058,7 +1219,6 @@ Office.onReady((info) => {
       .then(() => {
       })
       .catch((error) => {
-        console.error("Math Add-in initialization failed:", error);
         const statusDiv = document.getElementById("status") as HTMLDivElement;
         if (statusDiv) {
           statusDiv.textContent = "Error: Could not initialize the add-in.";

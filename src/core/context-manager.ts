@@ -102,9 +102,9 @@ export class ContextManager {
       return null;
     }
 
-    // Handle matrix element containers
-    if (element.type === "matrix") {
-      // Parse matrix cell container name: "cell_row_col"
+    // Handle matrix, stack, and cases element containers
+    if (element.type === "matrix" || element.type === "stack" || element.type === "cases") {
+      // Parse cell container name: "cell_row_col"
       const cellMatch = containerName.match(/^cell_(\d+)_(\d+)$/);
       if (cellMatch && element.cells) {
         const cellKey = containerName; // Use the full container name as the key (e.g., "cell_0_0")
@@ -272,8 +272,8 @@ export class ContextManager {
           this.navigateOutOfContext("backward");
         }
       }
-    } else if (parentElement.type === "matrix") {
-      // Handle matrix cell navigation
+    } else if (parentElement.type === "matrix" || parentElement.type === "stack" || parentElement.type === "cases") {
+      // Handle matrix, stack, and cases cell navigation
       const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
       if (cellMatch && parentElement.rows && parentElement.cols) {
         const currentRow = parseInt(cellMatch[1]);
@@ -311,9 +311,10 @@ export class ContextManager {
     const parentPath = parts.slice(0, -1).join("/");
 
     const context = this.getContext(this.activeContextPath);
-    if (!context || !context.parent || context.parent.type !== "matrix") return false;
+    if (!context || !context.parent || 
+        (context.parent.type !== "matrix" && context.parent.type !== "stack" && context.parent.type !== "cases")) return false;
 
-    // Parse matrix cell container name: "cell_row_col"
+    // Parse cell container name: "cell_row_col"
     const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
     if (!cellMatch || !context.parent.rows || !context.parent.cols) return false;
 
@@ -752,7 +753,7 @@ export class ContextManager {
     return result;
   }
 
-  removeWrapperFormattingFromSelection(wrapperType: "cancel" | "underline" | "color"): boolean {
+  removeWrapperFormattingFromSelection(wrapperType: "cancel" | "underline" | "color" | "textMode"): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
     }
@@ -798,6 +799,7 @@ export class ContextManager {
     cancel?: boolean;
     underline?: "single" | "double";
     color?: string;
+    textMode?: boolean;
   }): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
@@ -817,7 +819,8 @@ export class ContextManager {
     const sharedWrapperIds = {
       cancel: this.equationBuilder.generateElementId(),
       underline: this.equationBuilder.generateElementId(),
-      color: this.equationBuilder.generateElementId()
+      color: this.equationBuilder.generateElementId(),
+      textMode: this.equationBuilder.generateElementId()
     };
 
     // Apply wrapper formatting to selected elements using new multi-wrapper system
@@ -898,6 +901,27 @@ export class ContextManager {
             // Remove from order array
             if (element.wrapperOrder) {
               element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'color');
+            }
+          }
+        }
+        
+        if (formatting.textMode !== undefined) {
+          if (formatting.textMode) {
+            // Apply text mode wrapper
+            element.wrappers.textMode = { 
+              id: sharedWrapperIds.textMode
+            };
+            // If textMode doesn't exist, add it to order tracking
+            if (!element.wrapperOrder || !element.wrapperOrder.includes('textMode')) {
+              element.wrapperOrder = element.wrapperOrder || [];
+              element.wrapperOrder.push('textMode');
+            }
+            // Keep existing order position if already present
+          } else {
+            delete element.wrappers.textMode;
+            // Remove from order array
+            if (element.wrapperOrder) {
+              element.wrapperOrder = element.wrapperOrder.filter(w => w !== 'textMode');
             }
           }
         }

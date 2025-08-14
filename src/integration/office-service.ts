@@ -52,7 +52,8 @@ export class OfficeService {
         console.log(`OOXML size: ${ooxmlSizeKB.toFixed(1)}KB`);
 
         // Check for matrix/complex content that may fail with OOXML
-        const hasMatrixContent = latex.includes('matrix') || latex.includes('pmatrix') || latex.includes('bmatrix');
+        const hasMatrixContent = latex.includes('matrix') || latex.includes('pmatrix') || latex.includes('bmatrix') ||
+                                latex.includes('cases') || latex.includes('array');
         
         if (!hasMatrixContent) {
           // Phase 1: Use OOXML for simple equations (non-matrix content)
@@ -67,7 +68,7 @@ export class OfficeService {
             console.log("OOXML insertion failed, falling back to PNG:", ooxmlError);
           }
         } else {
-          console.log(`Matrix content detected, using PNG approach for better compatibility`);
+          console.log(`Matrix/Cases/Array content detected, using PNG approach for better compatibility`);
         }
         
         // Phase 2: PNG approach for matrices or OOXML failures

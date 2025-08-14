@@ -38,7 +38,6 @@ export class MathJaxService {
 
       return svgClone;
     } catch (error) {
-      console.error("MathJax rendering error:", error);
       throw new Error("Failed to convert equation to image. Please check the syntax.");
     }
   }
@@ -130,7 +129,6 @@ export class MathJaxService {
     try {
       await MathJax.startup.promise;
     } catch (error) {
-      console.error("MathJax failed to load:", error);
       throw new Error("Could not load MathJax.");
     }
   }

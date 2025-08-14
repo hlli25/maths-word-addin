@@ -127,21 +127,40 @@ export class DisplayRenderer {
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
       case 'matrix':
         return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
+      case 'stack':
+        return this.stackToMathML(element, contextPath, isActive, position, isSelected);
+      case 'cases':
+        return this.casesToMathML(element, contextPath, isActive, position, isSelected);
       default:
         return '';
     }
   }
 
   private textToMathML(element: EquationElement, isActive: boolean, contextPath: string, position: number, isSelected: boolean = false): string {
-    const value = element.value || '&#x25A1;'; // Default to a placeholder square
+    let value = element.value || '&#x25A1;'; // Default to a placeholder square
+    
+    // Check if element is in text mode early to handle space escaping
+    const isTextMode = element.textMode === true || (element.wrappers && element.wrappers.textMode);
+    
+    
+    // In text mode, convert spaces to non-breaking spaces for proper display
+    if (isTextMode && value === ' ') {
+      value = '&#160;'; // Non-breaking space
+    }
     const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
     const isVariable = /[a-zA-Z]/.test(value);
     const isNumber = /[0-9]/.test(value);
     const isSymbol = /[^\w\s]/.test(value);
 
     let tag = 'mi';
-    if (isOperator) tag = 'mo';
-    else if (isNumber) tag = 'mn';
+    // In text mode, use mtext tag for proper text rendering
+    if (isTextMode) {
+      tag = 'mtext';
+    } else if (isOperator) {
+      tag = 'mo';
+    } else if (isNumber) {
+      tag = 'mn';
+    }
 
     let style = '';
     if (element.color) style += `color: ${element.color};`;
@@ -166,8 +185,8 @@ export class DisplayRenderer {
         shouldBeItalic = true;
       } else if (element.italic === false) {
         shouldBeItalic = false;
-      } else if (isVariable && !element.bold && element.italic !== false) {
-        // Variables default to italic unless bold or explicitly set to normal
+      } else if (isVariable && !element.bold && element.italic !== false && !isTextMode) {
+        // Variables default to italic unless bold or explicitly set to normal or in text mode
         shouldBeItalic = true;
       }
 
@@ -176,14 +195,17 @@ export class DisplayRenderer {
         mathVariantAttr = 'mathvariant="normal"';
       }
       // If shouldBeItalic is true, we don't set mathvariant and let <mi> use its default italic
+    } else if (tag === 'mtext') {
+      // For mtext elements, ensure roman (non-italic) font by default
+      mathVariantAttr = 'mathvariant="normal"';
     } else {
       // For non-mi elements (mo, mn), use inline styles as before
       if (element.italic === true) {
         style += 'font-style: italic;';
       } else if (element.italic === false) {
         style += 'font-style: normal;';
-      } else if (isVariable && !element.bold && element.italic !== false) {
-        // Variables default to italic unless bold or explicitly set to normal
+      } else if (isVariable && !element.bold && element.italic !== false && !isTextMode) {
+        // Variables default to italic unless bold or explicitly set to normal or in text mode
         style += 'font-style: italic;';
       }
     }
@@ -643,6 +665,90 @@ export class DisplayRenderer {
     return this.wrapMatrixWithBrackets(matrixContent, matrixType || 'parentheses', elementPath, position, isSelected, element);
   }
 
+  private stackToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const { rows, cols, cells } = element;
+
+    if (!rows || !cols || !cells) {
+      return '<mtext>Invalid Stack</mtext>';
+    }
+
+    // Generate the stack content using mtable
+    let stackContent = '<mtable>';
+
+    for (let row = 0; row < rows; row++) {
+      stackContent += '<mtr>';
+      for (let col = 0; col < cols; col++) {
+        const cellPath = `${elementPath}/cell_${row}_${col}`;
+        const cellElements = cells[`cell_${row}_${col}`] || [];
+
+        const cellContent = this.generateMathMLContent(cellPath, cellElements);
+        stackContent += `<mtd>${cellContent}</mtd>`;
+      }
+      stackContent += '</mtr>';
+    }
+
+    stackContent += '</mtable>';
+
+    // Stack has no brackets - just return the table content
+    const classes: string[] = [];
+    if (isSelected) classes.push('selected-structure');
+
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    return `<mrow ${classAttr} ${dataAttrs}>${stackContent}</mrow>`;
+  }
+
+  private casesToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const { rows, cols, cells } = element;
+
+    if (!rows || !cols || !cells) {
+      return '<mtext>Invalid Cases</mtext>';
+    }
+
+    // Generate the cases content using mtable
+    let casesContent = '<mtable>';
+
+    for (let row = 0; row < rows; row++) {
+      casesContent += '<mtr>';
+      for (let col = 0; col < cols; col++) {
+        const cellPath = `${elementPath}/cell_${row}_${col}`;
+        const cellElements = cells[`cell_${row}_${col}`] || [];
+
+        const cellContent = this.generateMathMLContent(cellPath, cellElements);
+        casesContent += `<mtd>${cellContent}</mtd>`;
+      }
+      casesContent += '</mtr>';
+    }
+
+    casesContent += '</mtable>';
+
+    // Wrap with left brace only
+    return this.wrapCasesWithBrace(casesContent, elementPath, position, isSelected, element);
+  }
+
+  private wrapCasesWithBrace(casesContent: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
+    const classes: string[] = [];
+    if (isSelected) classes.push('selected-structure');
+
+    const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+
+    // Build inline styles for structure-level formatting
+    let style = '';
+    if (isSelected) {
+      style += 'background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;';
+    }
+
+    const styleAttr = style ? `style="${style}"` : '';
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Cases only have a left brace
+    return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+      <mo stretchy="true">{</mo>
+      ${casesContent}
+    </mrow>`;
+  }
+
   private wrapMatrixWithBrackets(matrixContent: string, matrixType: string, elementPath: string, position: number, isSelected: boolean, element: EquationElement): string {
     const classes: string[] = [];
     if (isSelected) classes.push('selected-structure');
@@ -770,7 +876,7 @@ export class DisplayRenderer {
       if (element.upperLimit) this.findElementsWithWrappers(element.upperLimit, callback);
       if (element.lowerLimit) this.findElementsWithWrappers(element.lowerLimit, callback);
       
-      // Handle matrix cells
+      // Handle matrix, stack, and cases cells
       if (element.cells) {
         Object.values(element.cells).forEach(cellElements => {
           this.findElementsWithWrappers(cellElements, callback);

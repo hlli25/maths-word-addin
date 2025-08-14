@@ -744,6 +744,39 @@ mfrac mfrac mfrac.display-fraction {
   border-color: #c8c8c8;
 }
 
+/* Format separator */
+.format-separator {
+  width: 1px;
+  height: 20px;
+  background-color: #c8c8c8;
+  margin: 0 1px;
+  align-self: center;
+}
+
+/* Text Mode Button Styles */
+.text-mode-btn {
+  min-width: 32px;
+  position: relative;
+  margin-left: 4px;
+}
+
+.text-mode-icon {
+  font-family: 'Times New Roman', serif;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.text-mode-btn.active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.text-mode-btn.active:hover {
+  background-color: #106ebe;
+  border-color: #106ebe;
+}
+
 .italic-btn em {
   font-style: italic;
   font-weight: normal;
@@ -1166,8 +1199,8 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
   font-style: italic;
 }
 
-/* Greek Letters Layout */
-.greek-separator {
+/* Horizontal Separator Layout */
+.horizontal-separator {
   margin: 15px 0;
   border: 0;
   border-top: 1px solid #e5e5e5;
@@ -1182,8 +1215,8 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
 
 .bracket-builder {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
   padding: 16px;
@@ -1192,11 +1225,17 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
   border-radius: 4px;
 }
 
+.bracket-left-section {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .bracket-component {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .bracket-label {
@@ -1246,7 +1285,6 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
 .bracket-actions {
   display: flex;
   justify-content: center;
-  margin-top: 8px;
 }
 
 .custom-bracket-btn {
@@ -1259,7 +1297,7 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease-in-out;
-  min-width: 140px;
+  min-width: 100px;
   white-space: nowrap;
   text-align: center;
   display: inline-flex;
@@ -1500,6 +1538,22 @@ body.inline-style-active .integral-btn math {
   min-width: 45px;
 }
 
+/* Stack and Cases Button Styles */
+.stack-btn, .cases-btn {
+  font-size: 12px;
+  padding: 4px;
+  width: 50px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stack-btn math, .cases-btn math {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
 .matrix-size-panel {
   background: #ffffff;
   border: 1px solid #d1d5db;
@@ -1672,5 +1726,107 @@ body.inline-style-active .integral-btn math {
   text-decoration: underline;
   border-bottom: 1px solid currentColor;
   padding-bottom: 1px;
+}
+
+/* Stack/Cases Size Selection Panel Styles */
+.stack-cases-size-panel {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: fixed;
+  z-index: 9999;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 250px;
+}
+
+.stack-cases-size-header {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.stack-cases-panel-content {
+  padding: 8px 0;
+}
+
+.stack-cases-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stack-cases-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stack-cases-input-row label {
+  flex: 1;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.stack-cases-size-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.stack-cases-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.stack-cases-input-hint {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin: 4px 0;
+}
+
+.stack-cases-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.stack-cases-action-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stack-cases-create-btn {
+  background: #0078d4;
+  color: white;
+}
+
+.stack-cases-create-btn:hover {
+  background: #106ebe;
+}
+
+.stack-cases-cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.stack-cases-cancel-btn:hover {
+  background: #d1d5db;
 }
 
