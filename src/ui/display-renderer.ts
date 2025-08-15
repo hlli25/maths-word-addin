@@ -1252,7 +1252,14 @@ export class DisplayRenderer {
 
   private functionToMathML(element: EquationElement, contextPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const elementPath = `${contextPath}/${element.id}`;
-    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+    
+    // Build class attribute for selection
+    const classes = [];
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}" ${classAttr}`;
     
     // Get function type to determine structure
     const functionType = element.functionType || "";

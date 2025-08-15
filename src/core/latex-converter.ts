@@ -293,6 +293,16 @@ export class LatexConverter {
             const latexCommand = UNICODE_TO_LATEX[value];
             if (latexCommand) {
               value = latexCommand;
+              
+              // Add space after LaTeX commands that end with letters
+              // to prevent issues like \leqx when followed by letters
+              const nextIdx = j + 1;
+              if (nextIdx < processedElements.length && 
+                  processedElements[nextIdx].type === "text" &&
+                  /^[a-zA-Z]/.test(processedElements[nextIdx].value || "") &&
+                  /\\[a-zA-Z]+$/.test(value)) {
+                value = value + " ";
+              }
             }
 
             // Escape LaTeX special characters that could break parsing
