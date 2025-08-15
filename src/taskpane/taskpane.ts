@@ -297,6 +297,84 @@ class MathAddinApp {
       this.inputHandler.insertLargeOperator("∏", "display", "nolimits");
     } else if (button.classList.contains("prod-display-limit-btn")) {
       this.inputHandler.insertLargeOperator("∏", "display", "limits");
+    
+    // Set operations
+    } else if (button.classList.contains("bigcup-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋃", "display", "nolimits");
+    } else if (button.classList.contains("bigcup-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋃", "display", "limits");
+    } else if (button.classList.contains("bigcup-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋃", "inline", "nolimits");
+    } else if (button.classList.contains("bigcup-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋃", "inline", "limits");
+    } else if (button.classList.contains("bigcap-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋂", "display", "nolimits");
+    } else if (button.classList.contains("bigcap-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋂", "display", "limits");
+    } else if (button.classList.contains("bigcap-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋂", "inline", "nolimits");
+    } else if (button.classList.contains("bigcap-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋂", "inline", "limits");
+    
+    // Logic operations
+    } else if (button.classList.contains("bigvee-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋁", "display", "nolimits");
+    } else if (button.classList.contains("bigvee-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋁", "display", "limits");
+    } else if (button.classList.contains("bigvee-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋁", "inline", "nolimits");
+    } else if (button.classList.contains("bigvee-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋁", "inline", "limits");
+    } else if (button.classList.contains("bigwedge-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋀", "display", "nolimits");
+    } else if (button.classList.contains("bigwedge-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋀", "display", "limits");
+    } else if (button.classList.contains("bigwedge-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⋀", "inline", "nolimits");
+    } else if (button.classList.contains("bigwedge-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⋀", "inline", "limits");
+    
+    // Binary operations
+    } else if (button.classList.contains("bigoplus-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨁", "display", "nolimits");
+    } else if (button.classList.contains("bigoplus-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨁", "display", "limits");
+    } else if (button.classList.contains("bigoplus-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨁", "inline", "nolimits");
+    } else if (button.classList.contains("bigoplus-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨁", "inline", "limits");
+    } else if (button.classList.contains("bigotimes-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨂", "display", "nolimits");
+    } else if (button.classList.contains("bigotimes-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨂", "display", "limits");
+    } else if (button.classList.contains("bigotimes-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨂", "inline", "nolimits");
+    } else if (button.classList.contains("bigotimes-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨂", "inline", "limits");
+    } else if (button.classList.contains("bigodot-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨀", "display", "nolimits");
+    } else if (button.classList.contains("bigodot-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨀", "display", "limits");
+    } else if (button.classList.contains("bigodot-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨀", "inline", "nolimits");
+    } else if (button.classList.contains("bigodot-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨀", "inline", "limits");
+    } else if (button.classList.contains("coprod-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∐", "display", "nolimits");
+    } else if (button.classList.contains("coprod-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∐", "display", "limits");
+    } else if (button.classList.contains("coprod-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("∐", "inline", "nolimits");
+    } else if (button.classList.contains("coprod-limit-btn")) {
+      this.inputHandler.insertLargeOperator("∐", "inline", "limits");
+    } else if (button.classList.contains("biguplus-display-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨄", "display", "nolimits");
+    } else if (button.classList.contains("biguplus-display-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨄", "display", "limits");
+    } else if (button.classList.contains("biguplus-nolimit-btn")) {
+      this.inputHandler.insertLargeOperator("⨄", "inline", "nolimits");
+    } else if (button.classList.contains("biguplus-limit-btn")) {
+      this.inputHandler.insertLargeOperator("⨄", "inline", "limits");
     } else if (button.classList.contains("int-display-nolimit-btn")) {
       this.inputHandler.insertDefiniteIntegral("single", this.isInlineStyle ? "inline" : "display", "nolimits");
     } else if (button.classList.contains("int-display-limit-btn")) {

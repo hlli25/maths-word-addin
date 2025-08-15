@@ -171,7 +171,12 @@ export class DisplayRenderer {
     }
 
     let style = "";
+    // Check for direct color property (legacy)
     if (element.color) style += `color: ${element.color};`;
+    // Check for wrapper color (multi-wrapper system)
+    if (element.wrappers?.color?.value) {
+      style += `color: ${element.wrappers.color.value};`;
+    }
     if (element.bold) style += "font-weight: bold;";
 
     // Add selection highlighting
@@ -238,6 +243,25 @@ export class DisplayRenderer {
     return `<${tag} ${finalStyleAttr} ${mathVariantAttr} ${classAttr} ${dataAttrs}>${value}</${tag}>`;
   }
 
+  // Helper method to build style attributes for structure elements
+  private buildStructureStyle(element: EquationElement, isSelected: boolean): string {
+    let style = "";
+    
+    // Check for direct color property (legacy)
+    if (element.color) style += `color: ${element.color};`;
+    
+    // Check for wrapper color (multi-wrapper system)
+    if (element.wrappers?.color?.value) {
+      style += `color: ${element.wrappers.color.value};`;
+    }
+    
+    if (element.bold) style += "font-weight: bold;";
+    if (isSelected) {
+      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
+    }
+    return style ? `style="${style}"` : "";
+  }
+
   private fractionToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const numeratorML = this.generateMathMLContent(`${elementPath}/numerator`, element.numerator);
     const denominatorML = this.generateMathMLContent(`${elementPath}/denominator`, element.denominator);
@@ -249,14 +273,14 @@ export class DisplayRenderer {
     if (element.displayMode === "display") classes.push("display-fraction");
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    const style = "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Add displaystyle attribute for display mode fractions
     const displayStyle = element.displayMode === "display" ? 'displaystyle="true"' : "";
 
-    return `<mfrac ${displayStyle} ${classAttr} ${style} ${dataAttrs}>
+    return `<mfrac ${displayStyle} ${classAttr} ${styleAttr} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/numerator">${numeratorML}</mrow>
       <mrow data-context-path="${elementPath}/denominator">${denominatorML}</mrow>
     </mfrac>`;
@@ -283,7 +307,7 @@ export class DisplayRenderer {
 
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    const styleAttr = "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
@@ -299,9 +323,10 @@ export class DisplayRenderer {
     if (isActive) classes.push("active-element");
     if (isSelected) classes.push("selected-structure");
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
-    return `<mroot ${classAttr} ${dataAttrs}>
+    return `<mroot ${classAttr} ${styleAttr} ${dataAttrs}>
       <mrow data-context-path="${elementPath}/radicand">${radicandML}</mrow>
       <mrow data-context-path="${elementPath}/index">${indexML}</mrow>
     </mroot>`;
@@ -314,27 +339,27 @@ export class DisplayRenderer {
     if (isSelected) classes.push("selected-structure");
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    const style = "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
 
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     if (element.superscript && element.subscript) {
       const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
       const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
-      return `<msubsup ${classAttr} ${style} ${dataAttrs}>
+      return `<msubsup ${classAttr} ${styleAttr} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
         <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
       </msubsup>`;
     } else if (element.superscript) {
       const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
-      return `<msup ${classAttr} ${style} ${dataAttrs}>
+      return `<msup ${classAttr} ${styleAttr} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
       </msup>`;
     } else if (element.subscript) {
       const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
-      return `<msub ${classAttr} ${style} ${dataAttrs}>
+      return `<msub ${classAttr} ${styleAttr} ${dataAttrs}>
         <mrow data-context-path="${elementPath}/base">${baseML}</mrow>
         <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
       </msub>`;
@@ -411,6 +436,7 @@ export class DisplayRenderer {
     if (isActive) classes.push("active-element");
     if (isSelected) classes.push("selected-structure");
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Check if this is marked as an indefinite integral
@@ -454,7 +480,7 @@ export class DisplayRenderer {
     if (isSelected) wrapperClasses.push("selected-structure");
     const wrapperClassAttr =
       wrapperClasses.length > 0 ? ` class="${wrapperClasses.join(" ")}"` : "";
-    return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr} data-element-id="${element.id}">
+    return `<mrow ${displayStyle} ${operatorData}${wrapperClassAttr} ${styleAttr} data-element-id="${element.id}">
       ${operatorML}
       <mrow data-context-path="${elementPath}/operand">${operandML}</mrow>
     </mrow>`;
@@ -805,13 +831,7 @@ export class DisplayRenderer {
 
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    // Build inline styles for structure-level formatting
-    let style = "";
-    if (isSelected) {
-      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
-    }
-
-    const styleAttr = style ? `style="${style}"` : "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Cases only have a left brace
@@ -827,13 +847,7 @@ export class DisplayRenderer {
 
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
 
-    // Build inline styles for structure-level formatting
-    let style = "";
-    if (isSelected) {
-      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
-    }
-
-    const styleAttr = style ? `style="${style}"` : "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     switch (matrixType) {
@@ -887,13 +901,8 @@ export class DisplayRenderer {
     const classes: string[] = [];
     if (isSelected) classes.push("selected-structure");
 
-    let style = "";
-    if (isSelected) {
-      style += "background-color: #0078d4; color: white; border-radius: 3px; padding: 2px;";
-    }
-
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
-    const styleAttr = style ? `style="${style}"` : "";
+    const styleAttr = this.buildStructureStyle(element, isSelected);
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
 
     // Get the accent symbol and determine if it should stretch

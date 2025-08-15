@@ -3280,10 +3280,47 @@ export class LatexConverter {
     styleType: "display" | "inline"
   ): void {
     elements.forEach((element) => {
-      if (element.type === "integral" || element.type === "largeOperator") {
+      if (element.type === "integral" || element.type === "large-operator" || element.type === "derivative" || element.type === "fraction") {
         element.displayMode = styleType;
       }
+      // Recursively apply to nested elements
+      this.applyStyleModeToElementsRecursively(element, styleType);
     });
+  }
+
+  // Recursively apply style mode to nested elements
+  private applyStyleModeToElementsRecursively(
+    element: EquationElement,
+    styleType: "display" | "inline"
+  ): void {
+    // Apply to arrays of elements that exist in EquationElement interface
+    if (element.content) this.applyStyleModeToElements(element.content, styleType);
+    if (element.numerator) this.applyStyleModeToElements(element.numerator, styleType);
+    if (element.denominator) this.applyStyleModeToElements(element.denominator, styleType);
+    if (element.operand) this.applyStyleModeToElements(element.operand, styleType);
+    if (element.lowerLimit) this.applyStyleModeToElements(element.lowerLimit, styleType);
+    if (element.upperLimit) this.applyStyleModeToElements(element.upperLimit, styleType);
+    if (element.integrand) this.applyStyleModeToElements(element.integrand, styleType);
+    if (element.differentialVariable) this.applyStyleModeToElements(element.differentialVariable, styleType);
+    if (element.function) this.applyStyleModeToElements(element.function, styleType);
+    if (element.variable) this.applyStyleModeToElements(element.variable, styleType);
+    if (element.base) this.applyStyleModeToElements(element.base, styleType);
+    if (element.subscript) this.applyStyleModeToElements(element.subscript, styleType);
+    if (element.superscript) this.applyStyleModeToElements(element.superscript, styleType);
+    if (element.radicand) this.applyStyleModeToElements(element.radicand, styleType);
+    if (element.index) this.applyStyleModeToElements(element.index, styleType);
+    if (element.functionArgument) this.applyStyleModeToElements(element.functionArgument, styleType);
+    if (element.functionBase) this.applyStyleModeToElements(element.functionBase, styleType);
+    if (element.functionConstraint) this.applyStyleModeToElements(element.functionConstraint, styleType);
+    if (element.functionName) this.applyStyleModeToElements(element.functionName, styleType);
+    if (element.accentBase) this.applyStyleModeToElements(element.accentBase, styleType);
+    if (element.accentLabel) this.applyStyleModeToElements(element.accentLabel, styleType);
+    // Handle matrix cells
+    if (element.cells) {
+      Object.values(element.cells).forEach(cellContent => {
+        this.applyStyleModeToElements(cellContent, styleType);
+      });
+    }
   }
 
 
