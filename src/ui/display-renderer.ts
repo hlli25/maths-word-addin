@@ -1,6 +1,6 @@
 import { EquationElement } from "../core/equation-builder";
 import { ContextManager } from "../core/context-manager";
-import { getIntegralSymbol, UNICODE_TO_LATEX } from "../core/symbol-config";
+import { getIntegralSymbol, UNICODE_TO_LATEX, FUNCTION_NAMES, FUNCTION_TYPE_MAP } from "../core/centralized-config";
 
 export class DisplayRenderer {
   private contextManager: ContextManager;
@@ -133,6 +133,8 @@ export class DisplayRenderer {
         return this.casesToMathML(element, contextPath, isActive, position, isSelected);
       case "accent":
         return this.accentToMathML(element, contextPath, isActive, position, isSelected);
+      case "function":
+        return this.functionToMathML(element, contextPath, isActive, position, isSelected);
       default:
         return "";
     }
@@ -143,6 +145,11 @@ export class DisplayRenderer {
     
     // Check if element is in text mode early to handle space escaping
     const isTextMode = element.textMode === true || (element.wrappers && element.wrappers.textMode);
+
+    // Handle LaTeX spacing commands that might be parsed as text
+    if (value === "\\,") {
+      value = "&#8201;"; // Thin space (U+2009)
+    }
 
     // In text mode, convert spaces to non-breaking spaces for proper display
     if (isTextMode && value === " ") {
@@ -180,9 +187,12 @@ export class DisplayRenderer {
       // For <mi> elements, use mathvariant attribute to control italic behavior
       let shouldBeItalic = false;
 
+      // Check if this is a function name that should be upright
+      const isFunctionName = FUNCTION_NAMES.includes(value);
+
       if (element.italic === true) {
         shouldBeItalic = true;
-      } else if (element.italic === false) {
+      } else if (element.italic === false || isFunctionName) {
         shouldBeItalic = false;
       } else if (isVariable && !element.bold && element.italic !== false && !isTextMode) {
         // Variables default to italic unless bold or explicitly set to normal or in text mode
@@ -361,11 +371,37 @@ export class DisplayRenderer {
     const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
     const dataAttrs = `data-context-path="${elementPath}" data-position="${position}"`;
 
-    return `<mrow ${classAttr} ${dataAttrs}>
+    // Create the basic bracket structure
+    const bracketContent = `<mrow ${classAttr} ${dataAttrs}>
       ${leftBracket}
       <mrow data-context-path="${elementPath}/content">${contentML}</mrow>
       ${rightBracket}
     </mrow>`;
+
+    // Check if this bracket has superscript/subscript (evaluation brackets)
+    if (element.superscript && element.subscript) {
+      const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
+      const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
+      return `<msubsup ${classAttr} ${dataAttrs}>
+        ${bracketContent}
+        <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
+        <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
+      </msubsup>`;
+    } else if (element.superscript) {
+      const supML = this.generateMathMLContent(`${elementPath}/superscript`, element.superscript);
+      return `<msup ${classAttr} ${dataAttrs}>
+        ${bracketContent}
+        <mrow data-context-path="${elementPath}/superscript">${supML}</mrow>
+      </msup>`;
+    } else if (element.subscript) {
+      const subML = this.generateMathMLContent(`${elementPath}/subscript`, element.subscript);
+      return `<msub ${classAttr} ${dataAttrs}>
+        ${bracketContent}
+        <mrow data-context-path="${elementPath}/subscript">${subML}</mrow>
+      </msub>`;
+    }
+
+    return bracketContent;
   }
 
   private largeOperatorToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
@@ -443,11 +479,15 @@ export class DisplayRenderer {
 
     // Check current differential style preference from context manager
     const isDifferentialItalic = this.getDifferentialStylePreference();
-    const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
+    // For partial derivatives, ∂ is always italic regardless of differential style preference
+    const mathVariantAttr = (isDifferentialItalic || element.isPartial) ? "" : 'mathvariant="normal"';
+    
+    // Determine differential symbol: ∂ for partial derivatives, d for regular derivatives
+    const differentialSymbol = element.isPartial ? "∂" : "d";
 
     // Check if this is long form derivative
     if (element.isLongForm) {
-      return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, mathVariantAttr);
+      return this.derivativeLongFormToMathML(element, elementPath, isActive, position, isSelected, displayStyle, mathVariantAttr, differentialSymbol);
     }
 
     // Generate content for each part (standard form)
@@ -460,14 +500,14 @@ export class DisplayRenderer {
     if (typeof element.order === "number") {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
-        numeratorContent = `<mi ${mathVariantAttr}>d</mi>${functionML}`;
-        denominatorContent = `<mi ${mathVariantAttr}>d</mi>${variableML}`;
+        numeratorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${functionML}`;
+        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
       } else {
         numeratorContent = `<msup>
-          <mi ${mathVariantAttr}>d</mi>
+          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <mn>${element.order}</mn>
         </msup>${functionML}`;
-        denominatorContent = `<mi ${mathVariantAttr}>d</mi><msup>
+        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
           ${variableML}
           <mn>${element.order}</mn>
         </msup>`;
@@ -476,14 +516,14 @@ export class DisplayRenderer {
       // nth order with custom expression
       const orderML = this.generateMathMLContent(`${elementPath}/order`, element.order);
       numeratorContent = `<msup>
-        <mi ${mathVariantAttr}>d</mi>
+        <mi ${mathVariantAttr}>${differentialSymbol}</mi>
         <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
       </msup>${functionML}`;
 
       // For denominator, create a read-only copy without editable context
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
-      denominatorContent = `<mi ${mathVariantAttr}>d</mi><msup>
+      denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
         ${variableML}
         <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
       </msup>`;
@@ -505,7 +545,7 @@ export class DisplayRenderer {
     return true; // Default to italic if no input handler
   }
 
-  private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string): string {
+  private derivativeLongFormToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean, displayStyle: string, mathVariantAttr: string, differentialSymbol: string = "d"): string {
     const classes = [];
     if (isActive) classes.push("active-element");
     if (isSelected) classes.push("selected-structure");
@@ -521,23 +561,23 @@ export class DisplayRenderer {
     if (typeof element.order === "number") {
       // Numeric order (1, 2, 3, ...)
       if (element.order === 1) {
-        // d/dx format
+        // d/dx or ∂/∂x format
         fractionContent = `<mfrac ${displayStyle}>
-          <mi ${mathVariantAttr}>d</mi>
+          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <mrow data-context-path="${elementPath}/variable">
-            <mi ${mathVariantAttr}>d</mi>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
             ${variableML}
           </mrow>
         </mfrac>`;
       } else {
-        // d^n/dx^n format
+        // d^n/dx^n or ∂^n/∂x^n format
         fractionContent = `<mfrac ${displayStyle}>
           <msup>
-            <mi ${mathVariantAttr}>d</mi>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
             <mn>${element.order}</mn>
           </msup>
           <mrow data-context-path="${elementPath}/variable">
-            <mi ${mathVariantAttr}>d</mi>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
             <msup>
               ${variableML}
               <mn>${element.order}</mn>
@@ -555,11 +595,11 @@ export class DisplayRenderer {
 
       fractionContent = `<mfrac ${displayStyle}>
         <msup>
-          <mi ${mathVariantAttr}>d</mi>
+          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
         </msup>
         <mrow data-context-path="${elementPath}/variable">
-          <mi ${mathVariantAttr}>d</mi>
+          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <msup>
             ${variableML}
             <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
@@ -598,28 +638,61 @@ export class DisplayRenderer {
 
     let integralOperatorML = "";
 
-    if (element.hasLimits) {
+    if (element.isDefinite) {
       // Definite integral with limits
-      const upperML = this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit);
-      const lowerML = this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit);
+      const hasUpperLimit = element.upperLimit !== undefined;
+      const hasLowerLimit = element.lowerLimit !== undefined;
+      
+      const upperML = hasUpperLimit ? this.generateMathMLContent(`${elementPath}/upperLimit`, element.upperLimit) : "";
+      const lowerML = hasLowerLimit ? this.generateMathMLContent(`${elementPath}/lowerLimit`, element.lowerLimit) : "";
 
       // Use limitMode to determine positioning: "limits" = above/below, "nolimits" = side
       const useAboveBelow = element.limitMode === "limits" || (element.limitMode === "default" && element.displayMode === "display");
 
-      if (useAboveBelow) {
-        // Limits above and below
-        integralOperatorML = `<munderover>
-          <mo>${integralSymbol}</mo>
-          <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
-          <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
-        </munderover>`;
+      if (hasUpperLimit && hasLowerLimit) {
+        // Both upper and lower limits
+        if (useAboveBelow) {
+          integralOperatorML = `<munderover>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+            <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+          </munderover>`;
+        } else {
+          integralOperatorML = `<msubsup>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+            <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+          </msubsup>`;
+        }
+      } else if (hasLowerLimit) {
+        // Only lower limit (subscript or under)
+        if (useAboveBelow) {
+          integralOperatorML = `<munder>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+          </munder>`;
+        } else {
+          integralOperatorML = `<msub>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
+          </msub>`;
+        }
+      } else if (hasUpperLimit) {
+        // Only upper limit (superscript or over)
+        if (useAboveBelow) {
+          integralOperatorML = `<mover>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+          </mover>`;
+        } else {
+          integralOperatorML = `<msup>
+            <mo>${integralSymbol}</mo>
+            <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
+          </msup>`;
+        }
       } else {
-        // Limits as subscript and superscript (side)
-        integralOperatorML = `<msubsup>
-          <mo>${integralSymbol}</mo>
-          <mrow data-context-path="${elementPath}/lowerLimit">${lowerML}</mrow>
-          <mrow data-context-path="${elementPath}/upperLimit">${upperML}</mrow>
-        </msubsup>`;
+        // No limits (shouldn't happen for definite integrals, but handle gracefully)
+        integralOperatorML = `<mo>${integralSymbol}</mo>`;
       }
     } else {
       // Indefinite integral without limits
@@ -1166,6 +1239,106 @@ export class DisplayRenderer {
 
     svg.appendChild(line);
     overlayContainer.appendChild(svg);
+  }
+
+  private functionToMathML(element: EquationElement, contextPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const elementPath = `${contextPath}/${element.id}`;
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+    
+    // Get function type to determine structure
+    const functionType = element.functionType || "";
+    
+    // Generate content for different function parts
+    const argumentContent = this.generateMathMLContent(`${elementPath}/functionArgument`, element.functionArgument);
+    const baseContent = this.generateMathMLContent(`${elementPath}/functionBase`, element.functionBase);
+    const constraintContent = this.generateMathMLContent(`${elementPath}/functionConstraint`, element.functionConstraint);
+    
+    // Use centralized function type mapping
+    const structureType = FUNCTION_TYPE_MAP[functionType] || functionType;
+    
+    // Check if this is a user-defined function type
+    const isUserDefinedFunction = ["function", "functionsub", "functionlim"].includes(functionType!);
+    
+    // Handle user-defined functions first
+    if (isUserDefinedFunction) {
+      const nameContent = this.generateMathMLContent(`${elementPath}/functionName`, element.functionName);
+      
+      if (functionType === "function") {
+        // Simple user-defined function
+        return `<mrow ${dataAttrs}>
+          ${nameContent}
+          <mrow>${argumentContent}</mrow>
+        </mrow>`;
+        
+      } else if (functionType === "functionsub") {
+        // User-defined function with subscript
+        return `<mrow ${dataAttrs}>
+          <msub>
+            ${nameContent}
+            <mrow>${baseContent}</mrow>
+          </msub>
+          <mrow>${argumentContent}</mrow>
+        </mrow>`;
+        
+      } else if (functionType === "functionlim") {
+        // User-defined function with underscript
+        return `<mrow ${dataAttrs}>
+          <munder>
+            ${nameContent}
+            <mrow>${constraintContent}</mrow>
+          </munder>
+          <mrow>${argumentContent}</mrow>
+        </mrow>`;
+      }
+    }
+    
+    // Handle built-in functions
+    if (structureType === "simple") {
+      // Built-in simple functions: show predefined function name with argument
+      const functionNames: { [key: string]: string } = {
+        "sin": "sin", "cos": "cos", "tan": "tan", "sec": "sec", "csc": "csc", "cot": "cot",
+        "asin": "sin⁻¹", "acos": "cos⁻¹", "atan": "tan⁻¹",
+        "log": "log", "ln": "ln",
+        "sinh": "sinh", "cosh": "cosh", "tanh": "tanh",
+        "asinh": "sinh⁻¹", "acosh": "cosh⁻¹", "atanh": "tanh⁻¹"
+      };
+      const functionName = functionNames[functionType] || functionType;
+      
+      return `<mrow ${dataAttrs}>
+        <mo mathvariant="normal">${functionName}</mo>
+        <mrow>${argumentContent}</mrow>
+      </mrow>`;
+      
+    } else if (structureType === "functionsub") {
+      // Built-in functions with subscript (like log_n)
+      return `<mrow ${dataAttrs}>
+        <msub>
+          <mo mathvariant="normal">log</mo>
+          <mrow>${baseContent}</mrow>
+        </msub>
+        <mrow>${argumentContent}</mrow>
+      </mrow>`;
+      
+    } else if (structureType === "functionlim") {
+      // Built-in limit operators with underscript
+      const operatorNames: { [key: string]: string } = {
+        "max": "max", "min": "min", "lim": "lim",
+        "argmax": "argmax", "argmin": "argmin"
+      };
+      const operatorName = operatorNames[functionType] || functionType;
+      
+      return `<mrow ${dataAttrs}>
+        <munder>
+          <mo mathvariant="normal">${operatorName}</mo>
+          <mrow>${constraintContent}</mrow>
+        </munder>
+        <mrow>${argumentContent}</mrow>
+      </mrow>`;
+      
+    }
+    
+    // Fallback
+    return `<mrow ${dataAttrs}><mrow>${argumentContent}</mrow></mrow>`;
   }
 
   private generateMathMLContent(contextPath: string, elements?: EquationElement[]): string {

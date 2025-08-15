@@ -278,6 +278,9 @@ class MathAddinApp {
       this.handlePresetBracketInsertion(bracketType);
     } else if (button.classList.contains("custom-bracket-btn")) {
       this.handleCustomBracketInsertion();
+    } else if (button.classList.contains("evaluation-bracket-btn")) {
+      const evaluationType = (button as HTMLElement).dataset.evaluationType as "bar" | "square" || "bar";
+      this.handleEvaluationBracketInsertion(evaluationType);
     } else if (button.classList.contains("sum-nolimit-btn")) {
       this.inputHandler.insertLargeOperator("∑", "inline", "nolimits");
     } else if (button.classList.contains("sum-limit-btn")) {
@@ -306,14 +309,61 @@ class MathAddinApp {
       this.inputHandler.insertDerivativeLongForm("first", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("nth-derivative-long-form-btn")) {
       this.inputHandler.insertDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
+    
+    // Partial derivative buttons
+    } else if (button.classList.contains("first-partial-derivative-btn")) {
+      this.inputHandler.insertPartialDerivative("first", this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("nth-partial-derivative-btn")) {
+      this.inputHandler.insertPartialDerivative("nth", this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("partial-derivative-long-form-btn")) {
+      this.inputHandler.insertPartialDerivativeLongForm("first", this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("nth-partial-derivative-long-form-btn")) {
+      this.inputHandler.insertPartialDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-indefinite-display-btn")) {
       this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
+    
+    // Double integral buttons
+    } else if (button.classList.contains("double-int-indefinite-btn")) {
+      this.inputHandler.insertDoubleIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("double-int-subscript-btn")) {
+      this.inputHandler.insertDoubleIntegralSubscript(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("double-int-lower-btn")) {
+      this.inputHandler.insertDoubleIntegralLower(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("double-int-nolimit-btn")) {
+      this.inputHandler.insertDefiniteIntegral("double", this.isInlineStyle ? "inline" : "display", "nolimits");
+    } else if (button.classList.contains("double-int-limit-btn")) {
+      this.inputHandler.insertDefiniteIntegral("double", this.isInlineStyle ? "inline" : "display", "limits");
+    
+    // Triple integral buttons
+    } else if (button.classList.contains("triple-int-indefinite-btn")) {
+      this.inputHandler.insertTripleIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("triple-int-subscript-btn")) {
+      this.inputHandler.insertTripleIntegralSubscript(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("triple-int-lower-btn")) {
+      this.inputHandler.insertTripleIntegralLower(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("triple-int-nolimit-btn")) {
+      this.inputHandler.insertDefiniteIntegral("triple", this.isInlineStyle ? "inline" : "display", "nolimits");
+    } else if (button.classList.contains("triple-int-limit-btn")) {
+      this.inputHandler.insertDefiniteIntegral("triple", this.isInlineStyle ? "inline" : "display", "limits");
+    
+    // Contour integral buttons
+    } else if (button.classList.contains("contour-int-indefinite-btn")) {
+      this.inputHandler.insertContourIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("contour-int-subscript-btn")) {
+      // For contour with path subscript - use definite with nolimits but special handling needed
+      this.inputHandler.insertDefiniteIntegral("contour", this.isInlineStyle ? "inline" : "display", "nolimits");
+    } else if (button.classList.contains("contour-int-nolimit-btn")) {
+      this.inputHandler.insertDefiniteIntegral("contour", this.isInlineStyle ? "inline" : "display", "nolimits");
+    
     } else if (button.classList.contains("stack-btn")) {
       const stackType = (button as HTMLElement).dataset.stack || "";
       this.handleStackButtonClick(stackType);
     } else if (button.classList.contains("cases-btn")) {
       const casesType = (button as HTMLElement).dataset.cases || "";
       this.handleCasesButtonClick(casesType);
+    } else if (button.classList.contains("function-btn")) {
+      const functionType = (button as HTMLElement).dataset.function || "";
+      this.inputHandler.insertFunction(functionType);
     }
   }
 
@@ -392,6 +442,10 @@ class MathAddinApp {
     const rightBracket = rightSelect.value;
 
     this.inputHandler.insertCustomBrackets(leftBracket, rightBracket);
+  }
+
+  private handleEvaluationBracketInsertion(evaluationType: "bar" | "square"): void {
+    this.inputHandler.insertEvaluationBracket(evaluationType);
   }
 
   private handleFontSizeDropdownClick(e: Event): void {

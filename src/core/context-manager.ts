@@ -1,6 +1,6 @@
 import { EquationElement, EquationBuilder } from "./equation-builder";
 import { LatexConverter } from "./latex-converter";
-import { hasMixedBrackets } from "./symbol-config";
+import { hasMixedBrackets } from "./centralized-config";
 
 export interface ContextInfo {
   array: EquationElement[];
@@ -73,7 +73,10 @@ export class ContextManager {
     const containerName = parts.pop()!;
     const elementId = parts.pop()!;
 
-    const element = this.equationBuilder.findElementById(this.equationBuilder.getEquation(), elementId);
+    const element = this.equationBuilder.findElementById(
+      this.equationBuilder.getEquation(),
+      elementId
+    );
     if (!element) return null;
 
     // Handle derivative element containers
@@ -121,6 +124,20 @@ export class ContextManager {
         return { array: element.accentBase || [], parent: element };
       } else if (containerName === "accentLabel") {
         return { array: element.accentLabel || [], parent: element };
+      }
+      return null;
+    }
+
+    // Handle function element containers
+    if (element.type === "function") {
+      if (containerName === "functionArgument") {
+        return { array: element.functionArgument || [], parent: element };
+      } else if (containerName === "functionBase") {
+        return { array: element.functionBase || [], parent: element };
+      } else if (containerName === "functionConstraint") {
+        return { array: element.functionConstraint || [], parent: element };
+      } else if (containerName === "functionName") {
+        return { array: element.functionName || [], parent: element };
       }
       return null;
     }
@@ -182,10 +199,10 @@ export class ContextManager {
     } else if (parentElement.type === "integral") {
       // Navigation for integral elements
       if (direction === "ArrowDown") {
-        if (parentElement.hasLimits && currentPart === "upperLimit") {
+        if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "upperLimit") {
           this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
           this.cursorPosition = 0;
-        } else if (parentElement.hasLimits && currentPart === "lowerLimit") {
+        } else if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "lowerLimit") {
           this.activeContextPath = `${parentPath}/${elementId}/integrand`;
           this.cursorPosition = 0;
         } else if (currentPart === "integrand") {
@@ -198,10 +215,10 @@ export class ContextManager {
         if (currentPart === "differentialVariable") {
           this.activeContextPath = `${parentPath}/${elementId}/integrand`;
           this.cursorPosition = 0;
-        } else if (currentPart === "integrand" && parentElement.hasLimits) {
+        } else if (currentPart === "integrand" && "isDefinite" in parentElement && parentElement.isDefinite) {
           this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
           this.cursorPosition = 0;
-        } else if (parentElement.hasLimits && currentPart === "lowerLimit") {
+        } else if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "lowerLimit") {
           this.activeContextPath = `${parentPath}/${elementId}/upperLimit`;
           this.cursorPosition = 0;
         } else {
@@ -282,7 +299,11 @@ export class ContextManager {
           this.navigateOutOfContext("backward");
         }
       }
-    } else if (parentElement.type === "matrix" || parentElement.type === "stack" || parentElement.type === "cases") {
+    } else if (
+      parentElement.type === "matrix" ||
+      parentElement.type === "stack" ||
+      parentElement.type === "cases"
+    ) {
       // Handle matrix, stack, and cases cell navigation
       const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
       if (cellMatch && parentElement.rows && parentElement.cols) {
@@ -307,6 +328,73 @@ export class ContextManager {
           }
         }
       }
+    } else if (parentElement.type === "function") {
+      // Navigation for function elements
+      const isUserDefinedFunction = ["function", "functionsub", "functionlim"].includes(
+        parentElement.functionType || ""
+      );
+
+      if (direction === "ArrowDown") {
+        if (isUserDefinedFunction && currentPart === "functionName") {
+          // Navigate from function name to next available field
+          if (parentElement.functionConstraint) {
+            this.activeContextPath = `${parentPath}/${elementId}/functionConstraint`;
+            this.cursorPosition = 0;
+          } else if (parentElement.functionBase) {
+            this.activeContextPath = `${parentPath}/${elementId}/functionBase`;
+            this.cursorPosition = 0;
+          } else {
+            this.activeContextPath = `${parentPath}/${elementId}/functionArgument`;
+            this.cursorPosition = 0;
+          }
+        } else if (currentPart === "functionConstraint" && parentElement.functionBase) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionBase`;
+          this.cursorPosition = 0;
+        } else if (
+          (currentPart === "functionConstraint" && !parentElement.functionBase) ||
+          currentPart === "functionBase"
+        ) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionArgument`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("forward");
+        }
+      } else if (direction === "ArrowUp") {
+        if (currentPart === "functionArgument" && parentElement.functionBase) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionBase`;
+          this.cursorPosition = 0;
+        } else if (
+          currentPart === "functionArgument" &&
+          !parentElement.functionBase &&
+          parentElement.functionConstraint
+        ) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionConstraint`;
+          this.cursorPosition = 0;
+        } else if (
+          currentPart === "functionArgument" &&
+          !parentElement.functionBase &&
+          !parentElement.functionConstraint &&
+          isUserDefinedFunction
+        ) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionName`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "functionBase" && parentElement.functionConstraint) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionConstraint`;
+          this.cursorPosition = 0;
+        } else if (
+          currentPart === "functionBase" &&
+          !parentElement.functionConstraint &&
+          isUserDefinedFunction
+        ) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionName`;
+          this.cursorPosition = 0;
+        } else if (currentPart === "functionConstraint" && isUserDefinedFunction) {
+          this.activeContextPath = `${parentPath}/${elementId}/functionName`;
+          this.cursorPosition = 0;
+        } else {
+          this.navigateOutOfContext("backward");
+        }
+      }
     } else {
       this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
     }
@@ -321,8 +409,14 @@ export class ContextManager {
     const parentPath = parts.slice(0, -1).join("/");
 
     const context = this.getContext(this.activeContextPath);
-    if (!context || !context.parent || 
-        (context.parent.type !== "matrix" && context.parent.type !== "stack" && context.parent.type !== "cases")) return false;
+    if (
+      !context ||
+      !context.parent ||
+      (context.parent.type !== "matrix" &&
+        context.parent.type !== "stack" &&
+        context.parent.type !== "cases")
+    )
+      return false;
 
     // Parse cell container name: "cell_row_col"
     const cellMatch = currentPart.match(/^cell_(\d+)_(\d+)$/);
@@ -405,7 +499,10 @@ export class ContextManager {
       // Check if we're in a derivative function context
       if (this.activeContextPath.includes("function") && context.parent?.type === "derivative") {
         const currentContent = this.getContextText(context.array);
-        const newContent = currentContent.slice(0, this.cursorPosition) + text + currentContent.slice(this.cursorPosition);
+        const newContent =
+          currentContent.slice(0, this.cursorPosition) +
+          text +
+          currentContent.slice(this.cursorPosition);
 
         // Check for mixed brackets
         if (hasMixedBrackets(newContent)) {
@@ -573,7 +670,8 @@ export class ContextManager {
 
       if (direction > 0 && this.cursorPosition < context.array.length) {
         const element = context.array[this.cursorPosition];
-        newPosition = element && element.type !== "text"
+        newPosition =
+          element && element.type !== "text"
             ? this.cursorPosition + 1
             : this.cursorPosition + direction;
       } else if (direction < 0 && this.cursorPosition > 0) {
@@ -772,7 +870,10 @@ export class ContextManager {
 
     // Underline: consistent if all elements have same value
     const underlineTypes = Object.keys(formattingCounts.underline);
-    if (underlineTypes.length === 1 && formattingCounts.underline[underlineTypes[0]] === totalTextElements) {
+    if (
+      underlineTypes.length === 1 &&
+      formattingCounts.underline[underlineTypes[0]] === totalTextElements
+    ) {
       result.underline = underlineTypes[0];
     }
 
@@ -789,7 +890,9 @@ export class ContextManager {
     return result;
   }
 
-  removeWrapperFormattingFromSelection(wrapperType: "cancel" | "underline" | "color" | "textMode"): boolean {
+  removeWrapperFormattingFromSelection(
+    wrapperType: "cancel" | "underline" | "color" | "textMode"
+  ): boolean {
     if (!this.hasSelection() || !this.activeContextPath) {
       return false;
     }
@@ -1242,6 +1345,10 @@ export class ContextManager {
     }
     applyToArray(element.integrand);
     applyToArray(element.differentialVariable);
+    applyToArray(element.functionArgument);
+    applyToArray(element.functionBase);
+    applyToArray(element.functionConstraint);
+    applyToArray(element.functionName);
 
     // Apply to matrix cells
     if (element.cells && typeof element.cells === "object") {

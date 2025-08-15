@@ -16,7 +16,8 @@ export interface EquationElement {
     | "stack"
     | "cases"
     | "wrapper"
-    | "accent";
+    | "accent"
+    | "function";
   value?: string;
   // for fraction and bevelled-fraction
   numerator?: EquationElement[];
@@ -55,11 +56,12 @@ export interface EquationElement {
   function?: EquationElement[]; // f in df/dx
   variable?: EquationElement[]; // x in df/dx
   isLongForm?: boolean; // true for \dv{x}(\grande{f}) format
+  isPartial?: boolean; // true for partial derivatives (∂f/∂x)
   // for integral (custom format: ∫ f(x) dx)
   integrand?: EquationElement[]; // f(x)
   differentialVariable?: EquationElement[]; // x in dx
   integralStyle?: "italic" | "roman"; // style for d
-  hasLimits?: boolean; // whether this is a definite integral
+  isDefinite?: boolean; // whether this is a definite integral
   integralType?: "single" | "double" | "triple" | "contour"; // type of integral (may extend in future)
   // for matrix
   matrixType?: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none";
@@ -93,6 +95,12 @@ export interface EquationElement {
   accentPosition?: "over" | "under";
   accentBase?: EquationElement[]; // Content under/over the accent
   accentLabel?: EquationElement[]; // Optional label for braces
+  // for function
+  functionType?: string; // Type of function
+  functionName?: EquationElement[];
+  functionArgument?: EquationElement[]; // Main argument of the function
+  functionBase?: EquationElement[]; // Base/subscript for functions like log_n
+  functionConstraint?: EquationElement[]; // Constraint for limit functions
   // For elements that are part of wrapper groups (multi-wrapper support)
   wrappers?: {
     underline?: { id: string; type: "single" | "double" };
@@ -217,6 +225,24 @@ export class EquationBuilder {
     };
   }
 
+  createEvaluationBracketElement(bracketType: "bar" | "square"): EquationElement {
+    // Bar evaluation: \left.{F}\right|^{b}_{a}
+    // Square evaluation: \left[{F}\right]^{b}_{a}
+    const leftSymbol = bracketType === "bar" ? "." : "[";
+    const rightSymbol = bracketType === "bar" ? "|" : "]";
+    
+    return {
+      id: this.generateElementId(),
+      type: "bracket",
+      leftBracketSymbol: leftSymbol,
+      rightBracketSymbol: rightSymbol,
+      content: [],
+      superscript: [],
+      subscript: [],
+      nestingDepth: 0,
+    };
+  }
+
   createLargeOperatorElement(
     operator: string,
     displayMode: "inline" | "display" = "inline",
@@ -237,7 +263,8 @@ export class EquationBuilder {
   createDerivativeElement(
     order: number | EquationElement[] = 1,
     displayMode: "inline" | "display" = "inline",
-    isLongForm: boolean = false
+    isLongForm: boolean = false,
+    isPartial: boolean = false
   ): EquationElement {
     return {
       id: this.generateElementId(),
@@ -247,6 +274,7 @@ export class EquationBuilder {
       function: [],
       variable: [],
       isLongForm: isLongForm,
+      isPartial: isPartial,
     };
   }
 
@@ -254,21 +282,43 @@ export class EquationBuilder {
     integralType: "single" | "double" | "triple" | "contour" = "single",
     displayMode: "inline" | "display" = "inline",
     integralStyle: "italic" | "roman" = "italic",
-    hasLimits: boolean = false,
-    limitMode: "default" | "nolimits" | "limits" = "default"
+    isDefinite: boolean = false,
+    limitMode: "default" | "nolimits" | "limits" = "default",
+    limitConfig: "both" | "lower-only" | "upper-only" | "none" = "both"
   ): EquationElement {
+    let lowerLimit: EquationElement[] | undefined = undefined;
+    let upperLimit: EquationElement[] | undefined = undefined;
+
+    if (isDefinite) {
+      switch (limitConfig) {
+        case "both":
+          lowerLimit = [];
+          upperLimit = [];
+          break;
+        case "lower-only":
+          lowerLimit = [];
+          break;
+        case "upper-only":
+          upperLimit = [];
+          break;
+        case "none":
+          // No limits
+          break;
+      }
+    }
+
     return {
       id: this.generateElementId(),
       type: "integral",
       integralType: integralType,
       displayMode: displayMode,
       integralStyle: integralStyle,
-      hasLimits: hasLimits,
+      isDefinite: isDefinite,
       limitMode: limitMode,
       integrand: [],
       differentialVariable: [],
-      lowerLimit: hasLimits ? [] : undefined,
-      upperLimit: hasLimits ? [] : undefined,
+      lowerLimit: lowerLimit,
+      upperLimit: upperLimit,
     };
   }
 
@@ -409,6 +459,14 @@ export class EquationBuilder {
           this.findElementById(el.accentLabel || [], id);
         if (found) return found;
       }
+      if (el.type === "function") {
+        const found =
+          this.findElementById(el.functionArgument || [], id) ||
+          this.findElementById(el.functionBase || [], id) ||
+          this.findElementById(el.functionConstraint || [], id) ||
+          this.findElementById(el.functionName || [], id);
+        if (found) return found;
+      }
     }
     return null;
   }
@@ -515,6 +573,13 @@ export class EquationBuilder {
           this.updateBracketNestingRecursive(element.accentBase, currentDepth);
         if (element.accentLabel)
           this.updateBracketNestingRecursive(element.accentLabel, currentDepth);
+      } else if (element.type === "function") {
+        if (element.functionArgument)
+          this.updateBracketNestingRecursive(element.functionArgument, currentDepth);
+        if (element.functionBase)
+          this.updateBracketNestingRecursive(element.functionBase, currentDepth);
+        if (element.functionConstraint)
+          this.updateBracketNestingRecursive(element.functionConstraint, currentDepth);
       }
     });
   }
@@ -536,6 +601,18 @@ export class EquationBuilder {
       accentPosition: position,
       accentBase: base || [],
       accentLabel: accentLabel,
+    };
+  }
+
+  createFunctionElement(functionType: string): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "function",
+      functionType: functionType,
+      functionName: [],
+      functionArgument: [],
+      functionBase: [],
+      functionConstraint: [],
     };
   }
 }

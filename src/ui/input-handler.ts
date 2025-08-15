@@ -1,7 +1,7 @@
 import { EquationBuilder, EquationElement } from "../core/equation-builder";
 import { ContextManager } from "../core/context-manager";
 import { DisplayRenderer } from "./display-renderer";
-import { LATEX_TO_UNICODE, getSymbolInfo, isSymbolDefaultItalic, hasMixedBrackets,} from "../core/symbol-config";
+import { LATEX_TO_UNICODE, getSymbolInfo, isSymbolDefaultItalic, hasMixedBrackets, FUNCTION_TYPE_MAP } from "../core/centralized-config";
 
 export class InputHandler {
   private equationBuilder: EquationBuilder;
@@ -156,8 +156,12 @@ export class InputHandler {
     if (this.contextManager.isActive() && char) {
       let processedChar = char;
 
-      // Only convert operators in math mode
-      if (!this.isTextMode) {
+      // Check if we're in a function name context (should be treated as text mode)
+      const currentContextPath = this.contextManager.getActiveContextPath();
+      const isInFunctionName = currentContextPath.endsWith("/functionName");
+
+      // Only convert operators in math mode (not in text mode or function names)
+      if (!this.isTextMode && !isInFunctionName) {
         // Convert + and - to proper mathematical operator symbols
         if (char === "+") {
           processedChar = "+"; // Keep as regular plus but ensure it's treated as operator
@@ -168,6 +172,7 @@ export class InputHandler {
 
       // Sanitize the character before inserting
       const sanitizedChar = this.sanitizeInputChar(processedChar);
+      
       if (sanitizedChar) {
         // Create text element with default styling
         const element = this.equationBuilder.createTextElement(sanitizedChar);
@@ -175,6 +180,10 @@ export class InputHandler {
         // In text mode, apply text wrapper formatting and don't apply italic
         if (this.isTextMode) {
           element.textMode = true;
+          element.italic = false;
+        } else if (isInFunctionName) {
+          // For function names, don't set textMode (operatorname handles styling)
+          // but do set italic to false for upright text
           element.italic = false;
         } else {
           // Apply default italic styling based on character type (math mode)
@@ -244,7 +253,11 @@ export class InputHandler {
           contextPath.endsWith("/integrand") ||
           contextPath.endsWith("/differentialVariable") ||
           contextPath.endsWith("/accentBase") ||
-          contextPath.endsWith("/accentLabel")
+          contextPath.endsWith("/accentLabel") ||
+          contextPath.endsWith("/functionArgument") ||
+          contextPath.endsWith("/functionBase") ||
+          contextPath.endsWith("/functionConstraint") ||
+          contextPath.endsWith("/functionName")
         ) {
           contextElement = currentElement;
           break;
@@ -693,8 +706,9 @@ export class InputHandler {
   insertIntegral(
     integralType: "single" | "double" | "triple" | "contour" = "single",
     displayMode: "inline" | "display" = "inline",
-    hasLimits: boolean = false,
-    limitMode: "default" | "nolimits" | "limits" = "default"
+    isDefinite: boolean = false,
+    limitMode: "default" | "nolimits" | "limits" = "default",
+    limitConfig: "both" | "lower-only" | "upper-only" | "none" = "both"
   ): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
@@ -705,8 +719,9 @@ export class InputHandler {
       integralType,
       displayMode,
       this.differentialStyle === "roman" ? "roman" : "italic",
-      hasLimits,
-      limitMode
+      isDefinite,
+      limitMode,
+      limitConfig
     );
 
     this.contextManager.insertElementAtCursor(integralElement);
@@ -733,6 +748,22 @@ export class InputHandler {
 
   insertTripleIntegral(displayMode: "inline" | "display" = "inline"): void {
     this.insertIntegral("triple", displayMode, false);
+  }
+
+  insertTripleIntegralSubscript(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("triple", displayMode, true, "nolimits", "lower-only");
+  }
+
+  insertTripleIntegralLower(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("triple", displayMode, true, "limits", "lower-only");
+  }
+
+  insertDoubleIntegralSubscript(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("double", displayMode, true, "nolimits", "lower-only");
+  }
+
+  insertDoubleIntegralLower(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("double", displayMode, true, "limits", "lower-only");
   }
 
   insertContourIntegral(displayMode: "inline" | "display" = "inline"): void {
@@ -1158,9 +1189,11 @@ export class InputHandler {
       return "";
     }
 
-    // Allow space (32) only in text mode
+    // Allow space (32) only in text mode or function name contexts
     if (char === " ") {
-      return this.isTextMode ? char : "";
+      const currentContextPath = this.contextManager.getActiveContextPath();
+      const isInFunctionName = currentContextPath.endsWith("/functionName");
+      return (this.isTextMode || isInFunctionName) ? char : "";
     }
 
     // Block control characters (0-31, 127)
@@ -1307,6 +1340,87 @@ export class InputHandler {
     return this.differentialStyle === "roman";
   }
 
+  // Partial derivative methods
+  insertPartialDerivative(type: "first" | "second" | "nth", displayMode?: "display" | "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create partial derivative element with appropriate order
+    let order: number | EquationElement[];
+    if (type === "first") {
+      order = 1;
+    } else if (type === "second") {
+      order = 2;
+    } else {
+      // nth derivative - order will be an element array
+      order = [];
+    }
+
+    const derivative = this.equationBuilder.createDerivativeElement(
+      order,
+      displayMode || (this.isInlineStyle ? "inline" : "display"),
+      false, // not long form
+      true   // is partial
+    );
+
+    this.contextManager.insertElementAtCursor(derivative);
+
+    // Move cursor to appropriate position for user input
+    let targetPath: string;
+    if (type === "nth") {
+      // Move to the order input for nth partial derivative
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "order");
+      this.contextManager.enterContextPath(targetPath, 0);
+    } else {
+      // Move to the variable input first (the ∂/∂x part)
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "variable");
+      this.contextManager.enterContextPath(targetPath, 0);
+    }
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  insertPartialDerivativeLongForm(type: "first" | "nth", displayMode?: "display" | "inline"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create partial derivative element with appropriate order and long form flag
+    let order: number | EquationElement[];
+    if (type === "first") {
+      order = 1;
+    } else {
+      // nth partial derivative
+      order = [];
+    }
+
+    const derivative = this.equationBuilder.createDerivativeElement(
+      order,
+      displayMode || (this.isInlineStyle ? "inline" : "display"),
+      true,  // is long form
+      true   // is partial
+    );
+
+    this.contextManager.insertElementAtCursor(derivative);
+
+    // Move cursor to appropriate position for user input
+    let targetPath: string;
+    if (type === "nth") {
+      // Move to the order input for nth partial derivative
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "order");
+      this.contextManager.enterContextPath(targetPath, 0);
+    } else {
+      // Move to the variable input first (the ∂/∂x part)
+      targetPath = this.contextManager.getElementContextPath(derivative.id, "variable");
+      this.contextManager.enterContextPath(targetPath, 0);
+    }
+    this.updateDisplay();
+    this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
   createMatrix(rows: number, cols: number, matrixType: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none"): void {
     if (!this.contextManager.isActive()) {
       this.contextManager.enterRootContext();
@@ -1373,6 +1487,67 @@ export class InputHandler {
 
     this.updateDisplay();
     this.equationBuilder.updateParenthesesScaling();
+    this.focusHiddenInput();
+  }
+
+  insertFunction(functionType: string): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create function element
+    const functionElement = this.equationBuilder.createFunctionElement(functionType);
+    this.contextManager.insertElementAtCursor(functionElement);
+
+    // Use centralized function type mapping to determine which part to enter first
+    const structureType = FUNCTION_TYPE_MAP[functionType];
+    if (!structureType) {
+      console.warn(`Unknown function type: ${functionType}`);
+      return;
+    }
+
+    // Move cursor to the appropriate part based on function type
+    if (structureType === "simple") {
+      // For simple functions, move to the argument
+      const argumentPath = this.contextManager.getElementContextPath(functionElement.id, "functionArgument");
+      this.contextManager.enterContextPath(argumentPath, 0);
+      
+    } else if (structureType === "functionsub") {
+      // For functions with subscript (like base-n logarithm), move to base first
+      const basePath = this.contextManager.getElementContextPath(functionElement.id, "functionBase");
+      this.contextManager.enterContextPath(basePath, 0);
+      
+    } else if (structureType === "functionlim") {
+      // For limit operators, move to constraint first
+      const constraintPath = this.contextManager.getElementContextPath(functionElement.id, "functionConstraint");
+      this.contextManager.enterContextPath(constraintPath, 0);
+      
+    } else if (structureType === "function") {
+      // For general user-defined functions, move to name first
+      const namePath = this.contextManager.getElementContextPath(functionElement.id, "functionName");
+      this.contextManager.enterContextPath(namePath, 0);
+    }
+
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
+  insertEvaluationBracket(bracketType: "bar" | "square"): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    const evaluationElement = this.equationBuilder.createEvaluationBracketElement(bracketType);
+    this.contextManager.insertElementAtCursor(evaluationElement);
+
+    // Update bracket nesting depths
+    this.equationBuilder.updateBracketNesting();
+
+    // Move context into the bracket's content (function F)
+    const contentPath = this.contextManager.getElementContextPath(evaluationElement.id, "content");
+    this.contextManager.enterContextPath(contentPath, 0);
+
+    this.updateDisplay();
     this.focusHiddenInput();
   }
 }

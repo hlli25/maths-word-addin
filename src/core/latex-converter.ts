@@ -7,7 +7,8 @@ import {
   LARGE_OPERATORS,
   BRACKET_PAIRS,
   INTEGRAL_COMMANDS,
-} from "./symbol-config";
+  BUILTIN_FUNCTION_COMMANDS,
+} from "./centralized-config";
 
 // Configuration for formatting commands
 interface FormattingCommand {
@@ -192,7 +193,7 @@ export class LatexConverter {
     return findMaxDepthRecursive(elements);
   }
 
-  private toLatexRecursive(elements: EquationElement[], maxDepth: number = 0): string {
+  private toLatexRecursive(elements: EquationElement[], maxDepth: number = 0, inOperatorName: boolean = false): string {
     let latex = "";
 
     // Temporarily disable wrapper formatting to debug the scope issue
@@ -229,7 +230,7 @@ export class LatexConverter {
           return cleanEl;
         });
 
-        const groupContent = this.toLatexRecursive(cleanGroupElements, maxDepth);
+        const groupContent = this.toLatexRecursive(cleanGroupElements, maxDepth, inOperatorName);
 
         // Apply wrapper formatting in user-defined order (innermost to outermost)
         let wrappedContent = groupContent;
@@ -279,7 +280,8 @@ export class LatexConverter {
           textMode: element.textMode,
         };
 
-        while (j < processedElements.length &&
+        while (
+          j < processedElements.length &&
           processedElements[j].type === "text" &&
           this.hasEqualFormatting(processedElements[j], currentFormatting)
         ) {
@@ -312,7 +314,7 @@ export class LatexConverter {
 
         // Apply formatting to the grouped text (formatting should already be cleaned if uniform formatting detected)
         let formattedText = groupedText;
-        formattedText = this.applyFormattingToLatex(formattedText, currentFormatting);
+        formattedText = this.applyFormattingToLatex(formattedText, currentFormatting, inOperatorName);
 
         // If in text mode, wrap the entire group in \text{}
         if (isTextMode) {
@@ -322,8 +324,8 @@ export class LatexConverter {
         latex += formattedText;
         i = j - 1; // Skip the elements which have been already processed
       } else if (element.type === "fraction") {
-        const num = this.toLatexRecursive(element.numerator!, maxDepth);
-        const den = this.toLatexRecursive(element.denominator!, maxDepth);
+        const num = this.toLatexRecursive(element.numerator!, maxDepth, inOperatorName);
+        const den = this.toLatexRecursive(element.denominator!, maxDepth, inOperatorName);
 
         if (element.displayMode === "display") {
           latex += `\\dfrac{${num || " "}}{${den || " "}}`;
@@ -331,40 +333,55 @@ export class LatexConverter {
           latex += `{\\textstyle \\frac{${num || " "}}{${den || " "}}}`;
         }
       } else if (element.type === "bevelled-fraction") {
-        const num = this.toLatexRecursive(element.numerator!, maxDepth);
-        const den = this.toLatexRecursive(element.denominator!, maxDepth);
+        const num = this.toLatexRecursive(element.numerator!, maxDepth, inOperatorName);
+        const den = this.toLatexRecursive(element.denominator!, maxDepth, inOperatorName);
         latex += `{${num || " "}}/{${den || " "}}`;
       } else if (element.type === "sqrt") {
-        const radicand = this.toLatexRecursive(element.radicand!, maxDepth);
+        const radicand = this.toLatexRecursive(element.radicand!, maxDepth, inOperatorName);
         latex += `\\sqrt{${radicand || " "}}`;
       } else if (element.type === "nthroot") {
-        const index = this.toLatexRecursive(element.index!, maxDepth);
-        const radicand = this.toLatexRecursive(element.radicand!, maxDepth);
+        const index = this.toLatexRecursive(element.index!, maxDepth, inOperatorName);
+        const radicand = this.toLatexRecursive(element.radicand!, maxDepth, inOperatorName);
         latex += `\\sqrt[${index || " "}]{${radicand || " "}}`;
       } else if (element.type === "script") {
-        const base = this.toLatexRecursive(element.base!, maxDepth);
+        const base = this.toLatexRecursive(element.base!, maxDepth, inOperatorName);
         latex += `{${base || " "}}`;
         if (element.superscript && element.subscript) {
-          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth) || " "}}_{${this.toLatexRecursive(element.subscript, maxDepth) || " "}}`;
+          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth, inOperatorName) || " "}}_{${this.toLatexRecursive(element.subscript, maxDepth, inOperatorName) || " "}}`;
         } else if (element.superscript) {
-          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth) || " "}}`;
+          latex += `^{${this.toLatexRecursive(element.superscript, maxDepth, inOperatorName) || " "}}`;
         } else if (element.subscript) {
-          latex += `_{${this.toLatexRecursive(element.subscript, maxDepth) || " "}}`;
+          latex += `_{${this.toLatexRecursive(element.subscript, maxDepth, inOperatorName) || " "}}`;
         }
       } else if (element.type === "bracket") {
-        const content = this.toLatexRecursive(element.content!, maxDepth);
+        const content = this.toLatexRecursive(element.content!, maxDepth, inOperatorName);
         const { latexLeft, latexRight } = this.getBracketLatexSymbols(
           element.leftBracketSymbol!,
           element.rightBracketSymbol!,
           element.nestingDepth || 0,
           maxDepth
         );
-        latex += `${latexLeft}${content || " "}${latexRight}`;
+        let bracketLatex = `${latexLeft}${content || " "}${latexRight}`;
+        
+        // Add superscript and subscript support for brackets (evaluation brackets)
+        if (element.superscript && element.subscript) {
+          const superscriptLatex = this.toLatexRecursive(element.superscript, maxDepth, inOperatorName);
+          const subscriptLatex = this.toLatexRecursive(element.subscript, maxDepth, inOperatorName);
+          bracketLatex += `^{${superscriptLatex || " "}}_{${subscriptLatex || " "}}`;
+        } else if (element.superscript) {
+          const superscriptLatex = this.toLatexRecursive(element.superscript, maxDepth, inOperatorName);
+          bracketLatex += `^{${superscriptLatex || " "}}`;
+        } else if (element.subscript) {
+          const subscriptLatex = this.toLatexRecursive(element.subscript, maxDepth, inOperatorName);
+          bracketLatex += `_{${subscriptLatex || " "}}`;
+        }
+        
+        latex += bracketLatex;
       } else if (element.type === "large-operator") {
         const operatorSymbol = this.convertOperatorToLatex(element.operator!);
-        const lowerLimit = this.toLatexRecursive(element.lowerLimit!, maxDepth);
-        const upperLimit = this.toLatexRecursive(element.upperLimit!, maxDepth);
-        const operand = this.toLatexRecursive(element.operand!, maxDepth);
+        const lowerLimit = this.toLatexRecursive(element.lowerLimit!, maxDepth, inOperatorName);
+        const upperLimit = this.toLatexRecursive(element.upperLimit!, maxDepth, inOperatorName);
+        const operand = this.toLatexRecursive(element.operand!, maxDepth, inOperatorName);
 
         // Check if this is marked as an indefinite integral
         const isIndefiniteIntegral = (element as any).isIndefiniteIntegral === true;
@@ -396,40 +413,85 @@ export class LatexConverter {
         }
       } else if (element.type === "integral") {
         // Custom integral format with integrand and differential variable blocks
-        const integrandLatex = this.toLatexRecursive(element.integrand!, maxDepth);
-        const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth);
+        const integrandLatex = this.toLatexRecursive(element.integrand!, maxDepth, inOperatorName);
+        const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth, inOperatorName);
 
         // Determine the command based on integral type, style, and whether it has limits
         let integralCommand = "";
         const useRomanD = element.integralStyle === "roman";
-        const isDefinite = element.hasLimits;
+        
+        // Auto-detect if integral is definite: either isDefinite property is true OR it has limits
+        const hasLowerLimit = element.lowerLimit && element.lowerLimit.length > 0;
+        const hasUpperLimit = element.upperLimit && element.upperLimit.length > 0;
+        const hasLimits = hasLowerLimit || hasUpperLimit;
+        const isDefinite = ("isDefinite" in element && element.isDefinite) || hasLimits;
+
+        // Check if this is a single-limit integral (subscript or lower only)
+        const hasOnlyLowerLimit = hasLowerLimit && !hasUpperLimit;
+        const hasOnlyUpperLimit = hasUpperLimit && !hasLowerLimit;
 
         switch (element.integralType) {
           case "double":
-            if (isDefinite) {
-              integralCommand = useRomanD ? "\\iintdl" : "\\iintil";
+            if (hasOnlyLowerLimit) {
+              // 3-parameter subscript/lower limit variants
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\iintdlower" : "\\iintilower";
+              } else {
+                integralCommand = useRomanD ? "\\iintdsub" : "\\iintisub";
+              }
+            } else if (isDefinite) {
+              // 4-parameter definite integrals
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\iintdlim" : "\\iintilim";
+              } else {
+                integralCommand = useRomanD ? "\\iintdnolim" : "\\iintinolim";
+              }
             } else {
+              // 2-parameter indefinite
               integralCommand = useRomanD ? "\\iintd" : "\\iinti";
             }
             break;
           case "triple":
-            if (isDefinite) {
-              integralCommand = useRomanD ? "\\iiintdl" : "\\iiintil";
+            if (hasOnlyLowerLimit) {
+              // 3-parameter subscript/lower limit variants
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\iiintdlower" : "\\iiintilower";
+              } else {
+                integralCommand = useRomanD ? "\\iiintdsub" : "\\iiintisub";
+              }
+            } else if (isDefinite) {
+              // 4-parameter definite integrals
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\iiintdlim" : "\\iiintilim";
+              } else {
+                integralCommand = useRomanD ? "\\iiintdnolim" : "\\iiintinolim";
+              }
             } else {
+              // 2-parameter indefinite
               integralCommand = useRomanD ? "\\iiintd" : "\\iiinti";
             }
             break;
           case "contour":
-            if (isDefinite) {
-              integralCommand = useRomanD ? "\\ointdl" : "\\ointil";
+            // Contour integrals don't use limits positioning - only subscript for path or sub/superscript
+            if (hasOnlyLowerLimit) {
+              // 3-parameter subscript variant for path-only contours
+              integralCommand = useRomanD ? "\\ointdsub" : "\\ointisub";
+            } else if (isDefinite) {
+              // 4-parameter variants for contours with both limits
+              integralCommand = useRomanD ? "\\ointdnolim" : "\\ointinolim";
             } else {
+              // 2-parameter indefinite
               integralCommand = useRomanD ? "\\ointd" : "\\ointi";
             }
             break;
           case "single":
           default:
             if (isDefinite) {
-              integralCommand = useRomanD ? "\\intdl" : "\\intil";
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\intdlim" : "\\intilim";
+              } else {
+                integralCommand = useRomanD ? "\\intdnolim" : "\\intinolim";
+              }
             } else {
               integralCommand = useRomanD ? "\\intd" : "\\inti";
             }
@@ -438,44 +500,61 @@ export class LatexConverter {
 
         // Build the integral LaTeX command
         let finalLatex = "";
-        if (isDefinite) {
-          // For definite integrals: \intil{integrand}{variable}{lower}{upper}
-          const lowerLatex = this.toLatexRecursive(element.lowerLimit!, maxDepth);
-          const upperLatex = this.toLatexRecursive(element.upperLimit!, maxDepth);
+        
+        // Handle different parameter counts based on integral command type
+        if (integralCommand.includes("sub") || integralCommand.includes("lower")) {
+          // 3-parameter variants: \ointisub{integrand}{variable}{path} or \iintisub{integrand}{variable}{region}
+          const limitLatex = hasLowerLimit ? this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName) : " ";
+          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${limitLatex}}`;
+        } else if (hasLowerLimit && hasUpperLimit) {
+          // 4-parameter definite integrals: \intinolim{integrand}{variable}{lower}{upper}
+          const lowerLatex = this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName);
+          const upperLatex = this.toLatexRecursive(element.upperLimit, maxDepth, inOperatorName);
           finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
         } else {
-          // For indefinite integrals: \inti{integrand}{variable}
+          // 2-parameter indefinite integrals: \inti{integrand}{variable}
           finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}`;
         }
 
-        // Wrap with appropriate style like large operators do
+        // Apply appropriate styling based on display mode
         if (element.displayMode === "display") {
-          latex += `{\\displaystyle ${finalLatex}}`;
+          // For display mode: add \displaystyle wrapper for all integral commands
+          finalLatex = `{\\displaystyle ${finalLatex}}`;
+          latex += finalLatex;
         } else {
+          // For inline mode: wrap with \textstyle for proper inline rendering
           latex += `{\\textstyle ${finalLatex}}`;
         }
       } else if (element.type === "derivative") {
-        const functionLatex = this.toLatexRecursive(element.function!, maxDepth);
-        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth);
+        const functionLatex = this.toLatexRecursive(element.function!, maxDepth, inOperatorName);
+        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth, inOperatorName);
+
+        // Determine differential symbol: ∂ for partial derivatives, d for regular derivatives
+        const isPartial = element.isPartial === true;
+        const differentialSymbol = isPartial ? "\\partial" : "d";
 
         // Check if this is long form derivative
         if (element.isLongForm) {
-          // Long form: \dv[n]{x}(\grande{f}) or \dv{x}(\grande{f})
+          // Long form: \dv[n]{x}(\grande{f}) or \dv{x}(\grande{f}) for regular derivatives
+          // Long form: \pdv[n]{x}(\grande{f}) or \pdv{x}(\grande{f}) for partial derivatives
           // The function part is wrapped with \grande and can have optional brackets
-          const usePhysicsPackage = this.shouldUsePhysicsPackageForDerivative();
+          // For partial derivatives, ALWAYS use physics package since we need \pdv
+          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
+            // Use \pdv for partial derivatives, \dv for regular derivatives
+            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
-                dvCommand = `\\dv{${variableLatex || "x"}}`;
+                dvCommand = `${dvCommandBase}{${variableLatex || "x"}}`;
               } else {
-                dvCommand = `\\dv[${element.order}]{${variableLatex || "x"}}`;
+                dvCommand = `${dvCommandBase}[${element.order}]{${variableLatex || "x"}}`;
               }
             } else {
               // nth order with custom expression
-              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
-              dvCommand = `\\dv[${orderLatex || "n"}]{${variableLatex || "x"}}`;
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
+              dvCommand = `${dvCommandBase}[${orderLatex || "n"}]{${variableLatex || "x"}}`;
             }
 
             // Add the function part with \grande
@@ -504,30 +583,43 @@ export class LatexConverter {
               }
             }
 
-            // Combine the parts
+            // Debug logging for long form partial derivatives export
+            if (isPartial) {
+              console.log("Long form export debug:", {
+                dvCommand,
+                functionPart,
+                displayMode: element.displayMode,
+                variableLatex,
+                order: element.order
+              });
+            }
+
+            // Combine the parts with style wrapper
             if (element.displayMode === "display") {
               latex += `{\\displaystyle ${dvCommand}${functionPart}}`;
             } else {
-              latex += `${dvCommand}${functionPart}`;
+              latex += `{\\textstyle ${dvCommand}${functionPart}}`;
             }
           } else {
-            // For non-physics package (italic d), use custom long form commands
+            // For non-physics package, use custom long form commands
+            // For partial derivatives, always use \partial regardless of differential style
+            const diffSymbol = isPartial ? "\\partial" : "d";
             let numerator = "";
             let denominator = "";
 
             if (typeof element.order === "number") {
               if (element.order === 1) {
-                numerator = "d";
-                denominator = `d${variableLatex || "x"}`;
+                numerator = diffSymbol;
+                denominator = `${diffSymbol}${variableLatex || "x"}`;
               } else {
-                numerator = `d^{${element.order}}`;
-                denominator = `d${variableLatex || "x"}^{${element.order}}`;
+                numerator = `${diffSymbol}^{${element.order}}`;
+                denominator = `${diffSymbol}${variableLatex || "x"}^{${element.order}}`;
               }
             } else {
               // nth order with custom expression
-              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
-              numerator = `d^{${orderLatex || "n"}}`;
-              denominator = `d${variableLatex || "x"}^{${orderLatex || "n"}}`;
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
+              numerator = `${diffSymbol}^{${orderLatex || "n"}}`;
+              denominator = `${diffSymbol}${variableLatex || "x"}^{${orderLatex || "n"}}`;
             }
 
             // Use custom long form commands for italic d
@@ -539,48 +631,64 @@ export class LatexConverter {
           }
         } else {
           // Standard form derivative handling
-          // Check if we should use physics package based on differential style
-          const usePhysicsPackage = this.shouldUsePhysicsPackageForDerivative();
+          // For partial derivatives, ALWAYS use physics package (\pdv) regardless of differential style
+          // For regular derivatives, check if we should use physics package based on differential style
+          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            // Use physics package \dv command (always renders with roman 'd' based on italicdiff setting)
+            // Use physics package \dv or \pdv command (always renders with roman 'd' or '∂' based on italicdiff setting)
+            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
-                dvCommand = `\\dv{${functionLatex || " "}}{${variableLatex || " "}}`;
+                dvCommand = `${dvCommandBase}{${functionLatex || " "}}{${variableLatex || " "}}`;
               } else {
-                dvCommand = `\\dv[${element.order}]{${functionLatex || " "}}{${variableLatex || " "}}`;
+                dvCommand = `${dvCommandBase}[${element.order}]{${functionLatex || " "}}{${variableLatex || " "}}`;
               }
             } else {
               // nth order with custom expression
-              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
-              dvCommand = `\\dv[${orderLatex || "n"}]{${functionLatex || " "}}{${variableLatex || " "}}`;
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
+              dvCommand = `${dvCommandBase}[${orderLatex || "n"}]{${functionLatex || " "}}{${variableLatex || " "}}`;
             }
 
-            // Add displaystyle if needed for display mode
+            // Debug logging for partial derivatives export
+            if (isPartial) {
+              console.log("Export debug:", {
+                functionLatex,
+                variableLatex,
+                dvCommand,
+                displayMode: element.displayMode,
+                isLongForm: element.isLongForm,
+                order: element.order
+              });
+            }
+
+            // Add style wrapper for both display and inline modes
             if (element.displayMode === "display") {
               latex += `{\\displaystyle ${dvCommand}}`;
             } else {
-              latex += dvCommand;
+              latex += `{\\textstyle ${dvCommand}}`;
             }
           } else {
-            // Use custom derivative commands for standard LaTeX (allows italic 'd')
+            // Use custom derivative commands for standard LaTeX
+            // For partial derivatives, use \partial regardless of differential style
+            const diffSymbol = isPartial ? "\\partial" : "d";
             let numerator = "";
             let denominator = "";
 
             if (typeof element.order === "number") {
               if (element.order === 1) {
-                numerator = `d${functionLatex || " "}`;
-                denominator = `d${variableLatex || " "}`;
+                numerator = `${diffSymbol}${functionLatex || " "}`;
+                denominator = `${diffSymbol}${variableLatex || " "}`;
               } else {
-                numerator = `d^{${element.order}}${functionLatex || " "}`;
-                denominator = `d${variableLatex || " "}^{${element.order}}`;
+                numerator = `${diffSymbol}^{${element.order}}${functionLatex || " "}`;
+                denominator = `${diffSymbol}${variableLatex || " "}^{${element.order}}`;
               }
             } else {
               // nth order with custom expression
-              const orderLatex = this.toLatexRecursive(element.order!, maxDepth);
-              numerator = `d^{${orderLatex || "n"}}${functionLatex || " "}`;
-              denominator = `d${variableLatex || " "}^{${orderLatex || "n"}}`;
+              const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
+              numerator = `${diffSymbol}^{${orderLatex || "n"}}${functionLatex || " "}`;
+              denominator = `${diffSymbol}${variableLatex || " "}^{${orderLatex || "n"}}`;
             }
 
             // Use custom \derivfrac or \derivdfrac command instead of \frac/\dfrac
@@ -592,29 +700,32 @@ export class LatexConverter {
           }
         }
       } else if (element.type === "matrix") {
-        const matrixLatex = this.matrixToLatex(element, maxDepth);
+        const matrixLatex = this.matrixToLatex(element, maxDepth, inOperatorName);
         latex += matrixLatex;
       } else if (element.type === "stack") {
-        const stackLatex = this.stackToLatex(element, maxDepth);
+        const stackLatex = this.stackToLatex(element, maxDepth, inOperatorName);
         latex += stackLatex;
       } else if (element.type === "cases") {
-        const casesLatex = this.casesToLatex(element, maxDepth);
+        const casesLatex = this.casesToLatex(element, maxDepth, inOperatorName);
         latex += casesLatex;
       } else if (element.type === "accent") {
-        const accentLatex = this.accentToLatex(element, maxDepth);
+        const accentLatex = this.accentToLatex(element, maxDepth, inOperatorName);
         latex += accentLatex;
+      } else if (element.type === "function") {
+        const functionLatex = this.functionToLatex(element, maxDepth, inOperatorName);
+        latex += functionLatex;
       }
     }
 
     // Apply uniform formatting as a wrapper if detected
     if (hasUniformFormatting && latex.trim()) {
-      latex = this.applyFormattingToLatex(latex, hasUniformFormatting);
+      latex = this.applyFormattingToLatex(latex, hasUniformFormatting, inOperatorName);
     }
 
     return latex;
   }
 
-  private matrixToLatex(element: EquationElement, maxDepth: number): string {
+  private matrixToLatex(element: EquationElement, maxDepth: number, inOperatorName: boolean = false): string {
     const { rows, cols, cells, matrixType } = element;
 
     if (!rows || !cols || !cells) {
@@ -628,7 +739,7 @@ export class LatexConverter {
       for (let col = 0; col < cols; col++) {
         const cellKey = `cell_${row}_${col}`;
         const cellElements = cells[cellKey] || [];
-        const cellContent = this.toLatexRecursive(cellElements, maxDepth).trim();
+        const cellContent = this.toLatexRecursive(cellElements, maxDepth, inOperatorName).trim();
         cellsInRow.push(cellContent || ""); // Empty cells are empty
       }
       matrixRows.push(cellsInRow.join(" & "));
@@ -666,10 +777,10 @@ export class LatexConverter {
     delete matrixFormatting.bold;
     delete matrixFormatting.italic;
 
-    return this.applyFormattingToLatex(matrixLatex, matrixFormatting);
+    return this.applyFormattingToLatex(matrixLatex, matrixFormatting, false);
   }
 
-  private stackToLatex(element: EquationElement, maxDepth: number): string {
+  private stackToLatex(element: EquationElement, maxDepth: number, inOperatorName: boolean = false): string {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
@@ -698,10 +809,10 @@ export class LatexConverter {
     delete stackFormatting.bold;
     delete stackFormatting.italic;
 
-    return this.applyFormattingToLatex(stackLatex, stackFormatting);
+    return this.applyFormattingToLatex(stackLatex, stackFormatting, false);
   }
 
-  private casesToLatex(element: EquationElement, maxDepth: number): string {
+  private casesToLatex(element: EquationElement, maxDepth: number, inOperatorName: boolean = false): string {
     const { rows, cols, cells } = element;
 
     if (!rows || !cols || !cells) {
@@ -730,11 +841,11 @@ export class LatexConverter {
     delete casesFormatting.bold;
     delete casesFormatting.italic;
 
-    return this.applyFormattingToLatex(casesLatex, casesFormatting);
+    return this.applyFormattingToLatex(casesLatex, casesFormatting, false);
   }
 
-  private accentToLatex(element: EquationElement, maxDepth: number): string {
-    const baseLatex = this.toLatexRecursive(element.accentBase || [], maxDepth);
+  private accentToLatex(element: EquationElement, maxDepth: number, inOperatorName: boolean = false): string {
+    const baseLatex = this.toLatexRecursive(element.accentBase || [], maxDepth, inOperatorName);
 
     switch (element.accentType) {
       case "hat":
@@ -763,23 +874,23 @@ export class LatexConverter {
         return `\\overleftrightarrow{${baseLatex}}`;
       case "overbrace":
         if (element.accentLabel && element.accentLabel.length > 0) {
-          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth);
+          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth, inOperatorName);
           return `\\overbrace{${baseLatex}}^{${labelLatex}}`;
         } else {
           return `\\overbrace{${baseLatex}}`;
         }
       case "underbrace":
         if (element.accentLabel && element.accentLabel.length > 0) {
-          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth);
+          const labelLatex = this.toLatexRecursive(element.accentLabel, maxDepth, inOperatorName);
           return `\\underbrace{${baseLatex}}_{${labelLatex}}`;
         } else {
           return `\\underbrace{${baseLatex}}`;
         }
       case "labeledoverbrace":
-        const overbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth);
+        const overbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth, inOperatorName);
         return `\\overbrace{${baseLatex}}^{${overbraceLabel}}`;
       case "labeledunderbrace":
-        const underbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth);
+        const underbraceLabel = this.toLatexRecursive(element.accentLabel || [], maxDepth, inOperatorName);
         return `\\underbrace{${baseLatex}}_{${underbraceLabel}}`;
       case "overparen":
         return `\\overparen{${baseLatex}}`;
@@ -788,6 +899,53 @@ export class LatexConverter {
       default:
         return `\\hat{${baseLatex}}`;
     }
+  }
+
+  private functionToLatex(element: EquationElement, maxDepth: number, inOperatorName: boolean = false): string {
+    const functionType = element.functionType!;
+    
+    // Parse common elements
+    const argumentLatex = this.toLatexRecursive(element.functionArgument || [], maxDepth, inOperatorName);
+    
+    // User-defined functions (use \operatorname)
+    if (["function", "functionsub", "functionlim"].includes(functionType)) {
+      const nameLatex = this.toLatexRecursive(element.functionName || [], maxDepth, true);
+      if (!nameLatex) return argumentLatex || "\\square";
+      
+      if (functionType === "functionlim") {
+        const constraintLatex = this.toLatexRecursive(element.functionConstraint || [], maxDepth, inOperatorName);
+        return `{\\displaystyle \\operatorname*{${nameLatex}}_{${constraintLatex}} ${argumentLatex}}`;
+      } else if (functionType === "functionsub") {
+        const baseLatex = this.toLatexRecursive(element.functionBase || [], maxDepth, inOperatorName);
+        return `\\operatorname{${nameLatex}}_{${baseLatex}} ${argumentLatex}`;
+      } else {
+        return `\\operatorname{${nameLatex}} ${argumentLatex}`;
+      }
+    }
+    
+    // Limit operators (need underscripts)
+    if (["max", "min", "lim", "argmax", "argmin"].includes(functionType)) {
+      const constraintLatex = this.toLatexRecursive(element.functionConstraint || [], maxDepth, inOperatorName);
+      const operatorName = functionType === "argmax" ? "argmax" : 
+                           functionType === "argmin" ? "argmin" : functionType;
+      return `{\\displaystyle \\operatorname*{${operatorName}}_{${constraintLatex}} ${argumentLatex}}`;
+    }
+    
+    // Base-n logarithm
+    if (functionType === "logn") {
+      const baseLatex = this.toLatexRecursive(element.functionBase || [], maxDepth, inOperatorName);
+      return `\\log_{${baseLatex}} ${argumentLatex}`;
+    }
+    
+    // Inverse trig/hyperbolic functions
+    if (["asin", "acos", "atan", "asinh", "acosh", "atanh"].includes(functionType)) {
+      const baseNames = { asin: "sin", acos: "cos", atan: "tan", asinh: "sinh", acosh: "cosh", atanh: "tanh" };
+      const baseName = baseNames[functionType as keyof typeof baseNames];
+      return `\\operatorname{${baseName}^{-1}} ${argumentLatex}`;
+    }
+    
+    // Standard built-in functions
+    return `\\${functionType} ${argumentLatex}`;
   }
 
   private shouldUsePhysicsPackageForDerivative(): boolean {
@@ -821,7 +979,15 @@ export class LatexConverter {
         } else if (latex.substr(i, 3) === "\\dv") {
           // Handle \displaystyle \dv{f}{x} or \displaystyle \dv{x}(\grande{f})
           i += 3; // Skip "\dv"
-          const dvResult = this.parseDvCommand(latex, i, "display");
+          const dvResult = this.parseDvCommand(latex, i, "display", false, false);
+          if (dvResult) {
+            result.push(dvResult.element);
+            i = dvResult.endIndex;
+          }
+        } else if (latex.substr(i, 4) === "\\pdv") {
+          // Handle \displaystyle \pdv{f}{x} or \displaystyle \pdv{x}(\grande{f})
+          i += 4; // Skip "\pdv"
+          const dvResult = this.parseDvCommand(latex, i, "display", false, true);
           if (dvResult) {
             result.push(dvResult.element);
             i = dvResult.endIndex;
@@ -858,6 +1024,22 @@ export class LatexConverter {
           } else {
             i++;
           }
+        } else if (latex.substr(i, 3) === "\\dv") {
+          // Handle \textstyle \dv{f}{x} or \textstyle \dv{x}(\grande{f})
+          i += 3; // Skip "\dv"
+          const dvResult = this.parseDvCommand(latex, i, "inline", false, false);
+          if (dvResult) {
+            result.push(dvResult.element);
+            i = dvResult.endIndex;
+          }
+        } else if (latex.substr(i, 4) === "\\pdv") {
+          // Handle \textstyle \pdv{f}{x} or \textstyle \pdv{x}(\grande{f})
+          i += 4; // Skip "\pdv"
+          const dvResult = this.parseDvCommand(latex, i, "inline", false, true);
+          if (dvResult) {
+            result.push(dvResult.element);
+            i = dvResult.endIndex;
+          }
         } else {
           // Check if this is followed by an integral command
           const integralResult = this.parseCustomIntegral(latex, i);
@@ -866,7 +1048,7 @@ export class LatexConverter {
             result.push(integralResult.element);
             i = integralResult.endIndex;
           }
-          // If not followed by large operator or integral, just continue (skip the \textstyle)
+          // If not followed by large operator, derivative, or integral, just continue (skip the \textstyle)
         }
       } else if (this.tryParseDerivativeCommand(latex, i, result)) {
         i = this.lastDerivativeCommandEndIndex!;
@@ -927,10 +1109,32 @@ export class LatexConverter {
       } else if (latex.substr(i, 3) === "\\dv") {
         // Parse physics package derivative command
         i += 3;
-        const dvResult = this.parseDvCommand(latex, i, "inline");
+        const dvResult = this.parseDvCommand(latex, i, "inline", false, false);
         if (dvResult) {
           result.push(dvResult.element);
           i = dvResult.endIndex;
+        }
+      } else if (latex.substr(i, 4) === "\\pdv") {
+        // Parse physics package partial derivative command
+        i += 4;
+        const dvResult = this.parseDvCommand(latex, i, "inline", false, true);
+        if (dvResult) {
+          result.push(dvResult.element);
+          i = dvResult.endIndex;
+        }
+      } else if (this.isBuiltinFunctionCommand(latex, i)) {
+        // Parse built-in function commands like \sin, \cos, \max, etc.
+        const functionResult = this.parseBuiltinFunctionCommand(latex, i);
+        if (functionResult) {
+          result.push(functionResult.element);
+          i = functionResult.endIndex;
+        }
+      } else if (latex.substr(i, 13) === "\\operatorname") {
+        // Parse \operatorname{} or \operatorname*{}
+        const operatorResult = this.parseOperatorName(latex, i);
+        if (operatorResult) {
+          result.push(operatorResult.element);
+          i = operatorResult.endIndex;
         }
       } else if (this.isCustomIntegralCommand(latex, i)) {
         // Parse custom integral commands like \inti, \intd, \iinti, etc.
@@ -1016,7 +1220,19 @@ export class LatexConverter {
       } else if (latex[i] === "{") {
         const group = this.parseLatexGroup(latex, i);
         i = group.endIndex;
-        result.push(...this.parseLatexToEquation(group.content));
+
+        // Try to extract from style wrapper (displaystyle/textstyle)
+        const styleWrapper = this.extractFromStyleWrapper(group.content, 0);
+        if (styleWrapper && styleWrapper.hasWrapper) {
+          const parsedElements = this.parseLatexToEquation(styleWrapper.content);
+          // Apply the style mode to elements that support it
+          if (styleWrapper.styleType) {
+            this.applyStyleModeToElements(parsedElements, styleWrapper.styleType);
+          }
+          result.push(...parsedElements);
+        } else {
+          result.push(...this.parseLatexToEquation(group.content));
+        }
       } else if (latex[i] === " ") {
         i++;
         // Check for LaTeX symbol commands
@@ -1239,7 +1455,10 @@ export class LatexConverter {
     return result;
   }
 
-  private parseLatexGroup(latex: string, startIndex: number): { content: string; endIndex: number } {
+  private parseLatexGroup(
+    latex: string,
+    startIndex: number
+  ): { content: string; endIndex: number } {
     if (latex[startIndex] !== "{") {
       return {
         content: latex[startIndex] || "",
@@ -1277,7 +1496,17 @@ export class LatexConverter {
   }
 
   private skipBracketCommand(latex: string, index: number): number {
-    const bracketCommands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
+    const bracketCommands = [
+      "\\left",
+      "\\bigl",
+      "\\Bigl",
+      "\\biggl",
+      "\\Biggl",
+      "\\bigr",
+      "\\Bigr",
+      "\\biggr",
+      "\\Biggr",
+    ];
     for (const cmd of bracketCommands) {
       if (latex.substr(index, cmd.length) === cmd) {
         return cmd.length;
@@ -1286,7 +1515,16 @@ export class LatexConverter {
     return 0;
   }
 
-  private parseBracketCommand(latex: string, startIndex: number): { leftSymbol: string; rightSymbol: string; content: string; endIndex: number; nestingDepth: number } | null {
+  private parseBracketCommand(
+    latex: string,
+    startIndex: number
+  ): {
+    leftSymbol: string;
+    rightSymbol: string;
+    content: string;
+    endIndex: number;
+    nestingDepth: number;
+  } | null {
     // Extract the bracket command
     let leftCommand = "";
     let nestingDepth = 0;
@@ -1325,8 +1563,12 @@ export class LatexConverter {
         latex.substr(j, 6) === "\\biggr" ||
         latex.substr(j, 6) === "\\Biggr"
       ) {
-        let rightCommandLength = latex.substr(j, 6) === "\\right" ? 6 : 
-          latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr" ? 6 : 5;
+        let rightCommandLength =
+          latex.substr(j, 6) === "\\right"
+            ? 6
+            : latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr"
+              ? 6
+              : 5;
 
         const rightBracketInfo = this.extractBracketSymbol(latex, j + rightCommandLength);
         if (rightBracketInfo) {
@@ -1358,7 +1600,10 @@ export class LatexConverter {
     return null;
   }
 
-  private extractBracketSymbol(latex: string, startIndex: number): { symbol: string; endIndex: number } | null {
+  private extractBracketSymbol(
+    latex: string,
+    startIndex: number
+  ): { symbol: string; endIndex: number } | null {
     if (startIndex >= latex.length) return null;
 
     if (latex[startIndex] === "(") return { symbol: "(", endIndex: startIndex + 1 };
@@ -1369,7 +1614,18 @@ export class LatexConverter {
 
     // Only treat "." as invisible bracket if immediately following a bracket command
     if (latex[startIndex] === ".") {
-      const bracketCommands = ["\\left", "\\right", "\\bigl", "\\bigr", "\\Bigl", "\\Bigr", "\\biggl", "\\biggr", "\\Biggl", "\\Biggr"];
+      const bracketCommands = [
+        "\\left",
+        "\\right",
+        "\\bigl",
+        "\\bigr",
+        "\\Bigl",
+        "\\Bigr",
+        "\\biggl",
+        "\\biggr",
+        "\\Biggl",
+        "\\Biggr",
+      ];
       for (const cmd of bracketCommands) {
         if (startIndex >= cmd.length && latex.substr(startIndex - cmd.length, cmd.length) === cmd) {
           return { symbol: ".", endIndex: startIndex + 1 };
@@ -1391,7 +1647,12 @@ export class LatexConverter {
     return null;
   }
 
-  private getBracketLatexSymbols(leftSymbol: string, rightSymbol: string, nestingDepth: number = 0, maxDepth: number = 0): { latexLeft: string; latexRight: string } {
+  private getBracketLatexSymbols(
+    leftSymbol: string,
+    rightSymbol: string,
+    nestingDepth: number = 0,
+    maxDepth: number = 0
+  ): { latexLeft: string; latexRight: string } {
     const sizeCommands = ["", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
     const sizeCommandsRight = ["", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
 
@@ -1452,9 +1713,9 @@ export class LatexConverter {
         case "⌉":
           return sizeCommand ? `${sizeCommand}\\rceil` : "\\right\\rceil";
         case "|":
-          return sizeCommand ? `${sizeCommand}|` : "\\left|";
+          return sizeCommand ? `${sizeCommand}|` : isLeft ? "\\left|" : "\\right|";
         case "‖":
-          return sizeCommand ? `${sizeCommand}\\|` : "\\left\\|";
+          return sizeCommand ? `${sizeCommand}\\|` : isLeft ? "\\left\\|" : "\\right\\|";
         case "⟨":
           return sizeCommand ? `${sizeCommand}\\langle` : "\\left\\langle";
         case "⟩":
@@ -1758,7 +2019,11 @@ export class LatexConverter {
     return false;
   }
 
-  private applyWrapperToElements(elements: EquationElement[], wrapperType: "cancel" | "underline" | "color", wrapperValue?: string): void {
+  private applyWrapperToElements(
+    elements: EquationElement[],
+    wrapperType: "cancel" | "underline" | "color",
+    wrapperValue?: string
+  ): void {
     // Apply wrapper using multi-wrapper system, preserving existing wrappers and tracking order
     const wrapperGroupId = this.generateElementId();
 
@@ -1776,14 +2041,17 @@ export class LatexConverter {
       if (wrapperType === "cancel") {
         element.wrappers.cancel = { id: wrapperGroupId };
       } else if (wrapperType === "underline") {
-        element.wrappers.underline = { id: wrapperGroupId, type: wrapperValue as "single" | "double" };
+        element.wrappers.underline = {
+          id: wrapperGroupId,
+          type: wrapperValue as "single" | "double",
+        };
       } else if (wrapperType === "color") {
         element.wrappers.color = { id: wrapperGroupId, value: wrapperValue! };
       }
     });
   }
 
-  private applyFormattingToLatex(text: string, formatting: any): string {
+  private applyFormattingToLatex(text: string, formatting: any, inOperatorName: boolean = false): string {
     let result = text;
 
     // Apply formatting in the correct nesting order
@@ -1799,7 +2067,8 @@ export class LatexConverter {
     } else if (formatting.italic === false) {
       // Don't apply \mathrm{} to text mode elements (they should use \text{} wrapper instead)
       // Also don't apply to LaTeX commands or known operator symbols as it removes proper spacing
-      if (!formatting.textMode && !result.startsWith("\\") && !this.isOperatorSymbol(result)) {
+      // Don't apply to text inside \operatorname{} as \operatorname already handles upright formatting
+      if (!formatting.textMode && !result.startsWith("\\") && !this.isOperatorSymbol(result) && !inOperatorName) {
         result = `\\mathrm{${result}}`;
       }
     }
@@ -1864,7 +2133,11 @@ export class LatexConverter {
     });
   }
 
-  private parseLargeOperator(latex: string, index: number, forceDisplayMode?: boolean): { element: EquationElement; endIndex: number } | null {
+  private parseLargeOperator(
+    latex: string,
+    index: number,
+    forceDisplayMode?: boolean
+  ): { element: EquationElement; endIndex: number } | null {
     // Use LATEX_TO_UNICODE for the mapping
 
     // Find which operator matches
@@ -1976,7 +2249,11 @@ export class LatexConverter {
     return result;
   }
 
-  private tryParseLatexSymbol(latex: string, index: number, result: EquationElement[]): number | null {
+  private tryParseLatexSymbol(
+    latex: string,
+    index: number,
+    result: EquationElement[]
+  ): number | null {
     // Check if we have a LaTeX symbol command at this position
     const commandLength = getLatexCommandLength(latex, index);
     if (commandLength > 0) {
@@ -2006,14 +2283,22 @@ export class LatexConverter {
           nextChar === " " ||
           nextChar === "\\"
         ) {
+          console.log("Found integral command:", cmd, "at index:", index);
           return true;
         }
       }
     }
+    if (latex[index] === "\\" && latex.substr(index, 10).includes("int")) {
+      console.log("Checking integral at", index, ":", latex.substr(index, 15), "against commands:", INTEGRAL_COMMANDS.slice(0, 5));
+    }
     return false;
   }
 
-  private parseFraction(latex: string, index: number, forceInlineMode?: boolean): { element: EquationElement; endIndex: number } | null {
+  private parseFraction(
+    latex: string,
+    index: number,
+    forceInlineMode?: boolean
+  ): { element: EquationElement; endIndex: number } | null {
     // Check if this is a \frac or \dfrac command
     let isDisplayFrac = false;
     let i = index;
@@ -2048,8 +2333,12 @@ export class LatexConverter {
     return { element, endIndex: i };
   }
 
-  private parseCustomIntegral(latex: string, startIndex: number): { element: EquationElement, endIndex: number } | null {
+  private parseCustomIntegral(
+    latex: string,
+    startIndex: number
+  ): { element: EquationElement; endIndex: number } | null {
     let i = startIndex;
+    console.log("parseCustomIntegral called with:", latex.substr(startIndex, 20));
 
     // Determine which command we're parsing
     let integralType: "single" | "double" | "triple" | "contour" = "single";
@@ -2058,46 +2347,158 @@ export class LatexConverter {
     let isDefinite = false;
 
     // Check for definite integral commands first (longer commands)
-    if (latex.substr(i, 8) === "\\iiintdl") {
+    let limitMode: "default" | "nolimits" | "limits" = "default";
+
+    if (latex.substr(i, 12) === "\\iiintdnolim") {
       integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 12;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 12) === "\\iiintinolim") {
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 12;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 10) === "\\iiintdlim") {
+      integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 10) === "\\iiintilim") {
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 11) === "\\iintdnolim") {
+      integralType = "double";
+      integralStyle = "roman";
+      commandLength = 11;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 11) === "\\iintinolim") {
+      integralType = "double";
+      integralStyle = "italic";
+      commandLength = 11;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 9) === "\\iintdlim") {
+      integralType = "double";
+      integralStyle = "roman";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 9) === "\\iintilim") {
+      integralType = "double";
+      integralStyle = "italic";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 11) === "\\ointdnolim") {
+      integralType = "contour";
+      integralStyle = "roman";
+      commandLength = 11;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 11) === "\\ointinolim") {
+      integralType = "contour";
+      integralStyle = "italic";
+      commandLength = 11;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 9) === "\\ointdlim") {
+      integralType = "contour";
+      integralStyle = "roman";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 9) === "\\ointilim") {
+      integralType = "contour";
+      integralStyle = "italic";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 10) === "\\intdnolim") {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 10) === "\\intinolim") {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 8) === "\\intdlim") {
+      integralType = "single";
       integralStyle = "roman";
       commandLength = 8;
       isDefinite = true;
-    } else if (latex.substr(i, 8) === "\\iiintil") {
-      integralType = "triple";
+      limitMode = "limits";
+    } else if (latex.substr(i, 8) === "\\intilim") {
+      integralType = "single";
       integralStyle = "italic";
       commandLength = 8;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === "\\iintdl") {
+      limitMode = "limits";
+    }
+    // Check for 3-parameter integral commands (subscript and lower limit variants)
+    else if (latex.substr(i, 12) === "\\iiintilower") {
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 12;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 12) === "\\iiintdlower") {
+      integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 12;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 10) === "\\iiintisub") {
+      console.log("Matched \\iiintisub command");
+      integralType = "triple";
+      integralStyle = "italic";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 10) === "\\iiintdsub") {
+      console.log("Matched \\iiintdsub command");
+      integralType = "triple";
+      integralStyle = "roman";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 11) === "\\iintilower") {
+      integralType = "double";
+      integralStyle = "italic";
+      commandLength = 11;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 11) === "\\iintdlower") {
       integralType = "double";
       integralStyle = "roman";
-      commandLength = 7;
+      commandLength = 11;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === "\\iintil") {
+      limitMode = "limits";
+    } else if (latex.substr(i, 9) === "\\iintisub") {
+      console.log("Matched \\iintisub command");
       integralType = "double";
       integralStyle = "italic";
-      commandLength = 7;
+      commandLength = 9;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === "\\ointdl") {
-      integralType = "contour";
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 9) === "\\iintdsub") {
+      console.log("Matched \\iintdsub command");
+      integralType = "double";
       integralStyle = "roman";
-      commandLength = 7;
+      commandLength = 9;
       isDefinite = true;
-    } else if (latex.substr(i, 7) === "\\ointil") {
-      integralType = "contour";
-      integralStyle = "italic";
-      commandLength = 7;
-      isDefinite = true;
-    } else if (latex.substr(i, 6) === "\\intdl") {
-      integralType = "single";
-      integralStyle = "roman";
-      commandLength = 6;
-      isDefinite = true;
-    } else if (latex.substr(i, 6) === "\\intil") {
-      integralType = "single";
-      integralStyle = "italic";
-      commandLength = 6;
-      isDefinite = true;
+      limitMode = "nolimits";
     }
     // Check for indefinite integral commands (shorter commands)
     else if (latex.substr(i, 7) === "\\iiintd") {
@@ -2147,7 +2548,6 @@ export class LatexConverter {
     let upperLimit: EquationElement[] = [];
 
     if (isDefinite) {
-      // For definite integrals: \intil{integrand}{variable}{lower}{upper}
       // Parse integrand {f(x)}
       if (i >= latex.length || latex[i] !== "{") return null;
       const integrandGroup = this.parseLatexGroup(latex, i);
@@ -2166,20 +2566,35 @@ export class LatexConverter {
       // Skip whitespace
       while (i < latex.length && latex[i] === " ") i++;
 
-      // Parse lower limit {a}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const lowerGroup = this.parseLatexGroup(latex, i);
-      lowerLimit = this.parseLatexToEquation(lowerGroup.content);
-      i = lowerGroup.endIndex;
+      // Check if this is a 3-parameter command (subscript/lower limit only) or 4-parameter (lower+upper)
+      const commandName = latex.substr(startIndex, commandLength);
+      const is3Parameter = commandName.includes("sub") || commandName.includes("lower");
 
-      // Skip whitespace
-      while (i < latex.length && latex[i] === " ") i++;
+      if (is3Parameter) {
+        // For 3-parameter integrals: \iintisub{integrand}{variable}{region} or \iintilower{integrand}{variable}{region}
+        // Parse region/limit {R}
+        if (i >= latex.length || latex[i] !== "{") return null;
+        const regionGroup = this.parseLatexGroup(latex, i);
+        lowerLimit = this.parseLatexToEquation(regionGroup.content);
+        i = regionGroup.endIndex;
+        // upperLimit remains empty for 3-parameter commands
+      } else {
+        // For 4-parameter integrals: \intinolim{integrand}{variable}{lower}{upper} or \intilim{integrand}{variable}{lower}{upper}
+        // Parse lower limit {a}
+        if (i >= latex.length || latex[i] !== "{") return null;
+        const lowerGroup = this.parseLatexGroup(latex, i);
+        lowerLimit = this.parseLatexToEquation(lowerGroup.content);
+        i = lowerGroup.endIndex;
 
-      // Parse upper limit {b}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const upperGroup = this.parseLatexGroup(latex, i);
-      upperLimit = this.parseLatexToEquation(upperGroup.content);
-      i = upperGroup.endIndex;
+        // Skip whitespace
+        while (i < latex.length && latex[i] === " ") i++;
+
+        // Parse upper limit {b}
+        if (i >= latex.length || latex[i] !== "{") return null;
+        const upperGroup = this.parseLatexGroup(latex, i);
+        upperLimit = this.parseLatexToEquation(upperGroup.content);
+        i = upperGroup.endIndex;
+      }
     } else {
       // For indefinite integrals: \inti{integrand}{variable}
       // Parse integrand {f(x)}
@@ -2203,15 +2618,27 @@ export class LatexConverter {
       type: "integral",
       integralType: integralType,
       integralStyle: integralStyle,
-      hasLimits: isDefinite,
+      isDefinite: isDefinite,
+      limitMode: limitMode,
       integrand: integrand,
       differentialVariable: differentialVariable,
       displayMode: "inline", // Default to inline
     };
 
     if (isDefinite) {
-      element.lowerLimit = lowerLimit;
-      element.upperLimit = upperLimit;
+      // For subscript commands (nolimits) and lower limit commands, only set lower limit
+      const isLowerOnlyCommand = (latex.substr(startIndex).includes("isub") || 
+                                 latex.substr(startIndex).includes("dsub") ||
+                                 latex.substr(startIndex).includes("ilower") || 
+                                 latex.substr(startIndex).includes("dlower"));
+      
+      if (isLowerOnlyCommand) {
+        element.lowerLimit = lowerLimit;
+        // Don't set upperLimit for lower-only integrals
+      } else {
+        element.lowerLimit = lowerLimit;
+        element.upperLimit = upperLimit;
+      }
     }
 
     return {
@@ -2228,7 +2655,8 @@ export class LatexConverter {
     latex: string,
     startIndex: number,
     displayMode: "inline" | "display",
-    skipClosingBrace: boolean = false
+    skipClosingBrace: boolean = false,
+    isPartial: boolean = false
   ): { element: EquationElement; endIndex: number } | null {
     let i = startIndex;
 
@@ -2335,6 +2763,20 @@ export class LatexConverter {
     }
 
     if (functionContent || !isLongForm) {
+      // Debug logging for partial derivatives
+      if (isPartial) {
+        console.log("parseDvCommand debug:", {
+          firstGroupContent: firstGroup.content,
+          functionContent,
+          variableContent,
+          isLongForm,
+          displayMode,
+          order,
+          finalFunction: functionContent || variableContent,
+          finalVariable: isLongForm ? variableContent : variableContent || ""
+        });
+      }
+      
       const element: EquationElement = {
         id: this.generateElementId(),
         type: "derivative",
@@ -2343,6 +2785,7 @@ export class LatexConverter {
         variable: this.parseLatexToEquation(isLongForm ? variableContent : variableContent || ""),
         displayMode: displayMode,
         isLongForm: isLongForm,
+        isPartial: isPartial,
       };
 
       return { element, endIndex: i };
@@ -2413,7 +2856,12 @@ export class LatexConverter {
     return null; // Not a recognizable derivative pattern
   }
 
-  private parseLongFormDerivative(numeratorLatex: string, denominatorLatex: string, functionLatex: string, displayMode: "inline" | "display"): EquationElement | null {
+  private parseLongFormDerivative(
+    numeratorLatex: string,
+    denominatorLatex: string,
+    functionLatex: string,
+    displayMode: "inline" | "display"
+  ): EquationElement | null {
     // Parse long form derivative: \derivlfrac{d^n}{dx^n}{f} or \derivldfrac{d^n}{dx^n}{f}
     // Pattern: numerator = d^n, denominator = dx^n, separate function part
 
@@ -2535,11 +2983,14 @@ export class LatexConverter {
   private tryParseStyleWrapper(latex: string, index: number, result: EquationElement[]): boolean {
     const styles = [
       { pattern: "{\\displaystyle ", length: 14, mode: "display" as const },
+      { pattern: "{\\displaystyle", length: 13, mode: "display" as const },
       { pattern: "{\\textstyle ", length: 12, mode: "inline" as const },
+      { pattern: "{\\textstyle", length: 11, mode: "inline" as const },
     ];
 
     for (const style of styles) {
       if (latex.substr(index, style.length) === style.pattern) {
+        console.log("tryParseStyleWrapper found style:", style.mode, "at index:", index, "latex:", latex.substr(index, 30));
         const startIndex = index;
         let i = index + style.length;
 
@@ -2560,8 +3011,20 @@ export class LatexConverter {
 
         // Check for \dv command (only for displaystyle)
         if (style.mode === "display" && latex.substr(i, 3) === "\\dv") {
+          console.log("tryParseStyleWrapper found \\dv command");
           i += 3;
-          const dvResult = this.parseDvCommand(latex, i, "display", true);
+          const dvResult = this.parseDvCommand(latex, i, "display", true, false);
+          if (dvResult) {
+            result.push(dvResult.element);
+            i = dvResult.endIndex;
+            parsed = true;
+          }
+        }
+        // Check for \pdv command (both display and inline)
+        else if (latex.substr(i, 4) === "\\pdv") {
+          console.log("tryParseStyleWrapper found \\pdv command, mode:", style.mode);
+          i += 4;
+          const dvResult = this.parseDvCommand(latex, i, style.mode, true, true);
           if (dvResult) {
             result.push(dvResult.element);
             i = dvResult.endIndex;
@@ -2604,18 +3067,30 @@ export class LatexConverter {
           return true;
         } else {
           // Fallback: parse the entire content normally
+          console.log("tryParseStyleWrapper fallback for style:", style.mode);
           const group = this.parseLatexGroup(latex, startIndex);
           const content = group.content;
+          console.log("Fallback parsing content:", content);
 
           // Remove the style prefix if present
           const prefix = style.pattern.substring(1); // Remove leading {
+          let parsedElements: EquationElement[] = [];
           if (content.startsWith(prefix)) {
             const cleanContent = content.substring(prefix.length);
-            result.push(...this.parseLatexToEquation(cleanContent));
+            parsedElements = this.parseLatexToEquation(cleanContent);
           } else {
-            result.push(...this.parseLatexToEquation(content));
+            parsedElements = this.parseLatexToEquation(content);
           }
 
+          // Apply the display mode to derivative and integral elements
+          for (const element of parsedElements) {
+            if (element.type === "derivative" || element.type === "integral") {
+              element.displayMode = style.mode;
+              console.log("Applied display mode", style.mode, "to", element.type, "element");
+            }
+          }
+
+          result.push(...parsedElements);
           this.lastStyleWrapperEndIndex = group.endIndex;
           return true;
         }
@@ -2683,7 +3158,7 @@ export class LatexConverter {
 
         let accentLabel: EquationElement[] = [];
         let finalAccentType = accentCmd.type;
-        
+
         if (accentCmd.type === "overbrace" && i < latex.length && latex[i] === "^") {
           // Check for ^{label} after overbrace
           if (i + 1 < latex.length && latex[i + 1] === "{") {
@@ -2708,7 +3183,12 @@ export class LatexConverter {
           accentType: finalAccentType as any,
           accentPosition: accentCmd.position,
           accentBase: baseContent,
-          accentLabel: accentLabel.length > 0 ? accentLabel : (finalAccentType.includes("labeled") ? [] : undefined),
+          accentLabel:
+            accentLabel.length > 0
+              ? accentLabel
+              : finalAccentType.includes("labeled")
+                ? []
+                : undefined,
         };
 
         result.push(accentElement);
@@ -2718,6 +3198,353 @@ export class LatexConverter {
     }
     return false;
   }
+
+  // Helper to check and extract content from style wrappers
+  private extractFromStyleWrapper(
+    latex: string,
+    index: number
+  ): {
+    content: string;
+    endIndex: number;
+    hasWrapper: boolean;
+    styleType?: "display" | "inline";
+  } | null {
+    // Case 1: Check for {\displaystyle ...} or {\textstyle ...} (with braces)
+    if (
+      latex.substr(index, 14) === "{\\displaystyle" ||
+      latex.substr(index, 11) === "{\\textstyle"
+    ) {
+      const isDisplayStyle = latex.substr(index, 14) === "{\\displaystyle";
+      const styleLength = isDisplayStyle ? 14 : 11;
+
+      // Find the matching closing brace
+      let braceCount = 1;
+      let contentStart = index + styleLength;
+
+      // Skip whitespace after style command
+      while (contentStart < latex.length && latex[contentStart] === " ") {
+        contentStart++;
+      }
+
+      // Find the end of the wrapper
+      let contentEnd = contentStart;
+      for (let k = index + 1; k < latex.length; k++) {
+        if (latex[k] === "{") {
+          braceCount++;
+        } else if (latex[k] === "}") {
+          braceCount--;
+          if (braceCount === 0) {
+            contentEnd = k;
+            break;
+          }
+        }
+      }
+
+      const extractedContent = latex.substring(contentStart, contentEnd);
+      return {
+        content: extractedContent,
+        endIndex: contentEnd + 1,
+        hasWrapper: true,
+        styleType: isDisplayStyle ? "display" : "inline",
+      };
+    }
+
+    // Case 2: Check for \displaystyle or \textstyle at the beginning (without outer braces)
+    const trimmed = latex.trim();
+    if (trimmed.startsWith("\\displaystyle ")) {
+      const content = trimmed.substring("\\displaystyle ".length);
+      return {
+        content: content,
+        endIndex: index + latex.length,
+        hasWrapper: true,
+        styleType: "display",
+      };
+    }
+
+    if (trimmed.startsWith("\\textstyle ")) {
+      const content = trimmed.substring("\\textstyle ".length);
+      return {
+        content: content,
+        endIndex: index + latex.length,
+        hasWrapper: true,
+        styleType: "inline",
+      };
+    }
+
+    return null;
+  }
+
+  // Helper to apply display/inline mode to elements that support it
+  private applyStyleModeToElements(
+    elements: EquationElement[],
+    styleType: "display" | "inline"
+  ): void {
+    elements.forEach((element) => {
+      if (element.type === "integral" || element.type === "largeOperator") {
+        element.displayMode = styleType;
+      }
+    });
+  }
+
+
+  private isBuiltinFunctionCommand(latex: string, index: number): boolean {
+    for (const cmd of BUILTIN_FUNCTION_COMMANDS) {
+      if (latex.substr(index, cmd.length) === cmd) {
+        // Make sure next character is not a letter (to avoid \sinh matching \sin)
+        const nextChar = latex[index + cmd.length];
+        if (!nextChar || !/[a-zA-Z]/.test(nextChar)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private parseBuiltinFunctionCommand(
+    latex: string,
+    startIndex: number
+  ): { element: EquationElement; endIndex: number } | null {
+    let i = startIndex;
+    
+    // Find which command this is
+    let functionType = "";
+    for (const cmd of BUILTIN_FUNCTION_COMMANDS) {
+      if (latex.substr(i, cmd.length) === cmd) {
+        const nextChar = latex[i + cmd.length];
+        if (!nextChar || !/[a-zA-Z]/.test(nextChar)) {
+          functionType = cmd.substring(1); // Remove the backslash
+          i += cmd.length;
+          break;
+        }
+      }
+    }
+    
+    if (!functionType) return null;
+    
+    // Skip whitespace
+    while (i < latex.length && latex[i] === " ") i++;
+    
+    // Check for subscript (for log_{base} or limit functions)
+    let hasSubscript = false;
+    let subscriptElements: EquationElement[] = [];
+    
+    if (i < latex.length && latex[i] === "_") {
+      i++; // Skip "_"
+      const subscriptGroup = this.parseLatexGroup(latex, i);
+      if (subscriptGroup) {
+        i = subscriptGroup.endIndex;
+        subscriptElements = this.parseLatexToEquation(subscriptGroup.content);
+        hasSubscript = true;
+      }
+    }
+    
+    // Skip more whitespace after subscript
+    while (i < latex.length && latex[i] === " ") i++;
+    
+    // Parse argument - everything after the function until we hit certain delimiters
+    let argumentElements: EquationElement[] = [];
+    
+    if (i < latex.length) {
+      // For functions, parse the next token/group as the argument
+      let argEnd = i;
+      
+      if (latex[i] === "{") {
+        // Argument is in braces
+        const argGroup = this.parseLatexGroup(latex, i);
+        if (argGroup) {
+          argumentElements = this.parseLatexToEquation(argGroup.content);
+          argEnd = argGroup.endIndex;
+        }
+      } else {
+        // Parse next token (single character, command, or until space/operator)
+        if (latex[i] === "\\") {
+          // Next token is a command
+          argEnd = i + 1;
+          while (argEnd < latex.length && /[a-zA-Z]/.test(latex[argEnd])) {
+            argEnd++;
+          }
+        } else {
+          // Single character or number
+          argEnd = i + 1;
+        }
+        
+        if (argEnd > i) {
+          argumentElements = this.parseLatexToEquation(latex.substring(i, argEnd));
+        }
+      }
+      
+      i = argEnd;
+    }
+    
+    // Create the appropriate function element
+    let element: EquationElement;
+    
+    if (hasSubscript && functionType === "log") {
+      // log with base becomes logn
+      element = {
+        id: this.generateElementId(),
+        type: "function",
+        functionType: "logn",
+        functionArgument: argumentElements,
+        functionBase: subscriptElements
+      };
+    } else if (hasSubscript && ["max", "min", "lim"].includes(functionType)) {
+      // limit functions
+      element = {
+        id: this.generateElementId(),
+        type: "function",
+        functionType: functionType,
+        functionArgument: argumentElements,
+        functionConstraint: subscriptElements
+      };
+    } else {
+      // simple functions
+      element = {
+        id: this.generateElementId(),
+        type: "function",
+        functionType: functionType,
+        functionArgument: argumentElements
+      };
+    }
+    
+    return {
+      element: element,
+      endIndex: i
+    };
+  }
+
+  private parseOperatorName(
+    latex: string,
+    startIndex: number
+  ): { element: EquationElement; endIndex: number } | null {
+    let i = startIndex;
+
+    // Check for \operatorname or \operatorname*
+    const isLimitOperator = latex.substr(i, 14) === "\\operatorname*";
+    const commandLength = isLimitOperator ? 14 : 13;
+
+    if (
+      latex.substr(i, commandLength) !== (isLimitOperator ? "\\operatorname*" : "\\operatorname")
+    ) {
+      return null;
+    }
+
+    i += commandLength;
+
+    // Parse the operator name
+    const nameGroup = this.parseLatexGroup(latex, i);
+    if (!nameGroup) return null;
+    i = nameGroup.endIndex;
+
+    const nameElements = this.parseLatexToEquation(nameGroup.content);
+    
+    // Set italic: false for all name elements since \operatorname creates upright text
+    nameElements.forEach(element => {
+      if (element.type === "text") {
+        element.italic = false;
+      }
+    });
+
+    // Check for subscript (constraint for limit operator, subscript for regular function)
+    let subscriptElements: EquationElement[] | undefined;
+    let hasSubscript = false;
+    if (i < latex.length && latex[i] === "_") {
+      i++; // Skip "_"
+      const subscriptGroup = this.parseLatexGroup(latex, i);
+      if (subscriptGroup) {
+        i = subscriptGroup.endIndex;
+        subscriptElements = this.parseLatexToEquation(subscriptGroup.content);
+        hasSubscript = true;
+      }
+    }
+
+    // Check for argument - either in parentheses for regular functions or space-separated for limit operators
+    let argumentElements: EquationElement[] = [];
+
+    if (isLimitOperator && hasSubscript) {
+      // For \operatorname*{name}_{constraint} argument, the argument follows after a space
+      while (i < latex.length && latex[i] === " ") i++; // Skip spaces
+
+      // Parse the rest as the argument (could be a group or expression)
+      if (i < latex.length && latex[i] === "{") {
+        const argGroup = this.parseLatexGroup(latex, i);
+        if (argGroup) {
+          i = argGroup.endIndex;
+          argumentElements = this.parseLatexToEquation(argGroup.content);
+        }
+      } else {
+        // Parse until next space or command for limit operators
+        let argStart = i;
+        while (
+          i < latex.length &&
+          latex[i] !== " " &&
+          latex[i] !== "\\" &&
+          latex[i] !== "{" &&
+          latex[i] !== "}"
+        ) {
+          i++;
+        }
+        if (i > argStart) {
+          argumentElements = this.parseLatexToEquation(latex.substring(argStart, i));
+        }
+      }
+
+      // Create user-defined limit function
+      const element: EquationElement = {
+        id: this.generateElementId(),
+        type: "function",
+        functionType: "functionlim",
+        functionName: nameElements,
+        functionConstraint: subscriptElements,
+        functionArgument: argumentElements,
+      };
+
+      return { element, endIndex: i };
+    } else {
+      // Regular function - parse argument after space (no parentheses)
+      while (i < latex.length && latex[i] === " ") i++; // Skip spaces
+
+      // Parse the argument (could be a group or expression)
+      if (i < latex.length && latex[i] === "{") {
+        const argGroup = this.parseLatexGroup(latex, i);
+        if (argGroup) {
+          i = argGroup.endIndex;
+          argumentElements = this.parseLatexToEquation(argGroup.content);
+        }
+      } else {
+        // Parse until next space, command, or delimiter
+        let argStart = i;
+        while (
+          i < latex.length &&
+          latex[i] !== " " &&
+          latex[i] !== "\\" &&
+          latex[i] !== "{" &&
+          latex[i] !== "}" &&
+          latex[i] !== "$"
+        ) {
+          i++;
+        }
+        if (i > argStart) {
+          argumentElements = this.parseLatexToEquation(latex.substring(argStart, i));
+        }
+      }
+
+      // Create appropriate user-defined function
+      const functionType = hasSubscript ? "functionsub" : "function";
+      const element: EquationElement = {
+        id: this.generateElementId(),
+        type: "function",
+        functionType: functionType,
+        functionName: nameElements,
+        functionArgument: argumentElements,
+        functionBase: hasSubscript ? subscriptElements : undefined,
+        functionConstraint: undefined,
+      };
+
+      return { element, endIndex: i };
+    }
+  }
+
 
   private parseMatrixStackCasesEnvironment(
     latex: string,
@@ -2731,11 +3558,21 @@ export class LatexConverter {
       subtype: string;
     }> = [
       // Matrix environments
-      { pattern: "\\begin{pmatrix}", end: "\\end{pmatrix}", type: "matrix", subtype: "parentheses" },
+      {
+        pattern: "\\begin{pmatrix}",
+        end: "\\end{pmatrix}",
+        type: "matrix",
+        subtype: "parentheses",
+      },
       { pattern: "\\begin{bmatrix}", end: "\\end{bmatrix}", type: "matrix", subtype: "brackets" },
       { pattern: "\\begin{Bmatrix}", end: "\\end{Bmatrix}", type: "matrix", subtype: "braces" },
       { pattern: "\\begin{vmatrix}", end: "\\end{vmatrix}", type: "matrix", subtype: "bars" },
-      { pattern: "\\begin{Vmatrix}", end: "\\end{Vmatrix}", type: "matrix", subtype: "double-bars" },
+      {
+        pattern: "\\begin{Vmatrix}",
+        end: "\\end{Vmatrix}",
+        type: "matrix",
+        subtype: "double-bars",
+      },
       { pattern: "\\begin{matrix}", end: "\\end{matrix}", type: "matrix", subtype: "none" },
       // Stack environments (array)
       { pattern: "\\begin{array}", end: "\\end{array}", type: "stack", subtype: "plain" },
@@ -2782,7 +3619,10 @@ export class LatexConverter {
     const environmentContent = latex.substring(currentIndex, endIndex).trim();
 
     // Parse content into rows and cells
-    const rows = environmentContent.split("\\\\").map((row) => row.trim()).filter((row) => row.length > 0);
+    const rows = environmentContent
+      .split("\\\\")
+      .map((row) => row.trim())
+      .filter((row) => row.length > 0);
     const cellData: { [key: string]: EquationElement[] } = {};
 
     rows.forEach((row, rowIndex) => {
@@ -2804,7 +3644,13 @@ export class LatexConverter {
       resultElement = {
         id: this.generateElementId(),
         type: "matrix",
-        matrixType: environmentSubtype as "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none",
+        matrixType: environmentSubtype as
+          | "parentheses"
+          | "brackets"
+          | "braces"
+          | "bars"
+          | "double-bars"
+          | "none",
         rows: numRows,
         cols: numCols,
         cells: cellData,
@@ -2818,7 +3664,8 @@ export class LatexConverter {
         cols: numCols,
         cells: cellData,
       };
-    } else { // environmentType === "cases"
+    } else {
+      // environmentType === "cases"
       resultElement = {
         id: this.generateElementId(),
         type: "cases",

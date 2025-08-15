@@ -1,5 +1,64 @@
 // Centralized configuration for all mathematical symbols and operators
 
+// Comprehensive function configuration
+interface FunctionConfig {
+  structureType: "simple" | "functionsub" | "functionlim" | "function";
+  hasBuiltinLatex?: boolean; // whether it has a built-in LaTeX command like \sin
+}
+
+export const FUNCTION_CONFIG: { [key: string]: FunctionConfig } = {
+  // Basic trigonometric functions
+  "sin": { structureType: "simple", hasBuiltinLatex: true },
+  "cos": { structureType: "simple", hasBuiltinLatex: true },
+  "tan": { structureType: "simple", hasBuiltinLatex: true },
+  "sec": { structureType: "simple", hasBuiltinLatex: true },
+  "csc": { structureType: "simple", hasBuiltinLatex: true },
+  "cot": { structureType: "simple", hasBuiltinLatex: true },
+  // Inverse trigonometric functions (no built-in LaTeX)
+  "asin": { structureType: "simple" },
+  "acos": { structureType: "simple" },
+  "atan": { structureType: "simple" },
+  // Hyperbolic functions
+  "sinh": { structureType: "simple", hasBuiltinLatex: true },
+  "cosh": { structureType: "simple", hasBuiltinLatex: true },
+  "tanh": { structureType: "simple", hasBuiltinLatex: true },
+  // Inverse hyperbolic functions (no built-in LaTeX)
+  "asinh": { structureType: "simple" },
+  "acosh": { structureType: "simple" },
+  "atanh": { structureType: "simple" },
+  // Logarithmic functions
+  "log": { structureType: "simple", hasBuiltinLatex: true },
+  "logn": { structureType: "functionsub" }, // log with subscript base
+  "ln": { structureType: "simple", hasBuiltinLatex: true },
+  // Limit operators
+  "max": { structureType: "functionlim", hasBuiltinLatex: true },
+  "min": { structureType: "functionlim", hasBuiltinLatex: true },
+  "lim": { structureType: "functionlim", hasBuiltinLatex: true },
+  "argmax": { structureType: "functionlim" },
+  "argmin": { structureType: "functionlim" },
+  // General function types for user-defined functions
+  "function": { structureType: "function" },
+  "functionsub": { structureType: "functionsub" },
+  "functionlim": { structureType: "functionlim" }
+};
+
+// Derived arrays for backward compatibility
+export const FUNCTION_TYPE_MAP: { [key: string]: string } = Object.entries(FUNCTION_CONFIG).reduce(
+  (acc, [name, config]) => {
+    acc[name] = config.structureType;
+    return acc;
+  },
+  {} as { [key: string]: string }
+);
+
+export const FUNCTION_NAMES = Object.keys(FUNCTION_CONFIG).filter(name => 
+  !["function", "functionsub", "functionlim"].includes(name)
+);
+
+export const BUILTIN_FUNCTION_COMMANDS = Object.entries(FUNCTION_CONFIG)
+  .filter(([_, config]) => config.hasBuiltinLatex)
+  .map(([name, _]) => `\\${name}`);
+
 // Symbol information with Unicode mapping and default styling
 export interface SymbolInfo {
   unicode: string;
@@ -168,6 +227,41 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\triangleq": { unicode: "≜", defaultItalic: false },
   "\\therefore": { unicode: "∴", defaultItalic: false },
   "\\because": { unicode: "∵", defaultItalic: false },
+
+  // Logic symbols (upright by default)
+  "\\forall": { unicode: "∀", defaultItalic: false },
+  "\\exists": { unicode: "∃", defaultItalic: false },
+  "\\nexists": { unicode: "∄", defaultItalic: false },
+  "\\emptyset": { unicode: "∅", defaultItalic: false },
+  "\\varnothing": { unicode: "∅", defaultItalic: false },
+
+  // Letter-like symbols (upright by default)
+  "\\mathbb{R}": { unicode: "ℝ", defaultItalic: false },
+  "\\mathbb{Z}": { unicode: "ℤ", defaultItalic: false },
+  "\\mathbb{Q}": { unicode: "ℚ", defaultItalic: false },
+  "\\mathbb{N}": { unicode: "ℕ", defaultItalic: false },
+  "\\mathbb{C}": { unicode: "ℂ", defaultItalic: false },
+  "\\mathbb{H}": { unicode: "ℍ", defaultItalic: false },
+  "\\mathbb{P}": { unicode: "ℙ", defaultItalic: false },
+  "\\wp": { unicode: "℘", defaultItalic: false },
+  "\\aleph": { unicode: "ℵ", defaultItalic: false },
+  "\\beth": { unicode: "ℶ", defaultItalic: false },
+  "\\gimel": { unicode: "ℷ", defaultItalic: false },
+  "\\daleth": { unicode: "ℸ", defaultItalic: false },
+
+  // Geometry symbols (upright by default)
+  "\\angle": { unicode: "∠", defaultItalic: false },
+  "\\measuredangle": { unicode: "∡", defaultItalic: false },
+  "\\sphericalangle": { unicode: "∢", defaultItalic: false },
+  "\\parallel": { unicode: "∥", defaultItalic: false },
+  "\\nparallel": { unicode: "∦", defaultItalic: false },
+  "\\triangle": { unicode: "△", defaultItalic: false },
+  "\\square": { unicode: "□", defaultItalic: false },
+  "\\blacksquare": { unicode: "■", defaultItalic: false },
+  "\\lozenge": { unicode: "◊", defaultItalic: false },
+  "\\blacklozenge": { unicode: "⧫", defaultItalic: false },
+  "\\bigcirc": { unicode: "○", defaultItalic: false },
+  "\\degree": { unicode: "°", defaultItalic: false },
 
   // Large operators (upright by default)
   "\\sum": {
@@ -371,14 +465,31 @@ export const BRACKET_PAIRS: BracketPair[] = [
 
 // Integral commands for LaTeX processing
 export const INTEGRAL_COMMANDS = [
+  // Indefinite integrals (2 parameters)
   "\\inti", "\\intd",
-  "\\iinti", "\\iintd",
+  "\\iinti", "\\iintd", 
   "\\iiinti", "\\iiintd",
   "\\ointi", "\\ointd",
-  "\\intil", "\\intdl",
-  "\\iintil", "\\iintdl",
-  "\\iiintil", "\\iiintdl",
-  "\\ointil", "\\ointdl",
+  
+  // Multiple integrals with subscript (3 parameters)
+  "\\iintisub", "\\iintdsub",
+  "\\iiintisub", "\\iiintdsub",
+  "\\ointisub", "\\ointdsub",
+  
+  // Multiple integrals with lower limit (3 parameters)
+  "\\iintilower", "\\iintdlower",
+  "\\iiintilower", "\\iiintdlower",
+  
+  // Definite integrals - no limits (4 parameters)
+  "\\intinolim", "\\intdnolim",
+  "\\iintinolim", "\\iintdnolim",
+  "\\iiintinolim", "\\iiintdnolim",
+  "\\ointinolim", "\\ointdnolim",
+  
+  // Definite integrals - with limits (4 parameters)
+  "\\intilim", "\\intdlim",
+  "\\iintilim", "\\iintdlim",
+  "\\iiintilim", "\\iiintdlim",
 ];
 
 // Validate brackets in text for mixed bracket pairs

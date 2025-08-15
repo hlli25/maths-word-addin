@@ -38,47 +38,71 @@
                     grande: ['#1', 1],  // Simply passes through the content
                     
                     // Custom integral commands with separate integrand and variable blocks
-                    // Indefinite integrals (2 parameters)
-                    // Single integral with italic d (standard LaTeX style)
+                    
+                    // === INDEFINITE INTEGRALS (2 parameters: integrand, variable) ===
+                    // Single integral
                     inti: ['\\int {#1} \\, d{#2}', 2],
-                    // Single integral with roman d (physics package style)
                     intd: ['\\int {#1} \\, \\dd{#2}', 2],
                     
-                    // Double integral with italic d
+                    // Double integral
                     iinti: ['\\iint {#1} \\, d{#2}', 2],
-                    // Double integral with roman d
                     iintd: ['\\iint {#1} \\, \\dd{#2}', 2],
+
+                    // Double integral with subscript
+                    iintisub: ['\\iint_{#3} {#1} \\, d{#2}', 3],
+                    iintdsub: ['\\iint_{#3} {#1} \\, \\dd{#2}', 3],
+
+                    // Double integral with lower limit
+                    iintilower: ['\\iint\\limits_{#3} {#1} \\, d{#2}', 3],
+                    iintdlower: ['\\iint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
                     
-                    // Triple integral with italic d
+                    // Triple integral
                     iiinti: ['\\iiint {#1} \\, d{#2}', 2],
-                    // Triple integral with roman d
                     iiintd: ['\\iiint {#1} \\, \\dd{#2}', 2],
+
+                    // Triple integral with subscript
+                    iiintisub: ['\\iiint_{#3} {#1} \\, d{#2}', 3],
+                    iiintdsub: ['\\iiint_{#3} {#1} \\, \\dd{#2}', 3],
+
+                    // Triple integral with lower limit
+                    iiintilower: ['\\iiint\\limits_{#3} {#1} \\, d{#2}', 3],
+                    iiintdlower: ['\\iiint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
                     
-                    // Contour integral with italic d
+                    // Contour integral
                     ointi: ['\\oint {#1} \\, d{#2}', 2],
-                    // Contour integral with roman d
                     ointd: ['\\oint {#1} \\, \\dd{#2}', 2],
                     
-                    // Definite integrals with limits (4 parameters: integrand, variable, lower, upper)
-                    // Single definite integral with italic d
-                    intil: ['\\int_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    // Single definite integral with roman d
-                    intdl: ['\\int_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    // Countour integral with subscript
+                    ointisub: ['\\oint_{#3} {#1} \\, d{#2}', 3],
+                    ointdsub: ['\\oint_{#3} {#1} \\, \\dd{#2}', 3],
                     
-                    // Double definite integral with italic d
-                    iintil: ['\\iint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    // Double definite integral with roman d
-                    iintdl: ['\\iint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    // Single definite integral (subscript/superscript positioning)
+                    intinolim: ['\\int_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    intdnolim: ['\\int_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
                     
-                    // Triple definite integral with italic d
-                    iiintil: ['\\iiint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    // Triple definite integral with roman d
-                    iiintdl: ['\\iiint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    // Double definite integral (subscript/superscript positioning)
+                    iintinolim: ['\\iint_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    iintdnolim: ['\\iint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
                     
-                    // Contour definite integral with italic d
-                    ointil: ['\\oint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    // Contour definite integral with roman d
-                    ointdl: ['\\oint_{#3}^{#4} {#1} \\, \\dd{#2}', 4]
+                    // Triple definite integral (subscript/superscript positioning)
+                    iiintinolim: ['\\iiint_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    iiintdnolim: ['\\iiint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    
+                    // Contour integral with sub/superscript
+                    ointinolim: ['\\oint_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    ointdnolim: ['\\oint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    
+                    // Single definite integral (limits positioning)
+                    intilim: ['\\int\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    intdlim: ['\\int\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    
+                    // Double definite integral (limits positioning)
+                    iintilim: ['\\iint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    iintdlim: ['\\iint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    
+                    // Triple definite integral (limits positioning)
+                    iiintilim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
+                    iiintdlim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4]
                 },
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
@@ -259,9 +283,11 @@
                     <button class="tab-btn" data-tab="operators">Operators</button>
                     <button class="tab-btn" data-tab="large-operators">Large Operators</button>
                     <button class="tab-btn" data-tab="calculus">Calculus</button>
+                    <button class="tab-btn" data-tab="functions">Functions</button>
                     <button class="tab-btn" data-tab="greek-letters">Greek Letters</button>
-                    <button class="tab-btn" data-tab="accents">Accents</button>
+                    <button class="tab-btn" data-tab="symbols">Symbols</button>
                     <button class="tab-btn" data-tab="arrows">Arrows</button>
+                    <button class="tab-btn" data-tab="accents">Accents</button>
                     <button class="tab-btn" data-tab="matrices">Matrices</button>
                 </div>
                 <button class="tab-scroll-btn tab-scroll-right" id="tabScrollRight">
@@ -715,6 +741,77 @@
                             </math>
                         </button>
                     </div>
+                    <!-- Partial Derivative buttons -->
+                    <div class="button-row">
+                        <button class="builder-btn derivative-btn first-partial-derivative-btn" title="First partial derivative">
+                            <math>
+                                <mfrac>
+                                    <mrow>
+                                        <mi class="derivative-d">∂</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">∂</mi>
+                                        <mi>□</mi>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn nth-partial-derivative-btn" title="Higher partial derivative">
+                            <math>
+                                <mfrac>
+                                    <mrow>
+                                        <msup>
+                                            <mi class="derivative-d">∂</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                        <mi>□</mi>
+                                    </mrow>
+                                    <mrow>
+                                        <mi class="derivative-d">∂</mi>
+                                        <msup>
+                                            <mi>□</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                    </mrow>
+                                </mfrac>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn partial-derivative-long-form-btn" title="Partial derivative (Long form)">
+                            <math>
+                                <mrow>
+                                    <mfrac>
+                                        <mi class="derivative-d">∂</mi>
+                                        <mrow>
+                                            <mi class="derivative-d">∂</mi>
+                                            <mi>□</mi>
+                                        </mrow>
+                                    </mfrac>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn derivative-btn nth-partial-derivative-long-form-btn" title="Higher partial derivative (Long form)">
+                            <math>
+                                <mrow>
+                                    <mfrac>
+                                        <msup>
+                                            <mi class="derivative-d">∂</mi>
+                                            <mi>□</mi>
+                                        </msup>
+                                        <mrow>
+                                            <mi class="derivative-d">∂</mi>
+                                            <msup>
+                                                <mi>□</mi>
+                                                <mi>□</mi>
+                                            </msup>
+                                        </mrow>
+                                    </mfrac>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
                     <!-- Integration buttons -->
                     <div class="button-row">
                         <button class="builder-btn integral-btn int-indefinite-display-btn" title="Indefinite integral">
@@ -754,6 +851,330 @@
                                     <mi>□</mi>
                                 </mrow>
                             </math>
+                        </button>
+                    </div>
+                    
+                    <div class="button-row">
+                        <button class="builder-btn integral-btn double-int-indefinite-btn" title="Double integral">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <mo class="sum-operator-display">∬</mo>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn double-int-subscript-btn" title="Double integral with subscript">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msub>
+                                        <mo class="sum-operator-display">∬</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msub>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn double-int-lower-btn" title="Double integral with lower limit">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munder>
+                                        <mo class="sum-operator-display">∬</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munder>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn double-int-nolimit-btn" title="Double definite integral (Side limits)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-display">∬</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn double-int-limit-btn" title="Double definite integral (Above/Below limits)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-display">∬</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                    
+                    <div class="button-row">
+                        <button class="builder-btn integral-btn triple-int-indefinite-btn" title="Triple integral">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <mo class="sum-operator-display">∭</mo>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn triple-int-subscript-btn" title="Triple integral with subscript">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msub>
+                                        <mo class="sum-operator-display">∭</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msub>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn triple-int-lower-btn" title="Triple integral with lower limit">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munder>
+                                        <mo class="sum-operator-display">∭</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munder>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn triple-int-nolimit-btn" title="Triple definite integral (Side limits)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-display">∭</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn triple-int-limit-btn" title="Triple definite integral (Above/Below limits)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munderover>
+                                        <mo class="sum-operator-display">∭</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munderover>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                    
+                    <div class="button-row">
+                        <button class="builder-btn integral-btn contour-int-indefinite-btn" title="Contour integral">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <mo class="sum-operator-display">∮</mo>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn contour-int-subscript-btn" title="Contour integral with path">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msub>
+                                        <mo class="sum-operator-display">∮</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msub>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn contour-int-nolimit-btn" title="Contour integral with bounds">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mo class="sum-operator-display">∮</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msubsup>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                    
+                    <!-- Evaluation Brackets -->
+                    <div class="button-row">
+                        <button class="builder-btn integral-btn evaluation-bracket-btn" data-evaluation-type="bar" title="Evaluation Bracket (Bar)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mrow>
+                                            <mi class="sum-operator-display">□</mi>
+                                            <mo class="sum-operator-display" stretchy="true" symmetric="true">|</mo>
+                                        </mrow>
+                                        <mi class="sum-operator-display">□</mi>
+                                        <mi class="sum-operator-display">□</mi>
+                                    </msubsup>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn evaluation-bracket-btn" data-evaluation-type="square" title="Evaluation Bracket (Square)">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msubsup>
+                                        <mrow>
+                                            <mo class="sum-operator-display" stretchy="true" symmetric="true">[</mo>
+                                            <mi class="sum-operator-display">□</mi>
+                                            <mo class="sum-operator-display" stretchy="true" symmetric="true">]</mo>
+                                        </mrow>
+                                        <mi class="sum-operator-display">□</mi>
+                                        <mi class="sum-operator-display">□</mi>
+                                    </msubsup>
+                                </mrow>
+                            </math>
+                        </button>
+                    </div>
+                </div>
+                <div id="functions" class="tab-pane">
+                    <!-- Trigonometric Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="sin" title="Sine">
+                            <math><mrow><mo>sin</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="cos" title="Cosine">
+                            <math><mrow><mo>cos</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="tan" title="Tangent">
+                            <math><mrow><mo>tan</mo><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="sec" title="Secant">
+                            <math><mrow><mo>sec</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="csc" title="Cosecant">
+                            <math><mrow><mo>csc</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="cot" title="Cotangent">
+                            <math><mrow><mo>cot</mo><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Inverse Trigonometric Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="asin" title="Inverse Sine">
+                            <math><mrow><msup><mo>sin</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="acos" title="Inverse Cosine">
+                            <math><mrow><msup><mo>cos</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="atan" title="Inverse Tangent">
+                            <math><mrow><msup><mo>tan</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Logarithmic Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="log" title="Logarithm">
+                            <math><mrow><mo>log</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="logn" title="Base-n Logarithm">
+                            <math><mrow><msub><mo>log</mo><mi>□</mi></msub><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="ln" title="Natural Logarithm">
+                            <math><mrow><mo>ln</mo><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Hyperbolic Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="sinh" title="Hyperbolic Sine">
+                            <math><mrow><mo>sinh</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="cosh" title="Hyperbolic Cosine">
+                            <math><mrow><mo>cosh</mo><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="tanh" title="Hyperbolic Tangent">
+                            <math><mrow><mo>tanh</mo><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Inverse Hyperbolic Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="asinh" title="Inverse Hyperbolic Sine">
+                            <math><mrow><msup><mo>sinh</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="acosh" title="Inverse Hyperbolic Cosine">
+                            <math><mrow><msup><mo>cosh</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="atanh" title="Inverse Hyperbolic Tangent">
+                            <math><mrow><msup><mo>tanh</mo><mo>-1</mo></msup><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Limit Operators -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="max" title="Maximum with constraint">
+                            <math><mrow><munder><mo>max</mo><mi>□</mi></munder><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="min" title="Minimum with constraint">
+                            <math><mrow><munder><mo>min</mo><mi>□</mi></munder><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="lim" title="Limit">
+                            <math><mrow><munder><mo>lim</mo><mi>□</mi></munder><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="argmax" title="Argument maximum">
+                            <math><mrow><munder><mrow><mo>argmax</mo></mrow><mi>□</mi></munder><mi>□</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="argmin" title="Argument minimum">
+                            <math><mrow><munder><mrow><mo>argmin</mo></mrow><mi>□</mi></munder><mi>□</mi></mrow></math>
+                        </button>
+                    </div>
+                    
+                    <!-- Horizontal separator -->
+                    <hr class="horizontal-separator">
+                    
+                    <!-- Custom Functions title -->
+                    <div class="function-section-title">Custom Functions</div>
+                    
+                    <!-- Custom Functions -->
+                    <div class="button-row">
+                        <button class="builder-btn function-btn" data-function="function" title="Custom Function">
+                            <math><mrow><mi>□</mi><mi>▭</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="functionsub" title="Custom Function with Subscript">
+                            <math><mrow><msub><mi>□</mi><mi>□</mi></msub><mi>▭</mi></mrow></math>
+                        </button>
+                        <button class="builder-btn function-btn" data-function="functionlim" title="Custom Function with Lower Limit">
+                            <math><mrow><munder><mi>□</mi><mi>□</mi></munder><mi>▭</mi></mrow></math>
                         </button>
                     </div>
                 </div>
@@ -812,6 +1233,192 @@
                     <div class="button-row">
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Psi" title="Capital Psi">Ψ</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Omega" title="Capital Omega">Ω</button>
+                    </div>
+                </div>
+                <div id="symbols" class="tab-pane">
+                    <!-- Logic & Sets Symbols -->
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\forall" title="For All">
+                            <math><mo>∀</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\exists" title="There Exists">
+                            <math><mo>∃</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\nexists" title="There Does Not Exist">
+                            <math><mo>∄</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\emptyset" title="Empty Set">
+                            <math><mo>∅</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\in" title="Element Of">
+                            <math><mo>∈</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\notin" title="Not Element Of">
+                            <math><mo>∉</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\ni" title="Contains">
+                            <math><mo>∋</mo></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\cup" title="Union">
+                            <math><mo>∪</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\cap" title="Intersection">
+                            <math><mo>∩</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\setminus" title="Set Minus">
+                            <math><mo>∖</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\subset" title="Subset">
+                            <math><mo>⊂</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\supset" title="Superset">
+                            <math><mo>⊃</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\subseteq" title="Subset Or Equal">
+                            <math><mo>⊆</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\supseteq" title="Superset Or Equal">
+                            <math><mo>⊇</mo></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\nsubseteq" title="Not Subset Or Equal">
+                            <math><mo>⊈</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\nsupseteq" title="Not Superset Or Equal">
+                            <math><mo>⊉</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\subsetneq" title="Proper Subset">
+                            <math><mo>⊊</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\supsetneq" title="Proper Superset">
+                            <math><mo>⊋</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\wedge" title="Logical And">
+                            <math><mo>∧</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\vee" title="Logical Or">
+                            <math><mo>∨</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\vdash" title="Proves">
+                            <math><mo>⊢</mo></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\models" title="Models">
+                            <math><mo>⊨</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\top" title="Top">
+                            <math><mo>⊤</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\bot" title="Bottom">
+                            <math><mo>⊥</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\therefore" title="Therefore">
+                            <math><mo>∴</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\because" title="Because">
+                            <math><mo>∵</mo></math>
+                        </button>
+                    </div>
+
+                    <hr class="horizontal-separator">
+
+                    <!-- Letter-like Symbols -->
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{N}" title="Natural Numbers">
+                            <math><mo>ℕ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{Z}" title="Integers">
+                            <math><mo>ℤ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{Q}" title="Rational Numbers">
+                            <math><mo>ℚ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{R}" title="Real Numbers">
+                            <math><mo>ℝ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{C}" title="Complex Numbers">
+                            <math><mo>ℂ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{H}" title="Quaternions">
+                            <math><mo>ℍ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\mathbb{P}" title="Primes">
+                            <math><mo>ℙ</mo></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\wp" title="Weierstrass P">
+                            <math><mo>℘</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\aleph" title="Aleph">
+                            <math><mo>ℵ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\beth" title="Beth">
+                            <math><mo>ℶ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\gimel" title="Gimel">
+                            <math><mo>ℷ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\daleth" title="Daleth">
+                            <math><mo>ℸ</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\partial" title="Partial Derivative">
+                            <math><mi>∂</mi></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\nabla" title="Nabla">
+                            <math><mo>∇</mo></math>
+                        </button>
+                    </div>
+
+                    <hr class="horizontal-separator">
+
+                    <!-- Geometry Symbols -->
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\angle" title="Angle">
+                            <math><mo>∠</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\measuredangle" title="Measured Angle">
+                            <math><mo>∡</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\sphericalangle" title="Spherical Angle">
+                            <math><mo>∢</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\degree" title="Degree">
+                            <math><mo>°</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\parallel" title="Parallel">
+                            <math><mo>∥</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\nparallel" title="Not Parallel">
+                            <math><mo>∦</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\perp" title="Perpendicular">
+                            <math><mo>⊥</mo></math>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn operator-btn" data-operator="\triangle" title="Triangle">
+                            <math><mo>△</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\square" title="Square">
+                            <math><mo>□</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\blacksquare" title="Black Square">
+                            <math><mo>■</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\lozenge" title="Lozenge">
+                            <math><mo>◊</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\blacklozenge" title="Black Lozenge">
+                            <math><mo>⧫</mo></math>
+                        </button>
+                        <button class="builder-btn operator-btn" data-operator="\bigcirc" title="Large Circle">
+                            <math><mo>○</mo></math>
+                        </button>  
                     </div>
                 </div>
                 <div id="matrices" class="tab-pane">

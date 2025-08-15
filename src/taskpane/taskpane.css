@@ -527,6 +527,27 @@ mfrac mfrac mfrac.display-fraction {
   border-color: #a0a0a0;
 }
 
+/* Function button styles */
+.function-btn {
+  width: 90px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.function-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+/* Function section title styling */
+.function-section-title {
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+  margin: 0 0;
+  padding: 4px 0;
+}
+
 .operator-btn {
   font-size: 16px;
   font-weight: bold;
@@ -1862,5 +1883,45 @@ body.inline-style-active .integral-btn math {
 
 .stack-cases-cancel-btn:hover {
   background: #d1d5db;
+}
+
+/* Evaluation Bracket Button Styling */
+.evaluation-bracket-btn {
+  width: 64px !important;
+  height: 68px !important;
+  font-size: 16px !important;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Evaluation bracket buttons - larger text */
+.evaluation-bracket-btn math {
+  font-size: 14px !important;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+/* Make all text elements in evaluation brackets larger */
+.evaluation-bracket-btn mi,
+.evaluation-bracket-btn mo {
+  font-size: 14px !important;
+  font-weight: bold;
+}
+
+/* Evaluation brackets - inline style when toggle is active */
+body.inline-style-active .evaluation-bracket-btn math {
+  font-size: 14px !important;
+}
+
+body.inline-style-active .evaluation-bracket-btn mi,
+body.inline-style-active .evaluation-bracket-btn mo {
+  font-size: 14px !important;
 }
 

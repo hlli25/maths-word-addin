@@ -1,4 +1,4 @@
-import { getOperatorsNeedingInlineScaling, SYMBOL_CONFIG } from "./symbol-config";
+import { getOperatorsNeedingInlineScaling, SYMBOL_CONFIG } from "./centralized-config";
 
 export class FontMeasurementService {
   private scaleRatios: Map<string, Map<string, number>> = new Map();
