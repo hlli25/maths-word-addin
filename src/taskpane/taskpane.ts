@@ -428,8 +428,8 @@ class MathAddinApp {
     } else if (button.classList.contains("contour-int-indefinite-btn")) {
       this.inputHandler.insertContourIntegral(this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("contour-int-subscript-btn")) {
-      // For contour with path subscript - use definite with nolimits but special handling needed
-      this.inputHandler.insertDefiniteIntegral("contour", this.isInlineStyle ? "inline" : "display", "nolimits");
+      // For contour with path subscript - use lower-only limit
+      this.inputHandler.insertContourIntegralSubscript(this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("contour-int-nolimit-btn")) {
       this.inputHandler.insertDefiniteIntegral("contour", this.isInlineStyle ? "inline" : "display", "nolimits");
     

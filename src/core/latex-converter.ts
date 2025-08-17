@@ -2470,14 +2470,12 @@ export class LatexConverter {
       isDefinite = true;
       limitMode = "limits";
     } else if (latex.substr(i, 10) === "\\iiintisub") {
-      console.log("Matched \\iiintisub command");
       integralType = "triple";
       integralStyle = "italic";
       commandLength = 10;
       isDefinite = true;
       limitMode = "nolimits";
     } else if (latex.substr(i, 10) === "\\iiintdsub") {
-      console.log("Matched \\iiintdsub command");
       integralType = "triple";
       integralStyle = "roman";
       commandLength = 10;
@@ -2496,15 +2494,25 @@ export class LatexConverter {
       isDefinite = true;
       limitMode = "limits";
     } else if (latex.substr(i, 9) === "\\iintisub") {
-      console.log("Matched \\iintisub command");
       integralType = "double";
       integralStyle = "italic";
       commandLength = 9;
       isDefinite = true;
       limitMode = "nolimits";
     } else if (latex.substr(i, 9) === "\\iintdsub") {
-      console.log("Matched \\iintdsub command");
       integralType = "double";
+      integralStyle = "roman";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 9) === "\\ointisub") {
+      integralType = "contour";
+      integralStyle = "italic";
+      commandLength = 9;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 9) === "\\ointdsub") {
+      integralType = "contour";
       integralStyle = "roman";
       commandLength = 9;
       isDefinite = true;

@@ -23,6 +23,12 @@ export class OfficeService {
     latex: string
   ): Promise<void> {
     try {
+      // Log SVG size information
+      const svgSizeBytes = new Blob([svgString]).size;
+      const svgSizeKB = svgSizeBytes / 1024;
+      console.log(`SVG Image dimensions: ${width}x${height}px`);
+      console.log(`SVG String size: ${svgSizeBytes} bytes (${svgSizeKB.toFixed(2)} KB)`);
+      
       // Convert SVG string to base64
       let base64Svg: string;
       try {
@@ -31,7 +37,8 @@ export class OfficeService {
             String.fromCharCode(parseInt(p1, 16))
           )
         );
-        console.log("Base64 conversion successful, length:", base64Svg.length);
+        const base64SizeKB = base64Svg.length / 1024;
+        console.log(`Base64 SVG length: ${base64Svg.length} chars (${base64SizeKB.toFixed(2)} KB)`);
       } catch (base64Error) {
         console.error("Base64 conversion failed:", base64Error);
         throw new Error("Failed to convert SVG to base64");
@@ -67,7 +74,8 @@ export class OfficeService {
             console.log("OOXML insertion failed, falling back to PNG:", ooxmlError);
           }
         } else {
-          console.log(`Matrix/Cases/Array content detected, using PNG approach for better compatibility`);
+          console.log(`Matrix/Array content detected - OOXML insertion not supported by Word (SVG: ${svgSizeKB.toFixed(1)}KB, Base64: ${(base64Svg.length/1024).toFixed(1)}KB)`);
+          console.log("Using PNG approach instead...");
         }
 
         // Phase 2: PNG approach for matrices or OOXML failures

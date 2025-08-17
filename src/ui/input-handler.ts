@@ -770,6 +770,14 @@ export class InputHandler {
     this.insertIntegral("contour", displayMode, false);
   }
 
+  insertContourIntegralSubscript(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("contour", displayMode, true, "nolimits", "lower-only");
+  }
+
+  insertContourIntegralLower(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("contour", displayMode, true, "limits", "lower-only");
+  }
+
   insertDefiniteIntegral(
     integralType: "single" | "double" | "triple" | "contour" = "single",
     displayMode: "inline" | "display" = "inline",
