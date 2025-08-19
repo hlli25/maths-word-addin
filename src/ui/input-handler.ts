@@ -45,9 +45,14 @@ export class InputHandler {
         // Shift+Left: Extend selection by character
         this.contextManager.extendSelection(-1);
       } else if (e.ctrlKey) {
-        // Ctrl+Left: Move cursor over whole structure
+        // Ctrl+Left: Enter structure to the left
         this.contextManager.clearSelection();
-        this.moveOverStructure(-1);
+        this.contextManager.enterAdjacentStructure("left");
+        // Ensure focus and cursor visibility after entering structure
+        setTimeout(() => {
+          this.focusHiddenInput();
+          this.scrollCursorIntoView();
+        }, 10);
       } else {
         // Left: Move cursor by character
         this.contextManager.clearSelection();
@@ -63,9 +68,14 @@ export class InputHandler {
         // Shift+Right: Extend selection by character
         this.contextManager.extendSelection(1);
       } else if (e.ctrlKey) {
-        // Ctrl+Right: Move cursor over whole structure
+        // Ctrl+Right: Enter structure to the right
         this.contextManager.clearSelection();
-        this.moveOverStructure(1);
+        this.contextManager.enterAdjacentStructure("right");
+        // Ensure focus and cursor visibility after entering structure
+        setTimeout(() => {
+          this.focusHiddenInput();
+          this.scrollCursorIntoView();
+        }, 10);
       } else {
         // Right: Move cursor by character
         this.contextManager.clearSelection();
@@ -91,10 +101,9 @@ export class InputHandler {
       this.updateDisplay();
     } else if (key === "Tab") {
       e.preventDefault();
-      if (!e.shiftKey) {
-        this.contextManager.clearSelection();
-      }
-      this.contextManager.navigateUpDown(e.shiftKey ? "ArrowUp" : "ArrowDown");
+      this.contextManager.clearSelection();
+      // Tab cycles through structure fields
+      this.contextManager.navigateTab();
       this.updateDisplay();
     } else if (e.ctrlKey && key.toLowerCase() === "a") {
       e.preventDefault();
@@ -118,35 +127,6 @@ export class InputHandler {
     }
   }
 
-  private moveOverStructure(direction: number): void {
-    const context = this.contextManager.getCurrentContext();
-    if (!context) return;
-
-    const currentPos = this.contextManager.getCursorPosition();
-
-    if (direction > 0 && currentPos < context.array.length) {
-      const element = context.array[currentPos];
-      if (element && element.type !== "text") {
-        // Skip over entire structure
-        this.contextManager.setCursorPosition(currentPos + 1);
-      } else {
-        // Regular character movement
-        this.contextManager.moveCursor(1);
-      }
-    } else if (direction < 0 && currentPos > 0) {
-      const element = context.array[currentPos - 1];
-      if (element && element.type !== "text") {
-        // Skip over entire structure
-        this.contextManager.setCursorPosition(currentPos - 1);
-      } else {
-        // Regular character movement
-        this.contextManager.moveCursor(-1);
-      }
-    } else {
-      // Regular movement at boundaries
-      this.contextManager.moveCursor(direction);
-    }
-  }
 
   handleInput(e: Event): void {
     const input = e.target as HTMLInputElement;

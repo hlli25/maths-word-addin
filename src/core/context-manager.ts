@@ -1,6 +1,6 @@
 import { EquationElement, EquationBuilder } from "./equation-builder";
 import { LatexConverter } from "./latex-converter";
-import { hasMixedBrackets } from "./centralized-config";
+import { hasMixedBrackets, getStructureNavigationFields, isNavigableStructure } from "./centralized-config";
 
 export interface ContextInfo {
   array: EquationElement[];
@@ -170,6 +170,69 @@ export class ContextManager {
       return true;
     }
     return false;
+  }
+
+  // Simple Tab navigation through structure fields
+  navigateTab(): void {
+    if (!this.activeContextPath || this.activeContextPath === "root") return;
+
+    const parts = this.activeContextPath.split("/");
+    const currentPart = parts.pop()!;
+    const elementId = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join("/");
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context || !context.parent) return;
+
+    // Get all available fields for this structure type using centralized config
+    const fields = getStructureNavigationFields(context.parent);
+    const currentIndex = fields.indexOf(currentPart);
+    
+    if (currentIndex === -1) {
+      // Unknown field, exit structure forward
+      this.navigateOutOfContext("forward");
+      return;
+    }
+
+    // Wrap around to beginning when reaching the end
+    const nextIndex = (currentIndex + 1) % fields.length;
+
+    // Navigate to the next field (with wraparound)
+    this.activeContextPath = `${parentPath}/${elementId}/${fields[nextIndex]}`;
+    this.cursorPosition = 0;
+  }
+
+  // Simple method to exit current structure
+  exitStructure(direction: "forward" | "backward"): void {
+    this.navigateOutOfContext(direction);
+  }
+
+  // Enter adjacent structure when cursor is at root level
+  enterAdjacentStructure(direction: "left" | "right"): void {
+    if (!this.activeContextPath || this.activeContextPath !== "root") return;
+
+    const context = this.getContext(this.activeContextPath);
+    if (!context) return;
+
+    const targetIndex = direction === "left" ? this.cursorPosition - 1 : this.cursorPosition;
+    
+    // Check if there's a structure at the target position
+    if (targetIndex < 0 || targetIndex >= context.array.length) return;
+    
+    const targetElement = context.array[targetIndex];
+    
+    // Only enter if it's a navigable structure
+    if (isNavigableStructure(targetElement.type)) {
+      const fields = getStructureNavigationFields(targetElement);
+      if (fields.length === 0) return;
+
+      // Enter the first field for right direction, last field for left direction
+      const fieldIndex = direction === "right" ? 0 : fields.length - 1;
+      const fieldName = fields[fieldIndex];
+      
+      this.activeContextPath = `root/${targetElement.id}/${fieldName}`;
+      this.cursorPosition = 0;
+    }
   }
 
   navigateUpDown(key: "ArrowUp" | "ArrowDown" | "Tab"): void {

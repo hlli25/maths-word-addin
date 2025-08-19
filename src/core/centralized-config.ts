@@ -447,20 +447,22 @@ export function getIntegralSymbol(integralType: "single" | "double" | "triple" |
 export interface BracketPair {
   left: string;
   right: string;
+  leftDisplay: string;  // Display character for left bracket
+  rightDisplay: string; // Display character for right bracket
 }
 
 export const BRACKET_PAIRS: BracketPair[] = [
-  { left: "(", right: ")" },
-  { left: "[", right: "]" },
-  { left: "{", right: "}" },
-  { left: "\\{", right: "\\}" },
-  { left: "\\langle", right: "\\rangle" },
-  { left: "\\lfloor", right: "\\rfloor" },
-  { left: "\\lceil", right: "\\rceil" },
-  { left: "\\lvert", right: "\\rvert" },
-  { left: "\\lVert", right: "\\rVert" },
-  { left: "|", right: "|" },
-  { left: "\\|", right: "\\|" },
+  { left: "(", right: ")", leftDisplay: "(", rightDisplay: ")" },
+  { left: "[", right: "]", leftDisplay: "[", rightDisplay: "]" },
+  { left: "{", right: "}", leftDisplay: "{", rightDisplay: "}" },
+  { left: "\\{", right: "\\}", leftDisplay: "{", rightDisplay: "}" },
+  { left: "\\langle", right: "\\rangle", leftDisplay: "⟨", rightDisplay: "⟩" },
+  { left: "\\lfloor", right: "\\rfloor", leftDisplay: "⌊", rightDisplay: "⌋" },
+  { left: "\\lceil", right: "\\rceil", leftDisplay: "⌈", rightDisplay: "⌉" },
+  { left: "\\lvert", right: "\\rvert", leftDisplay: "|", rightDisplay: "|" },
+  { left: "\\lVert", right: "\\rVert", leftDisplay: "‖", rightDisplay: "‖" },
+  { left: "|", right: "|", leftDisplay: "|", rightDisplay: "|" },
+  { left: "\\|", right: "\\|", leftDisplay: "‖", rightDisplay: "‖" },
 ];
 
 // Integral commands for LaTeX processing
@@ -492,6 +494,31 @@ export const INTEGRAL_COMMANDS = [
   "\\iiintilim", "\\iiintdlim",
 ];
 
+// Helper functions for bracket matching
+export function getBracketPairMap(): { [key: string]: string } {
+  const map: { [key: string]: string } = {};
+  BRACKET_PAIRS.forEach(pair => {
+    map[pair.leftDisplay] = pair.rightDisplay;
+  });
+  return map;
+}
+
+export function getOpenBrackets(): Set<string> {
+  const set = new Set<string>();
+  BRACKET_PAIRS.forEach(pair => {
+    set.add(pair.leftDisplay);
+  });
+  return set;
+}
+
+export function getCloseBrackets(): Set<string> {
+  const set = new Set<string>();
+  BRACKET_PAIRS.forEach(pair => {
+    set.add(pair.rightDisplay);
+  });
+  return set;
+}
+
 // Validate brackets in text for mixed bracket pairs
 export function hasMixedBrackets(text: string): boolean {
   if (!text || text.length === 0) return false;
@@ -520,4 +547,57 @@ export function getLatexCommandLength(text: string, startIndex: number): number 
     }
   }
   return 0;
+}
+
+// Structure navigation field configuration
+export const STRUCTURE_FIELD_LISTS: { [structureType: string]: string[] } = {
+  "fraction": ["numerator", "denominator"],
+  "bevelled-fraction": ["numerator", "denominator"],
+  "nthroot": ["radicand", "index"],
+  "script": ["base", "superscript", "subscript"],
+  "integral": ["upperLimit", "lowerLimit", "integrand", "differentialVariable"],
+  "derivative": ["order", "function", "variable"],
+  "large-operator": ["lowerLimit", "upperLimit", "operand"],
+  "function": ["functionName", "functionConstraint", "functionBase", "functionArgument"],
+  "accent": ["accentBase", "accentLabel"],
+  "matrix": [], // Dynamic based on rows/cols
+  "stack": [],  // Dynamic based on rows/cols
+  "cases": []   // Dynamic based on rows/cols
+};
+
+// Helper function to check if an element is a navigable structure
+export function isNavigableStructure(elementType: string): boolean {
+  return elementType in STRUCTURE_FIELD_LISTS;
+}
+
+// Function to get structure fields for navigation
+export function getStructureNavigationFields(element: any): string[] {
+  const baseFields = STRUCTURE_FIELD_LISTS[element.type] || [];
+  
+  // Handle dynamic fields for matrix-like structures
+  if (element.type === "matrix" || element.type === "stack" || element.type === "cases") {
+    const fields = [];
+    if (element.cells) {
+      for (let row = 0; row < element.rows; row++) {
+        for (let col = 0; col < element.cols; col++) {
+          fields.push(`cell_${row}_${col}`);
+        }
+      }
+    }
+    return fields;
+  }
+  
+  // Filter out fields that don't exist on this specific element
+  return baseFields.filter(field => {
+    if (field === "superscript") return element.superscript;
+    if (field === "subscript") return element.subscript;
+    if (field === "upperLimit") return element.upperLimit;
+    if (field === "lowerLimit") return element.lowerLimit;
+    if (field === "order") return Array.isArray(element.order);
+    if (field === "functionName") return ["function", "functionsub", "functionlim"].includes(element.functionType || "");
+    if (field === "functionConstraint") return element.functionConstraint;
+    if (field === "functionBase") return element.functionBase;
+    if (field === "accentLabel") return element.accentLabel; // Only include if accent has a label
+    return true; // Include field by default
+  });
 }

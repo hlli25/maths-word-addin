@@ -1,4 +1,6 @@
 // Equation element types and builder functionality
+import { getBracketPairMap, getOpenBrackets, getCloseBrackets } from './centralized-config';
+
 export interface EquationElement {
   id: string;
   type:
@@ -479,9 +481,144 @@ export class EquationBuilder {
     this.updateBracketNestingRecursive(this.equation, 0);
   }
 
+  private calculateContentHeight(content: EquationElement[]): number {
+    // Create a temporary container for measurement
+    const measureContainer = document.createElement('div');
+    measureContainer.style.position = 'absolute';
+    measureContainer.style.visibility = 'hidden';
+    measureContainer.style.whiteSpace = 'nowrap';
+    measureContainer.style.fontSize = '16px'; // Base font size
+    measureContainer.style.fontFamily = 'Cambria Math, serif';
+    document.body.appendChild(measureContainer);
+
+    // Create baseline text element for comparison
+    const baselineElement = document.createElement('span');
+    baselineElement.textContent = 'x';
+    baselineElement.style.fontSize = '16px';
+    measureContainer.appendChild(baselineElement);
+    const baselineHeight = baselineElement.getBoundingClientRect().height;
+    measureContainer.removeChild(baselineElement);
+
+    // Create content elements and measure
+    const contentElement = document.createElement('span');
+    contentElement.style.display = 'inline-block';
+    
+    // Recursively build DOM representation of content
+    const buildContentDOM = (elements: EquationElement[], parent: HTMLElement) => {
+      elements.forEach(el => {
+        if (el.type === 'text') {
+          const textSpan = document.createElement('span');
+          textSpan.textContent = el.value || '';
+          parent.appendChild(textSpan);
+        } else if (el.type === 'fraction' || el.type === 'bevelled-fraction') {
+          const fracContainer = document.createElement('span');
+          fracContainer.style.display = 'inline-flex';
+          fracContainer.style.flexDirection = 'column';
+          fracContainer.style.alignItems = 'center';
+          fracContainer.style.verticalAlign = 'middle';
+          
+          const numerator = document.createElement('span');
+          numerator.style.fontSize = '0.8em';
+          if (el.numerator) buildContentDOM(el.numerator, numerator);
+          
+          const line = document.createElement('span');
+          line.style.borderTop = '1px solid black';
+          line.style.width = '100%';
+          line.style.height = '0';
+          
+          const denominator = document.createElement('span');
+          denominator.style.fontSize = '0.8em';
+          if (el.denominator) buildContentDOM(el.denominator, denominator);
+          
+          fracContainer.appendChild(numerator);
+          if (el.type === 'fraction') fracContainer.appendChild(line);
+          fracContainer.appendChild(denominator);
+          parent.appendChild(fracContainer);
+        } else if (el.type === 'script') {
+          const scriptContainer = document.createElement('span');
+          scriptContainer.style.display = 'inline-block';
+          scriptContainer.style.position = 'relative';
+          
+          const base = document.createElement('span');
+          if (el.base) buildContentDOM(el.base, base);
+          scriptContainer.appendChild(base);
+          
+          if (el.superscript) {
+            const sup = document.createElement('sup');
+            sup.style.fontSize = '0.7em';
+            buildContentDOM(el.superscript, sup);
+            scriptContainer.appendChild(sup);
+          }
+          
+          if (el.subscript) {
+            const sub = document.createElement('sub');
+            sub.style.fontSize = '0.7em';
+            buildContentDOM(el.subscript, sub);
+            scriptContainer.appendChild(sub);
+          }
+          
+          parent.appendChild(scriptContainer);
+        } else if (el.type === 'sqrt' || el.type === 'nthroot') {
+          const rootContainer = document.createElement('span');
+          rootContainer.style.display = 'inline-block';
+          rootContainer.style.borderTop = '2px solid black';
+          rootContainer.style.paddingTop = '2px';
+          rootContainer.style.paddingLeft = '4px';
+          rootContainer.style.paddingRight = '4px';
+          
+          if (el.radicand) buildContentDOM(el.radicand, rootContainer);
+          parent.appendChild(rootContainer);
+        } else if (el.type === 'large-operator' || el.type === 'integral') {
+          const opContainer = document.createElement('span');
+          opContainer.style.display = 'inline-flex';
+          opContainer.style.flexDirection = 'column';
+          opContainer.style.alignItems = 'center';
+          opContainer.style.fontSize = '1.5em';
+          
+          const symbol = document.createElement('span');
+          symbol.textContent = el.type === 'integral' ? '∫' : (el.operator || 'Σ');
+          opContainer.appendChild(symbol);
+          
+          parent.appendChild(opContainer);
+        } else if (el.type === 'matrix' || el.type === 'stack' || el.type === 'cases') {
+          const matrixContainer = document.createElement('span');
+          matrixContainer.style.display = 'inline-table';
+          matrixContainer.style.verticalAlign = 'middle';
+          
+          // Approximate matrix height based on number of rows
+          if (el.cells) {
+            const rows = Math.max(...Object.keys(el.cells).map(key => {
+              const match = key.match(/cell_(\d+)_/);
+              return match ? parseInt(match[1]) : 0;
+            })) + 1;
+            matrixContainer.style.minHeight = `${rows * 1.5}em`;
+          }
+          
+          parent.appendChild(matrixContainer);
+        }
+        // Add more element type handling as needed
+      });
+    };
+
+    buildContentDOM(content, contentElement);
+    measureContainer.appendChild(contentElement);
+    
+    const contentHeight = contentElement.getBoundingClientRect().height;
+    
+    // Clean up
+    document.body.removeChild(measureContainer);
+    
+    // Return height ratio (k = k times baseline height)
+    return contentHeight / baselineHeight;
+  }
+
   private updateParenthesesScalingRecursive(elements: EquationElement[]): void {
-    const parenStack: Array<{ element: EquationElement; index: number }> = [];
-    const parenPairs: Array<{
+    const bracketPairMap = getBracketPairMap();
+    const openBrackets = getOpenBrackets();
+    const closeBrackets = getCloseBrackets();
+    
+    const bracketStack: Array<{ element: EquationElement; index: number; bracketType: string }> = [];
+    const bracketPairs: Array<{
       open: { element: EquationElement; index: number };
       close: { element: EquationElement; index: number };
       content: EquationElement[];
@@ -495,26 +632,65 @@ export class EquationBuilder {
         this.updateParenthesesScalingRecursive(el.denominator!);
       } else if (el.type === "sqrt") {
         this.updateParenthesesScalingRecursive(el.radicand!);
+      } else if (el.type === "nthroot") {
+        if (el.index) this.updateParenthesesScalingRecursive(el.index);
+        this.updateParenthesesScalingRecursive(el.radicand!);
       } else if (el.type === "script") {
         this.updateParenthesesScalingRecursive(el.base!);
         if (el.superscript) this.updateParenthesesScalingRecursive(el.superscript);
         if (el.subscript) this.updateParenthesesScalingRecursive(el.subscript);
       } else if (el.type === "bracket") {
         this.updateParenthesesScalingRecursive(el.content!);
+        if (el.superscript) this.updateParenthesesScalingRecursive(el.superscript);
+        if (el.subscript) this.updateParenthesesScalingRecursive(el.subscript);
       } else if (el.type === "large-operator") {
         if (el.lowerLimit) this.updateParenthesesScalingRecursive(el.lowerLimit);
         if (el.upperLimit) this.updateParenthesesScalingRecursive(el.upperLimit);
         if (el.operand) this.updateParenthesesScalingRecursive(el.operand);
+      } else if (el.type === "integral") {
+        if (el.integrand) this.updateParenthesesScalingRecursive(el.integrand);
+        if (el.differentialVariable) this.updateParenthesesScalingRecursive(el.differentialVariable);
+        if (el.lowerLimit) this.updateParenthesesScalingRecursive(el.lowerLimit);
+        if (el.upperLimit) this.updateParenthesesScalingRecursive(el.upperLimit);
+      } else if (el.type === "derivative") {
+        if (el.function) this.updateParenthesesScalingRecursive(el.function);
+        if (el.variable) this.updateParenthesesScalingRecursive(el.variable);
+        if (Array.isArray(el.order)) this.updateParenthesesScalingRecursive(el.order);
+      } else if (el.type === "matrix" || el.type === "stack" || el.type === "cases") {
+        // Cells object is defined as cells[`cell_${row}_${col}`]
+        if (el.cells) {
+          for (const cellKey in el.cells) {
+            if (el.cells.hasOwnProperty(cellKey)) {
+              this.updateParenthesesScalingRecursive(el.cells[cellKey]);
+            }
+          }
+        }
+      } else if (el.type === "accent") {
+        if (el.accentBase) this.updateParenthesesScalingRecursive(el.accentBase);
+        if (el.accentLabel) this.updateParenthesesScalingRecursive(el.accentLabel);
+      } else if (el.type === "function") {
+        if (el.functionName) this.updateParenthesesScalingRecursive(el.functionName);
+        if (el.functionArgument) this.updateParenthesesScalingRecursive(el.functionArgument);
+        if (el.functionBase) this.updateParenthesesScalingRecursive(el.functionBase);
+        if (el.functionConstraint) this.updateParenthesesScalingRecursive(el.functionConstraint);
       }
     });
 
     elements.forEach((element, index) => {
-      if (element.type === "text" && element.value === "(") {
-        parenStack.push({ element, index });
-      } else if (element.type === "text" && element.value === ")") {
-        if (parenStack.length > 0) {
-          const opening = parenStack.pop()!;
-          parenPairs.push({
+      if (element.type === "text" && element.value && openBrackets.has(element.value)) {
+        bracketStack.push({ element, index, bracketType: element.value });
+      } else if (element.type === "text" && element.value && closeBrackets.has(element.value)) {
+        // Find the most recent matching open bracket (search backwards)
+        let matchingOpenIndex = -1;
+        for (let i = bracketStack.length - 1; i >= 0; i--) {
+          if (bracketPairMap[bracketStack[i].bracketType] === element.value) {
+            matchingOpenIndex = i;
+            break;
+          }
+        }
+        if (matchingOpenIndex >= 0) {
+          const opening = bracketStack.splice(matchingOpenIndex, 1)[0];
+          bracketPairs.push({
             open: opening,
             close: { element, index },
             content: elements.slice(opening.index + 1, index),
@@ -523,9 +699,26 @@ export class EquationBuilder {
       }
     });
 
-    parenPairs.forEach((pair) => {
-      const hasFraction = pair.content.some((el) => el.type === "fraction" || el.type === "bevelled-fraction");
-      const scaleFactor = hasFraction ? 1.5 : 1;
+    bracketPairs.forEach((pair) => {
+      // Calculate the height ratio of the content between brackets
+      const heightRatio = this.calculateContentHeight(pair.content);
+      
+      // Scale brackets based on content height
+      // 1.0 = baseline height (no scaling)
+      // 1.5+ = content is 50% taller than baseline (needs scaling)
+      let scaleFactor = 1;
+      
+      if (heightRatio > 2.5) {
+        scaleFactor = 2;      // Very tall content (e.g., nested fractions, tall matrices)
+      } else if (heightRatio > 1.8) {
+        scaleFactor = 1.75;   // Tall content (e.g., fractions with complex elements)
+      } else if (heightRatio > 1.4) {
+        scaleFactor = 1.5;    // Moderately tall content (e.g., simple fractions, superscripts)
+      } else if (heightRatio > 1.2) {
+        scaleFactor = 1.25;   // Slightly tall content
+      }
+      // else scaleFactor remains 1 for normal height content
+      
       pair.open.element.scaleFactor = scaleFactor;
       pair.close.element.scaleFactor = scaleFactor;
     });
@@ -574,12 +767,23 @@ export class EquationBuilder {
         if (element.accentLabel)
           this.updateBracketNestingRecursive(element.accentLabel, currentDepth);
       } else if (element.type === "function") {
+        if (element.functionName)
+          this.updateBracketNestingRecursive(element.functionName, currentDepth);
         if (element.functionArgument)
           this.updateBracketNestingRecursive(element.functionArgument, currentDepth);
         if (element.functionBase)
           this.updateBracketNestingRecursive(element.functionBase, currentDepth);
         if (element.functionConstraint)
           this.updateBracketNestingRecursive(element.functionConstraint, currentDepth);
+      } else if (element.type === "matrix" || element.type === "stack" || element.type === "cases") {
+        // Cells object is defined as cells[`cell_${row}_${col}`]
+        if (element.cells) {
+          for (const cellKey in element.cells) {
+            if (element.cells.hasOwnProperty(cellKey)) {
+              this.updateBracketNestingRecursive(element.cells[cellKey], currentDepth);
+            }
+          }
+        }
       }
     });
   }

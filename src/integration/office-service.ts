@@ -61,7 +61,7 @@ export class OfficeService {
         const hasMatrixContent = latex.includes('matrix') || latex.includes('pmatrix') || latex.includes('bmatrix') ||
                                 latex.includes('cases') || latex.includes('array');
         
-        if (!hasMatrixContent) {
+        if (true) {
           // Phase 1: Use OOXML for simple equations (non-matrix content)
           console.log(`Attempting OOXML for simple equation (${ooxmlSizeKB.toFixed(1)}KB)...`);
 
