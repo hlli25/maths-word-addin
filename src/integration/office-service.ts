@@ -23,6 +23,10 @@ export class OfficeService {
     latex: string
   ): Promise<void> {
     try {
+      // Detect if we're running in Word Online
+      const isWordOnline = this.isWordOnline();
+      console.log(`Platform: ${isWordOnline ? 'Word Online' : 'Word Desktop'}`);
+      
       // Log SVG size information
       const svgSizeBytes = new Blob([svgString]).size;
       const svgSizeKB = svgSizeBytes / 1024;
@@ -61,7 +65,8 @@ export class OfficeService {
         const hasMatrixContent = latex.includes('matrix') || latex.includes('pmatrix') || latex.includes('bmatrix') ||
                                 latex.includes('cases') || latex.includes('array');
         
-        if (true) {
+        // Skip SVG/OOXML for Word Online - go straight to PNG
+        if (!isWordOnline && !hasMatrixContent) {
           // Phase 1: Use OOXML for simple equations (non-matrix content)
           console.log(`Attempting OOXML for simple equation (${ooxmlSizeKB.toFixed(1)}KB)...`);
 
@@ -74,8 +79,12 @@ export class OfficeService {
             console.log("OOXML insertion failed, falling back to PNG:", ooxmlError);
           }
         } else {
-          console.log(`Matrix/Array content detected - OOXML insertion not supported by Word (SVG: ${svgSizeKB.toFixed(1)}KB, Base64: ${(base64Svg.length/1024).toFixed(1)}KB)`);
-          console.log("Using PNG approach instead...");
+          if (isWordOnline) {
+            console.log(`Word Online detected - SVG not supported, using PNG approach...`);
+          } else {
+            console.log(`Matrix/Array content detected - OOXML insertion not supported by Word (SVG: ${svgSizeKB.toFixed(1)}KB, Base64: ${(base64Svg.length/1024).toFixed(1)}KB)`);
+            console.log("Using PNG approach instead...");
+          }
         }
 
         // Phase 2: PNG approach for matrices or OOXML failures
@@ -293,6 +302,41 @@ export class OfficeService {
 </pkg:package>`.trim();
 
     return ooxml;
+  }
+
+  private isWordOnline(): boolean {
+    // Check multiple indicators for Word Online
+    try {
+      // Method 1: Check Office.context.platform
+      if (Office.context && Office.context.platform === Office.PlatformType.OfficeOnline) {
+        return true;
+      }
+      
+      // Method 2: Check user agent for Office Online indicators
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (userAgent.includes('office') && userAgent.includes('online')) {
+        return true;
+      }
+      
+      // Method 3: Check if running in a browser without desktop indicators
+      const isInBrowser = typeof window !== 'undefined' && window.location && window.location.hostname;
+      const hasDesktopIndicators = userAgent.includes('word/') || userAgent.includes('microsoft office');
+      
+      if (isInBrowser && !hasDesktopIndicators) {
+        // Additional check for Office 365 domains
+        const hostname = window.location.hostname;
+        if (hostname.includes('office.com') || hostname.includes('office365.com') || 
+            hostname.includes('sharepoint.com') || hostname.includes('officeapps.live.com')) {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.log("Error detecting platform:", error);
+      // Default to false (assume desktop) if detection fails
+      return false;
+    }
   }
 
   private async convertSvgToPng(svgString: string, width: number, height: number): Promise<string> {
