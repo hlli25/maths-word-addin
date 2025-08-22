@@ -367,9 +367,7 @@ export class LatexConverter {
         const content = this.toLatexRecursive(element.content!, maxDepth, inOperatorName);
         const { latexLeft, latexRight } = this.getBracketLatexSymbols(
           element.leftBracketSymbol!,
-          element.rightBracketSymbol!,
-          element.nestingDepth || 0,
-          maxDepth
+          element.rightBracketSymbol!
         );
         let bracketLatex = `${latexLeft}${content || " "}${latexRight}`;
         
@@ -1415,7 +1413,6 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
@@ -1435,7 +1432,6 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
@@ -1501,21 +1497,14 @@ export class LatexConverter {
   }
 
   private isBracketCommand(latex: string, index: number): boolean {
-    const bracketCommands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    const bracketCommands = ["\\left"];
     return bracketCommands.some((cmd) => latex.substr(index, cmd.length) === cmd);
   }
 
   private skipBracketCommand(latex: string, index: number): number {
     const bracketCommands = [
       "\\left",
-      "\\bigl",
-      "\\Bigl",
-      "\\biggl",
-      "\\Biggl",
-      "\\bigr",
-      "\\Bigr",
-      "\\biggr",
-      "\\Biggr",
+      "\\right",
     ];
     for (const cmd of bracketCommands) {
       if (latex.substr(index, cmd.length) === cmd) {
@@ -1533,17 +1522,14 @@ export class LatexConverter {
     rightSymbol: string;
     content: string;
     endIndex: number;
-    nestingDepth: number;
   } | null {
     // Extract the bracket command
     let leftCommand = "";
-    let nestingDepth = 0;
 
-    const commands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    const commands = ["\\left"];
     for (let i = 0; i < commands.length; i++) {
       if (latex.substr(startIndex, commands[i].length) === commands[i]) {
         leftCommand = commands[i];
-        // Don't try to infer nesting depth from command size
         break;
       }
     }
@@ -1566,19 +1552,8 @@ export class LatexConverter {
 
     while (j < latex.length && depth > 0) {
       // Check for right bracket commands
-      if (
-        latex.substr(j, 6) === "\\right" ||
-        latex.substr(j, 5) === "\\bigr" ||
-        latex.substr(j, 5) === "\\Bigr" ||
-        latex.substr(j, 6) === "\\biggr" ||
-        latex.substr(j, 6) === "\\Biggr"
-      ) {
-        let rightCommandLength =
-          latex.substr(j, 6) === "\\right"
-            ? 6
-            : latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr"
-              ? 6
-              : 5;
+      if (latex.substr(j, 6) === "\\right") {
+        let rightCommandLength = 6;
 
         const rightBracketInfo = this.extractBracketSymbol(latex, j + rightCommandLength);
         if (rightBracketInfo) {
@@ -1590,7 +1565,6 @@ export class LatexConverter {
               rightSymbol: rightBracketInfo.symbol,
               content,
               endIndex: rightBracketInfo.endIndex,
-              nestingDepth,
             };
           }
           j = rightBracketInfo.endIndex;
@@ -1627,14 +1601,6 @@ export class LatexConverter {
       const bracketCommands = [
         "\\left",
         "\\right",
-        "\\bigl",
-        "\\bigr",
-        "\\Bigl",
-        "\\Bigr",
-        "\\biggl",
-        "\\biggr",
-        "\\Biggl",
-        "\\Biggr",
       ];
       for (const cmd of bracketCommands) {
         if (startIndex >= cmd.length && latex.substr(startIndex - cmd.length, cmd.length) === cmd) {
@@ -1659,86 +1625,54 @@ export class LatexConverter {
 
   private getBracketLatexSymbols(
     leftSymbol: string,
-    rightSymbol: string,
-    nestingDepth: number = 0,
-    maxDepth: number = 0
+    rightSymbol: string
   ): { latexLeft: string; latexRight: string } {
-    const sizeCommands = ["", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
-    const sizeCommandsRight = ["", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
-
-    // nestingDepth 0 = outermost, maxDepth = innermost depth
-    // Only brackets at maxDepth should use \left/\right (smallest)
-    // All others use progressively larger sizes as they get more outer
-    let leftSize: string;
-    let rightSize: string;
-
-    if (nestingDepth === maxDepth) {
-      // Innermost brackets (at maxDepth) always use \left/\right
-      leftSize = "";
-      rightSize = "";
-    } else {
-      // Calculate size based on distance from innermost
-      // We want: outermost -> \Biggl, next -> \biggl, next -> \Bigl, next -> \bigl, innermost -> \left
-      const distanceFromInnermost = maxDepth - nestingDepth;
-
-      if (distanceFromInnermost <= 0) {
-        // Should not happen since innermost is handled above, but fallback
-        leftSize = "";
-        rightSize = "";
-      } else if (distanceFromInnermost >= sizeCommands.length) {
-        // Very outer brackets use largest size
-        leftSize = sizeCommands[sizeCommands.length - 1]; // \Biggl
-        rightSize = sizeCommandsRight[sizeCommandsRight.length - 1]; // \Biggr
-      } else {
-        // Map distance to size: distance 1 -> \bigl, distance 2 -> \Bigl, etc.
-        // sizeCommands[0] = "", sizeCommands[1] = \bigl, so we need distanceFromInnermost as index
-        leftSize = sizeCommands[distanceFromInnermost];
-        rightSize = sizeCommandsRight[distanceFromInnermost];
-      }
-    }
+    // Always use \left and \right for automatic sizing
+    let leftSize = "";
+    let rightSize = "";
 
     // Map symbols to LaTeX bracket commands
-    const getLatexBracket = (symbol: string, isLeft: boolean, sizeCommand: string): string => {
+    const getLatexBracket = (symbol: string, isLeft: boolean): string => {
       if (!symbol) return "";
 
       switch (symbol) {
         case "(":
-          return sizeCommand ? `${sizeCommand}(` : "\\left(";
+          return "\\left(";
         case ")":
-          return sizeCommand ? `${sizeCommand})` : "\\right)";
+          return "\\right)";
         case "[":
-          return sizeCommand ? `${sizeCommand}[` : "\\left[";
+          return "\\left[";
         case "]":
-          return sizeCommand ? `${sizeCommand}]` : "\\right]";
+          return "\\right]";
         case "{":
-          return sizeCommand ? `${sizeCommand}\\{` : "\\left\\{";
+          return "\\left\\{";
         case "}":
-          return sizeCommand ? `${sizeCommand}\\}` : "\\right\\}";
+          return "\\right\\}";
         case "⌊":
-          return sizeCommand ? `${sizeCommand}\\lfloor` : "\\left\\lfloor";
+          return "\\left\\lfloor";
         case "⌋":
-          return sizeCommand ? `${sizeCommand}\\rfloor` : "\\right\\rfloor";
+          return "\\right\\rfloor";
         case "⌈":
-          return sizeCommand ? `${sizeCommand}\\lceil` : "\\left\\lceil";
+          return "\\left\\lceil";
         case "⌉":
-          return sizeCommand ? `${sizeCommand}\\rceil` : "\\right\\rceil";
+          return "\\right\\rceil";
         case "|":
-          return sizeCommand ? `${sizeCommand}|` : isLeft ? "\\left|" : "\\right|";
+          return isLeft ? "\\left|" : "\\right|";
         case "‖":
-          return sizeCommand ? `${sizeCommand}\\|` : isLeft ? "\\left\\|" : "\\right\\|";
+          return isLeft ? "\\left\\|" : "\\right\\|";
         case "⟨":
-          return sizeCommand ? `${sizeCommand}\\langle` : "\\left\\langle";
+          return "\\left\\langle";
         case "⟩":
-          return sizeCommand ? `${sizeCommand}\\rangle` : "\\right\\rangle";
+          return "\\right\\rangle";
         case ".":
-          return sizeCommand ? `${sizeCommand}.` : isLeft ? "\\left." : "\\right.";
+          return isLeft ? "\\left." : "\\right.";
         default:
           return symbol; // fallback to the raw symbol
       }
     };
 
-    const latexLeft = getLatexBracket(leftSymbol, true, leftSize);
-    const latexRight = getLatexBracket(rightSymbol, false, rightSize);
+    const latexLeft = getLatexBracket(leftSymbol, true);
+    const latexRight = getLatexBracket(rightSymbol, false);
 
     return { latexLeft, latexRight };
   }

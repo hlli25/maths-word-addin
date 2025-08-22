@@ -1,0 +1,1927 @@
+/*
+ * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+ * See LICENSE in the project root for license information.
+ */
+
+/* General body and container styling */
+body {
+  font-family: "Segoe UI", "Roboto", sans-serif;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 420px;
+  box-sizing: border-box;
+  background-color: #f3f4f6;
+}
+
+#app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Typography from Office UI Fabric styles */
+.ms-fontSize-xl {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.ms-fontSize-m {
+  font-size: 14px;
+  margin-bottom: 16px;
+  color: #666;
+}
+
+.ms-fontWeight-bold {
+  font-weight: 700;
+}
+
+/* Selection and text formatting styles */
+.equation-element.selected {
+  background-color: #0078d4;
+  color: white;
+  border-radius: 2px;
+}
+
+/* Selected structure highlighting*/
+.selected-structure {
+  background-color: #0078d4;
+  color: white;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Selected structure in MathML elements */
+math .selected-structure {
+  background-color: #0078d4;
+  color: white;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Ensure all text within selected structures is white */
+.selected-structure mi,
+.selected-structure mo,
+.selected-structure mn,
+.selected-structure mtext {
+  color: white !important;
+}
+
+/* Highlight selected text within equations */
+math mi.selected,
+math mo.selected,
+math mn.selected {
+  background-color: #0078d4;
+  color: white;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Underlined structures */
+.underlined-structure {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* MathML structure underline styling */
+math mfrac.underlined-structure,
+math msqrt.underlined-structure,
+math mroot.underlined-structure,
+math msup.underlined-structure,
+math msub.underlined-structure,
+math msubsup.underlined-structure {
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 2px;
+}
+
+/* Format button styles */
+.format-btn {
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.format-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+/* Equation Editor Display Area */
+.equation-display {
+  background-color: #ffffff;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 18px;
+  min-height: 120px;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+  cursor: text;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+}
+
+/* Visual Equation Container for MathML */
+.visual-equation-container {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  min-height: 100px;
+  min-width: 100px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 8px;
+  transition: border-color 0.2s ease;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+}
+
+.visual-equation-container.active {
+  border-color: #0078d4;
+  background-color: rgba(0, 120, 212, 0.05);
+}
+
+.visual-equation-container math {
+  display: inline-block;
+  vertical-align: middle; /* Changed from baseline to middle for proper alignment */
+}
+
+/* Style the horizontal scrollbar for the equation display */
+.equation-display::-webkit-scrollbar {
+  height: 8px;
+}
+
+.equation-display::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.equation-display::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.equation-display::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.equation-container {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center; /* Changed from baseline to center for proper vertical alignment */
+  gap: 2px;
+  min-height: 28px; /* Base height for an empty line */
+  min-width: 15px; /* To make empty containers clickable */
+  padding: 2px 4px;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  cursor: text;
+  position: relative;
+}
+
+/* Specific styling for root container to prevent wrapping */
+.equation-container.root-container {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+/* Add extra space after the equation content for horizontal scrolling */
+.equation-container.root-container::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  flex-shrink: 0;
+}
+
+#equationDisplay.equation-container {
+  display: flex;
+  border: 1px solid #c8c8c8;
+  padding: 12px;
+  min-height: 100px;
+}
+
+.equation-display.active {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.equation-display .empty-state {
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+.equation-container.active-context {
+  border-color: #0078d4;
+  background-color: #f5f5f5; /* Light grey background */
+  box-shadow: 0 0 0 1px #0078d4; /* Subtle blue glow */
+}
+
+/* Hidden input to capture keyboard events */
+.equation-input {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* Cursor Styling for MathML */
+.cursor {
+  display: inline-block;
+  width: 1px;
+  background-color: #0078d4;
+  animation: blink 1s step-end infinite;
+  margin: 0;
+  vertical-align: baseline;
+  height: 1.2em;
+  transform: translateY(0.2em);
+}
+
+/* Thicker cursor for integral operands to improve visibility */
+[data-operator*="int"] .cursor {
+  width: 1.5px;
+  background-color: #005a9e;
+}
+
+@keyframes blink {
+  from,
+  to {
+    background-color: transparent;
+  }
+  50% {
+    background-color: #0078d4;
+  }
+}
+
+/* Active Element Highlighting for MathML */
+.active-element {
+  background-color: transparent;
+  border-radius: 3px;
+  outline: none;
+}
+
+/* Make MathML placeholder squares larger and more visible */
+mi.placeholder-square {
+  font-size: 1.1em;
+  font-weight: bold;
+  min-width: 1.1em;
+  min-height: 1.1em;
+  display: inline-block;
+  text-align: center;
+  color: #d0d0d0;
+  background-color: rgba(200, 200, 200, 0.1);
+  border-radius: 3px;
+  padding: 1px 1px;
+  border: 1px dashed #ccc;
+  line-height: 1.1;
+}
+
+/* Active context styling for placeholder squares */
+mi.placeholder-square.active-context {
+  background-color: #f5f5f5;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+  color: #333;
+}
+
+/* MathML Element Styling */
+math, math * {
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+}
+
+mi:empty {
+  color: #999;
+  border: 1px dashed #ccc;
+  border-radius: 2px;
+  padding: 1px 3px;
+  min-width: 12px;
+  display: inline-block;
+  text-align: center;
+}
+
+/* MathML element spacing and font */
+mfrac, msqrt, mroot, msup, msub, msubsup, mo {
+  margin: 0 2px;
+}
+
+/* Display fractions should appear larger even when nested */
+mfrac.display-fraction {
+  font-size: 1.2em;
+}
+
+/* Ensure nested display fractions maintain their size */
+mfrac mfrac.display-fraction {
+  font-size: 1.15em;
+}
+
+/* Third level nested display fractions */
+mfrac mfrac mfrac.display-fraction {
+  font-size: 1.1em;
+}
+
+/* Keep button symbols centered and unaffected */
+.builder-btn math,
+.builder-btn math * {
+  vertical-align: middle;
+  position: static;
+  top: auto;
+  margin: 0;
+}
+
+/* Empty state styling */
+.empty-state {
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  background-color: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.empty-state:hover {
+  border-color: #0078d4;
+  background-color: rgba(0, 120, 212, 0.05);
+  color: #0078d4;
+}
+
+/* Equation Element Styling */
+.equation-element {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  padding: 0 2px;
+}
+
+.equation-element.text-element {
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Tab Panel Styling */
+.tab-panel {
+  margin: 16px 0;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.tab-nav-container {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eaeaea;
+  position: relative;
+}
+
+.tab-nav {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+}
+
+.tab-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  font-size: 14px;
+  color: #666;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  background-color: #f3f2f1;
+}
+
+.tab-btn.active {
+  color: #0078d4;
+  font-weight: 600;
+  border-bottom-color: #0078d4;
+}
+
+.tab-scroll-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.tab-scroll-btn:hover {
+  background-color: #f3f2f1;
+  color: #333;
+}
+
+.tab-scroll-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tab-scroll-btn:disabled:hover {
+  background-color: transparent;
+  color: #666;
+}
+
+.tab-content {
+  padding: 8px;
+  height: 200px;
+  overflow: hidden;
+}
+
+.tab-pane {
+  display: none; /* Hide inactive panes */
+  gap: 4px;
+  height: 100%;
+}
+
+.tab-pane.active {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Add scrollbar for all tab panes that might overflow */
+.tab-pane {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Style the scrollbar for better appearance */
+.tab-pane::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-pane::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tab-pane::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.tab-pane::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.button-row {
+  display: flex;
+  gap: 4px;
+}
+
+.builder-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.builder-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+/* Function button styles */
+.function-btn {
+  width: 90px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.function-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+/* Function section title styling */
+.function-section-title {
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+  margin: 0 0;
+  padding: 4px 0;
+}
+
+.operator-btn {
+  font-size: 16px;
+  font-weight: bold;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+/* Footer Styling */
+.footer {
+  height: 50px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #eaeaea;
+}
+
+.footer-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Button Styling (from Fluent UI) */
+.ms-Button {
+  height: 32px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 2px;
+  padding: 0 16px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.ms-Button--primary {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.ms-Button--primary:hover {
+  background-color: #005a9e;
+  border-color: #005a9e;
+}
+
+.ms-Button--secondary {
+  background-color: white;
+  color: #323130;
+  border: 1px solid #8a8886;
+}
+
+.ms-Button--secondary:hover {
+  background-color: #f3f2f1;
+}
+
+.ms-Button:disabled {
+  background-color: #c8c8c8;
+  border-color: #c8c8c8;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+/* Status Message Area */
+#status {
+  text-align: center;
+  font-size: 12px;
+  color: #333;
+  margin-top: 12px;
+  height: 15px; /* Reserve space to prevent layout shifts */
+}
+
+/* Font Controls Styling */
+.font-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  background-color: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.format-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.font-label {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+
+/* Font Size Controls */
+.font-size-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.font-size-combobox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.font-size-input {
+  width: 25px;
+  padding: 4px 18px 4px 6px;
+  border: 1px solid #c8c8c8;
+  border-radius: 2px;
+  font-size: 12px;
+  text-align: center;
+  background-color: white;
+}
+
+.font-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.font-size-dropdown-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 2px 2px 0;
+}
+
+.font-size-dropdown-btn:hover {
+  background-color: #f3f2f1;
+}
+
+.font-size-dropdown-btn .dropdown-arrow {
+  font-size: 8px;
+  color: #666;
+}
+
+.font-size-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.font-size-dropdown.show {
+  display: block;
+}
+
+.font-size-option {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.font-size-option:last-child {
+  border-bottom: none;
+}
+
+.font-size-option:hover {
+  background-color: #f3f2f1;
+}
+
+.font-size-option.selected {
+  background-color: #0078d4;
+  color: white;
+}
+
+.font-unit {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Format Button Enhancements */
+.format-btn.active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+/* Override active state for non-persistent format buttons */
+.underline-btn.active,
+.color-btn.active {
+  background-color: #fff;
+  color: #333;
+  border-color: #c8c8c8;
+}
+
+/* Format separator */
+.format-separator {
+  width: 1px;
+  height: 20px;
+  background-color: #c8c8c8;
+  margin: 0 1px;
+  align-self: center;
+}
+
+/* Text Mode Button Styles */
+.text-mode-btn {
+  min-width: 32px;
+  position: relative;
+  margin-left: 4px;
+}
+
+.text-mode-icon {
+  font-family: 'Times New Roman', serif;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.text-mode-btn.active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.text-mode-btn.active:hover {
+  background-color: #106ebe;
+  border-color: #106ebe;
+}
+
+.italic-btn em {
+  font-style: italic;
+  font-weight: normal;
+}
+
+/* Underline Dropdown */
+.underline-dropdown-container {
+  position: relative;
+  display: inline-flex;
+}
+
+.underline-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  min-width: 24px;
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.underline-dropdown-btn {
+  padding: 2px 4px;
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  min-width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.underline-dropdown-btn .dropdown-arrow {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.dropdown-arrow {
+  font-size: 8px;
+  margin-left: 2px;
+}
+
+.underline-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 150px;
+  display: none;
+}
+
+.underline-dropdown.show {
+  display: block;
+}
+
+.underline-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.underline-option:last-child {
+  border-bottom: none;
+}
+
+.underline-option:hover {
+  background-color: #f3f2f1;
+}
+
+.underline-option.selected {
+  background-color: #0078d4;
+  color: white;
+}
+
+.underline-visual {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.underline-visual.single-line {
+  text-decoration: underline;
+}
+
+.underline-visual.double-line {
+  text-decoration: underline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* Color Button and Panel */
+.color-dropdown-container {
+  position: relative;
+  display: inline-flex;
+}
+
+.color-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  min-width: 24px;
+  position: relative;
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.color-dropdown-btn {
+  padding: 2px 4px;
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  min-width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-dropdown-btn .dropdown-arrow {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.color-icon {
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.cancel-icon {
+  position: relative;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.cancel-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: currentColor;
+  transform: translateY(-50%) rotate(-15deg);
+}
+
+/* Mathematical cancellation styling */
+.math-cancel {
+  position: relative;
+}
+
+.math-cancel::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: currentColor;
+  transform: translateY(-50%) rotate(-15deg);
+  transform-origin: center;
+}
+
+/* MathML underline styling */
+mi[style*="underline"], mo[style*="underline"], mn[style*="underline"] {
+  text-decoration: underline;
+}
+
+mi[style*="double-underline"], mo[style*="double-underline"], mn[style*="double-underline"] {
+  text-decoration: underline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* MathML cancel styling */
+mi.math-cancel, mo.math-cancel, mn.math-cancel, mrow.math-cancel {
+  position: relative;
+}
+
+mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-cancel::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: currentColor;
+  transform: translateY(-50%) rotate(-15deg);
+  transform-origin: center;
+}
+
+.color-preview {
+  width: 16px;
+  height: 2px;
+  background-color: #000000;
+  margin-top: 1px;
+}
+
+.color-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  transform: translateX(50%);
+  background-color: white;
+  border: 1px solid #c8c8c8;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 12px;
+  display: none;
+  min-width: 180px;
+}
+
+.color-panel.show {
+  display: block;
+}
+
+.color-grid {
+  margin-bottom: 12px;
+}
+
+.color-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.color-square {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.color-square:hover {
+  transform: scale(1.1);
+  border-color: #0078d4;
+}
+
+.color-square.selected {
+  border: 2px solid #0078d4;
+  transform: scale(1.1);
+}
+
+.hex-input-section {
+  padding-top: 8px;
+  border-top: 1px solid #eaeaea;
+}
+
+.hex-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.hex-input-row label {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.hex-input-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.hex-input {
+  padding: 4px 8px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: monospace;
+  width: 80px;
+}
+
+.hex-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.hex-color-preview {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background-color: #000000;
+  flex-shrink: 0;
+}
+
+.hex-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.hex-btn {
+  padding: 4px 12px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 11px;
+  color: #333;
+}
+
+.hex-btn:hover {
+  background-color: #f3f2f1;
+}
+
+.hex-ok-btn:hover {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.color-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.color-panel-btn {
+  padding: 6px 16px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.color-ok-btn {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.color-ok-btn:hover {
+  background-color: #005a9e;
+}
+
+.color-cancel-btn:hover {
+  background-color: #f3f2f1;
+}
+
+/* Instructions Section */
+.instructions {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.instructions ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.instructions li {
+  margin-bottom: 4px;
+}
+
+.key-hint {
+  display: inline-block;
+  background-color: #ffffff;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+}
+
+/* Bracket button styling */
+.bracket-btn {
+  font-size: 14px;
+  color: #333;
+  font-weight: bold;
+  padding: 8px 12px;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Bracket Builder Layout */
+.bracket-separator {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.greek-letter-btn
+.greek-letter-capital-btn {
+  font-size: 16px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+.greek-letter-btn {
+  font-style: italic;
+}
+
+.greek-letter-capbtn {
+  font-style: italic;
+}
+
+/* Accent and Arrow Button Styling */
+.accent-btn {
+  min-width: 50px;
+  height: 50px;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.accent-btn math {
+  pointer-events: none;
+  font-size: 14px;
+}
+
+.arrow-btn {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Tab-specific button row spacing */
+#accents .button-row,
+#arrows .button-row {
+  margin-bottom: 8px;
+}
+
+#accents .button-row {
+  gap: 6px;
+}
+
+#arrows .button-row {
+  gap: 4px;
+}
+
+/* Horizontal Separator Layout */
+.horizontal-separator {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.bracket-preset-btn {
+  font-size: 16px;
+  padding: 8px 4px;
+  min-width: 50px;
+}
+
+
+.bracket-builder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+}
+
+.bracket-left-section {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.bracket-component {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bracket-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
+}
+
+.bracket-select {
+  padding: 6px 8px;
+  border: 1px solid #c8c8c8;
+  border-radius: 3px;
+  background-color: white;
+  font-size: 16px;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+  min-width: 60px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.bracket-select:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.bracket-input {
+  min-width: 80px;
+}
+
+.bracket-input-display {
+  padding: 6px 14px;
+  border: 2px solid #0078d4;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 16px;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+  text-align: center;
+  color: #333;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bracket-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.custom-bracket-btn {
+  background-color: #0078d4;
+  color: white;
+  border: 1px solid #0078d4;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  min-width: 100px;
+  white-space: nowrap;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-bracket-btn:hover {
+  background-color: #005a9e;
+  border-color: #005a9e;
+}
+
+.custom-bracket-btn:disabled {
+  background-color: #c8c8c8;
+  border-color: #c8c8c8;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+/* Hidden container used for rendering the equation with MathJax */
+#mathjax-renderer {
+  visibility: hidden;
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+}
+
+/* Large Operator Button Styling */
+.large-operator-btn {
+  width: 72px;
+  height: 68px;
+  font-size: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.large-operator-btn math {
+  font-size: 12px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.large-operator-btn math mo {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+/* Adjust button row spacing for larger buttons */
+#large-operators .button-row {
+  gap: 8px;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+/* Calculus tab styles */
+.differential-style-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 8px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+}
+
+.differential-style-btn {
+  padding: 4px 8px;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+.differential-style-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+.differential-style-btn.active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.differential-style-btn.active math {
+  color: white;
+}
+
+/* Vertical separator in differential style row */
+.differential-style-row .vertical-separator {
+  width: 1px;
+  height: 28px;
+  background-color: #c8c8c8;
+  margin: 0 2px;
+  align-self: center;
+}
+
+/* Derivative element styling */
+.derivative-fraction {
+  display: inline-block;
+}
+
+.derivative-d.italic {
+  font-style: italic;
+  font-family: 'Times New Roman', serif;
+}
+
+.derivative-d.roman {
+  font-style: normal;
+  font-family: 'Times New Roman', serif;
+}
+
+/* Ensure derivative d elements are properly styled in different contexts */
+math .derivative-d.italic {
+  font-style: italic;
+}
+
+math .derivative-d.roman {
+  font-style: normal;
+}
+
+/* Display/Inline style toggle button */
+.display-style-toggle-btn {
+  padding: 4px 8px;
+  border: 1px solid #c8c8c8;
+  background-color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 72px;
+}
+
+.display-style-toggle-btn:hover {
+  background-color: #f3f2f1;
+  border-color: #a0a0a0;
+}
+
+.display-style-toggle-btn.inline-active {
+  background-color: #0078d4;
+  color: white;
+  border-color: #0078d4;
+}
+
+.display-style-toggle-btn.inline-active math {
+  color: white;
+}
+
+.derivative-btn {
+  width: 64px;
+  height: 60px;
+  font-size: 20px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+/* Style for derivative d that will be updated based on style selection */
+.derivative-d {
+  font-style: italic; /* Default style */
+}
+
+.derivative-d.roman {
+  font-style: normal;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Computer Modern", "Times New Roman", serif !important;
+}
+
+/* Derivative buttons styling - default display style */
+.derivative-btn math {
+  font-size: 20px !important;
+}
+
+/* Derivative buttons styling - inline style when toggle is active */
+body.inline-style-active .derivative-btn math {
+  font-size: 16px !important;
+}
+
+.derivative-btn mfrac {
+  font-size: 1em;
+}
+
+.derivative-btn mi,
+.derivative-btn mn,
+.derivative-btn mo {
+  font-size: 0.9em;
+}
+
+/* Integral buttons styling */
+.integral-btn {
+  width: 64px !important;
+  height: 68px !important;
+  font-size: 12px;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Integral buttons - default display style */
+.integral-btn math {
+  font-size: 12px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+/* Integral buttons - inline style when toggle is active */
+body.inline-style-active .integral-btn math {
+  font-size: 10px;
+}
+
+/* Matrix Styles */
+.matrix-btn {
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 45px;
+}
+
+/* Stack and Cases Button Styles */
+.stack-btn, .cases-btn {
+  font-size: 12px;
+  padding: 4px;
+  width: 50px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stack-btn math, .cases-btn math {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.matrix-size-panel {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.matrix-size-header {
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.matrix-panel-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.matrix-panel-left {
+  flex: 0 0 auto;
+}
+
+.matrix-grid-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.matrix-panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.matrix-grid-selector {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.matrix-grid-cell {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.1s ease;
+}
+
+.matrix-grid-cell:hover,
+.matrix-grid-cell.highlighted {
+  background: #0078d4;
+  border-color: #0078d4;
+}
+
+.matrix-grid-cell.selected {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.matrix-manual-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.matrix-input-hint {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.matrix-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-input-row label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #374151;
+  min-width: 35px;
+}
+
+.matrix-size-input {
+  flex: 1;
+  max-width: 60px;
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.matrix-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+.matrix-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.matrix-action-btn {
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.matrix-create-btn {
+  background: #0078d4;
+  color: #ffffff;
+}
+
+.matrix-create-btn:hover {
+  background: #106ebe;
+}
+
+.matrix-cancel-btn {
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.matrix-cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Wrapper group styling */
+.wrapper-group-cancel {
+  position: relative;
+  background: linear-gradient(
+    to top right,
+    transparent 47%,
+    currentColor 47%,
+    currentColor 53%,
+    transparent 53%
+  );
+  padding: 2px 4px;
+}
+
+.wrapper-group-underline {
+  text-decoration: underline;
+}
+
+.wrapper-group-underline-double {
+  text-decoration: underline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* Stack/Cases Size Selection Panel Styles */
+.stack-cases-size-panel {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: fixed;
+  z-index: 9999;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 250px;
+}
+
+.stack-cases-size-header {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.stack-cases-panel-content {
+  padding: 8px 0;
+}
+
+.stack-cases-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stack-cases-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stack-cases-input-row label {
+  flex: 1;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.stack-cases-size-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.stack-cases-size-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.stack-cases-input-hint {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin: 4px 0;
+}
+
+.stack-cases-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.stack-cases-action-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stack-cases-create-btn {
+  background: #0078d4;
+  color: white;
+}
+
+.stack-cases-create-btn:hover {
+  background: #106ebe;
+}
+
+.stack-cases-cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.stack-cases-cancel-btn:hover {
+  background: #d1d5db;
+}
+
+/* Evaluation Bracket Button Styling */
+.evaluation-bracket-btn {
+  width: 64px !important;
+  height: 68px !important;
+  font-size: 16px !important;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Evaluation bracket buttons - larger text */
+.evaluation-bracket-btn math {
+  font-size: 14px !important;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+/* Make all text elements in evaluation brackets larger */
+.evaluation-bracket-btn mi,
+.evaluation-bracket-btn mo {
+  font-size: 14px !important;
+  font-weight: bold;
+}
+
+/* Evaluation brackets - inline style when toggle is active */
+body.inline-style-active .evaluation-bracket-btn math {
+  font-size: 14px !important;
+}
+
+body.inline-style-active .evaluation-bracket-btn mi,
+body.inline-style-active .evaluation-bracket-btn mo {
+  font-size: 14px !important;
+}
+

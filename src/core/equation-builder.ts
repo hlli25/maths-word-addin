@@ -37,7 +37,6 @@ export interface EquationElement {
   leftBracketSymbol?: string;
   rightBracketSymbol?: string;
   scaleFactor?: number;
-  nestingDepth?: number;
   // for large operators (sum, product, union, intersection, etc. & definite integral)
   operator?: string;
   displayMode?: "inline" | "display";
@@ -223,7 +222,6 @@ export class EquationBuilder {
       leftBracketSymbol: leftSymbol,
       rightBracketSymbol: rightSymbol,
       content: [],
-      nestingDepth: 0,
     };
   }
 
@@ -241,7 +239,6 @@ export class EquationBuilder {
       content: [],
       superscript: [],
       subscript: [],
-      nestingDepth: 0,
     };
   }
 
@@ -727,7 +724,6 @@ export class EquationBuilder {
   private updateBracketNestingRecursive(elements: EquationElement[], currentDepth: number): void {
     elements.forEach((element) => {
       if (element.type === "bracket") {
-        element.nestingDepth = currentDepth;
         this.updateBracketNestingRecursive(element.content!, currentDepth + 1);
       } else if (element.type === "fraction" || element.type === "bevelled-fraction") {
         this.updateBracketNestingRecursive(element.numerator!, currentDepth);

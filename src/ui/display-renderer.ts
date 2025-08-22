@@ -370,25 +370,12 @@ export class DisplayRenderer {
   private bracketToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
 
-    // Apply MathML sizing based on nesting depth to match LaTeX bracket sizes
-    // Depth 0 = outermost (largest), higher depth = more nested (smaller)
-    const nestingDepth = element.nestingDepth || 0;
-
-    // Determine bracket size based on nesting depth
-    // Outermost brackets (depth 0) are largest, innermost are smallest
-    let bracketSize = "2em"; // Default large size for outermost
-    if (nestingDepth === 1) {
-      bracketSize = "1.6em";
-    } else if (nestingDepth === 2) {
-      bracketSize = "1.3em";
-    } else if (nestingDepth >= 3) {
-      bracketSize = "1em";
-    }
-
+    // Brackets will automatically size based on their content
+    // Using stretchy="true" allows brackets to stretch to match content height
     const leftBracket = element.leftBracketSymbol ? 
-      `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.leftBracketSymbol}</mo>` : '';
+      `<mo stretchy="true" symmetric="true">${element.leftBracketSymbol}</mo>` : '';
     const rightBracket = element.rightBracketSymbol ? 
-      `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.rightBracketSymbol}</mo>` : '';
+      `<mo stretchy="true" symmetric="true">${element.rightBracketSymbol}</mo>` : '';
 
     const classes = [];
     if (isActive) classes.push("active-element");
