@@ -474,6 +474,7 @@ export const INTEGRAL_COMMANDS = [
   "\\ointi", "\\ointd",
   
   // Multiple integrals with subscript (3 parameters)
+  "\\intisub", "\\intdsub",
   "\\iintisub", "\\iintdsub",
   "\\iiintisub", "\\iiintdsub",
   "\\ointisub", "\\ointdsub",

@@ -44,6 +44,10 @@
                     inti: ['\\int {#1} \\, d{#2}', 2],
                     intd: ['\\int {#1} \\, \\dd{#2}', 2],
                     
+                    // Single integral with subscript (3 parameters: subscript, integrand, variable)
+                    intisub: ['\\int_{#1} {#2} \\, d{#3}', 3],
+                    intdsub: ['\\int_{#1} {#2} \\, \\dd{#3}', 3],
+                    
                     // Double integral
                     iinti: ['\\iint {#1} \\, d{#2}', 2],
                     iintd: ['\\iint {#1} \\, \\dd{#2}', 2],
@@ -1278,6 +1282,19 @@
                             <math displaystyle="true">
                                 <mrow>
                                     <mo class="sum-operator-display">∫</mo>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-subscript-btn" title="Integral with subscript">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msub>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msub>
                                     <mi class="sum-operand-display">□</mi>
                                     <mi class="derivative-d">d</mi>
                                     <mi>□</mi>

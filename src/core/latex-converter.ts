@@ -494,7 +494,15 @@ export class LatexConverter {
             break;
           case "single":
           default:
-            if (isDefinite) {
+            if (hasOnlyLowerLimit) {
+              // 3-parameter subscript/lower limit variants
+              if (element.limitMode === "limits") {
+                // For single integral, there's no intilower/intdlower command, use standard format
+                integralCommand = useRomanD ? "\\intdlim" : "\\intilim";
+              } else {
+                integralCommand = useRomanD ? "\\intdsub" : "\\intisub";
+              }
+            } else if (isDefinite) {
               if (element.limitMode === "limits") {
                 integralCommand = useRomanD ? "\\intdlim" : "\\intilim";
               } else {
@@ -2389,6 +2397,20 @@ export class LatexConverter {
       commandLength = 8;
       isDefinite = true;
       limitMode = "limits";
+    }
+    // Check for single integral with subscript (3-parameter)
+    else if (latex.substr(i, 8) === "\\intisub") {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 8;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 8) === "\\intdsub") {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 8;
+      isDefinite = true;
+      limitMode = "nolimits";
     }
     // Check for 3-parameter integral commands (subscript and lower limit variants)
     else if (latex.substr(i, 12) === "\\iiintilower") {

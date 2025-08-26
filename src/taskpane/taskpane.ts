@@ -399,6 +399,8 @@ class MathAddinApp {
       this.inputHandler.insertPartialDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-indefinite-display-btn")) {
       this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("int-subscript-btn")) {
+      this.inputHandler.insertSingleIntegralSubscript(this.isInlineStyle ? "inline" : "display");
     
     // Double integral buttons
     } else if (button.classList.contains("double-int-indefinite-btn")) {

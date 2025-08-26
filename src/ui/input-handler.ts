@@ -722,6 +722,10 @@ export class InputHandler {
     this.insertIntegral("single", displayMode, false);
   }
 
+  insertSingleIntegralSubscript(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("single", displayMode, true, "nolimits", "lower-only");
+  }
+
   insertDoubleIntegral(displayMode: "inline" | "display" = "inline"): void {
     this.insertIntegral("double", displayMode, false);
   }
