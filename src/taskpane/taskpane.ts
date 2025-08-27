@@ -448,6 +448,8 @@ class MathAddinApp {
       this.inputHandler.insertFunction(functionType);
     } else if (button.classList.contains("differential-btn")) {
       this.inputHandler.insertDifferential();
+    } else if (button.classList.contains("partial-differential-btn")) {
+      this.inputHandler.insertPartialDifferential();
     }
   }
 

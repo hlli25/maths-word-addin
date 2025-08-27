@@ -127,6 +127,8 @@ export class DisplayRenderer {
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
       case "differential":
         return this.differentialToMathML(element, contextPath, isActive, position, isSelected);
+      case "partialDifferential":
+        return this.partialDifferentialToMathML(element, contextPath, isActive, position, isSelected);
       case "matrix":
         return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
       case "stack":
@@ -523,8 +525,10 @@ export class DisplayRenderer {
           <mn>${element.order}</mn>
         </msup>${functionML}`;
         // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
-        if (element.isPartial) {
+        if (element.isPartial && element.order === 1) {
           denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
+        } else if (element.isPartial) {
+          denominatorContent = variableML; // Just the variable content, no ∂
         } else {
           denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
             ${variableML}
@@ -542,7 +546,7 @@ export class DisplayRenderer {
 
       // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
       if (element.isPartial) {
-        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
+        denominatorContent = variableML; // Just the variable content, no ∂ for nth-order
       } else {
         denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
           ${variableML}
@@ -769,6 +773,25 @@ export class DisplayRenderer {
     // Combine "d" and variable as inline elements
     return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
       <mi ${mathVariantAttr}>d</mi>
+      <mrow data-context-path="${elementPath}/variable">${variableML}</mrow>
+    </mrow>`;
+  }
+
+  private partialDifferentialToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classes = [];
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Generate content for the variable part
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+
+    const styleAttr = this.buildStructureStyle(element, isSelected);
+
+    // Combine "∂" and variable as inline elements
+    return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+      <mi>∂</mi>
       <mrow data-context-path="${elementPath}/variable">${variableML}</mrow>
     </mrow>`;
   }
@@ -1154,8 +1177,6 @@ export class DisplayRenderer {
       if (element.content) this.findElementsWithWrappers(element.content, callback);
       if (element.function) this.findElementsWithWrappers(element.function, callback);
       if (element.variable) this.findElementsWithWrappers(element.variable, callback);
-      if (element.integrand) this.findElementsWithWrappers(element.integrand, callback);
-      if (element.differentialVariable) this.findElementsWithWrappers(element.differentialVariable, callback);
       if (element.operand) this.findElementsWithWrappers(element.operand, callback);
       if (element.upperLimit) this.findElementsWithWrappers(element.upperLimit, callback);
       if (element.lowerLimit) this.findElementsWithWrappers(element.lowerLimit, callback);

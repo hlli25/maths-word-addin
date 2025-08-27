@@ -15,6 +15,7 @@ export interface EquationElement {
     | "derivative"
     | "integral"
     | "differential"
+    | "partialDifferential"
     | "matrix"
     | "stack"
     | "cases"
@@ -60,13 +61,11 @@ export interface EquationElement {
   isLongForm?: boolean; // true for \dv{x}(\grande{f}) format
   isPartial?: boolean; // true for partial derivatives (∂f/∂x)
   // for integral (flexible format with single content area)
-  content?: EquationElement[]; // Full integral content (user places differential anywhere)
   integralStyle?: "italic" | "roman"; // style for d when exporting
   isDefinite?: boolean; // whether this is a definite integral
   integralType?: "single" | "double" | "triple" | "contour"; // type of integral (may extend in future)
   // for differential (standalone d + variable like dx, dy, dt)
   differentialStyle?: "italic" | "roman"; // style for d
-  variable?: EquationElement[]; // the variable part (x, y, t, etc.)
   // for matrix
   matrixType?: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none";
   rows?: number;
@@ -329,6 +328,17 @@ export class EquationBuilder {
     return {
       id: this.generateElementId(),
       type: "differential",
+      differentialStyle: differentialStyle,
+      variable: [], // Empty array for user to type variable (x, y, t, etc.)
+    };
+  }
+
+  createPartialDifferentialElement(
+    differentialStyle: "italic" | "roman" = "italic"
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "partialDifferential",
       differentialStyle: differentialStyle,
       variable: [], // Empty array for user to type variable (x, y, t, etc.)
     };

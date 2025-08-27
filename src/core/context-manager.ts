@@ -111,6 +111,14 @@ export class ContextManager {
       return null;
     }
 
+    // Handle partial differential element containers
+    if (element.type === "partialDifferential") {
+      if (containerName === "variable") {
+        return { array: element.variable || [], parent: element };
+      }
+      return null;
+    }
+
     // Handle matrix, stack, and cases element containers
     if (element.type === "matrix" || element.type === "stack" || element.type === "cases") {
       // Parse cell container name: "cell_row_col"
@@ -1406,8 +1414,6 @@ export class ContextManager {
     if (Array.isArray(element.order)) {
       applyToArray(element.order);
     }
-    applyToArray(element.integrand);
-    applyToArray(element.differentialVariable);
     applyToArray(element.functionArgument);
     applyToArray(element.functionBase);
     applyToArray(element.functionConstraint);

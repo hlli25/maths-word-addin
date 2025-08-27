@@ -798,6 +798,24 @@ export class InputHandler {
     this.focusHiddenInput();
   }
 
+  // Insert partial differential ∂[variable] structure
+  insertPartialDifferential(): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create partial differential element using the differential style
+    const partialDifferentialElement = this.equationBuilder.createPartialDifferentialElement(this.differentialStyle);
+    this.contextManager.insertElementAtCursor(partialDifferentialElement);
+    
+    // Move context into the new partial differential's variable for immediate editing
+    const variablePath = this.contextManager.getElementContextPath(partialDifferentialElement.id, "variable");
+    this.contextManager.enterContextPath(variablePath, 0);
+    
+    this.updateDisplay();
+    this.focusHiddenInput();
+  }
+
   private updateDisplay(): void {
     // Recalculate bracket nesting depths before rendering to ensure visual sizing is correct
     this.equationBuilder.updateBracketNesting();
