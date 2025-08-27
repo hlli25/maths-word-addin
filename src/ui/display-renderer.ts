@@ -156,7 +156,7 @@ export class DisplayRenderer {
       value = "&#160;"; // Non-breaking space
     }
     const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
-    const isVariable = /[a-zA-Z]/.test(value);
+    const isVariable = /[a-zA-Zα-ωΑ-Ω]/.test(value);
     const isNumber = /[0-9]/.test(value);
     const isSymbol = /[^\w\s]/.test(value);
 
