@@ -34,6 +34,12 @@
                     // Custom long form derivative commands (italic d style)
                     derivlfrac: ['\\frac{#1}{#2} #3', 3],    // d/dx f (inline)
                     derivldfrac: ['\\dfrac{#1}{#2} #3', 3],  // d/dx f (display)
+                    // Custom partial derivative commands that render as fractions
+                    pderivfrac: ['\\frac{#1}{#2}', 2],
+                    pderivdfrac: ['\\dfrac{#1}{#2}', 2],
+                    // Custom long form partial derivative commands (italic ∂ style)
+                    pderivlfrac: ['\\frac{#1}{#2} #3', 3],    // ∂/∂x f (inline)
+                    pderivldfrac: ['\\dfrac{#1}{#2} #3', 3],  // ∂/∂x f (display)
                     // Custom macro for marking the function in long form derivatives
                     grande: ['#1', 1],  // Simply passes through the content
                     
@@ -47,6 +53,10 @@
                     // Single integral with subscript (3 parameters: subscript, integrand, variable)
                     intisub: ['\\int_{#1} {#2} \\, d{#3}', 3],
                     intdsub: ['\\int_{#1} {#2} \\, \\dd{#3}', 3],
+                    
+                    // Single integral with lower limit
+                    intilower: ['\\int\\limits_{#3} {#1} \\, d{#2}', 3],
+                    intdlower: ['\\int\\limits_{#3} {#1} \\, \\dd{#2}', 3],
                     
                     // Double integral
                     iinti: ['\\iint {#1} \\, d{#2}', 2],
@@ -1133,6 +1143,10 @@
                                 </mrow>
                             </math>
                         </button>
+                        <div class="double-vertical-separator"></div>
+                        <button class="builder-btn operator-btn partial-symbol-btn" data-operator="\partial" title="Partial Derivative Symbol">
+                            <math><mi>∂</mi></math>
+                        </button>
                     </div>
                     <!-- Derivative buttons -->
                     <div class="button-row">
@@ -1233,10 +1247,7 @@
                                     </mrow>
                                     <mrow>
                                         <mi class="derivative-d">∂</mi>
-                                        <msup>
                                             <mi>□</mi>
-                                            <mi>□</mi>
-                                        </msup>
                                     </mrow>
                                 </mfrac>
                             </math>
@@ -1265,10 +1276,7 @@
                                         </msup>
                                         <mrow>
                                             <mi class="derivative-d">∂</mi>
-                                            <msup>
                                                 <mi>□</mi>
-                                                <mi>□</mi>
-                                            </msup>
                                         </mrow>
                                     </mfrac>
                                     <mi>□</mi>
@@ -1278,7 +1286,7 @@
                     </div>
                     <!-- Integration buttons -->
                     <div class="button-row">
-                        <button class="builder-btn integral-btn int-indefinite-display-btn" title="Indefinite integral">
+                        <button class="builder-btn integral-btn int-indefinite-display-btn" title="Single integral">
                             <math displaystyle="true">
                                 <mrow>
                                     <mo class="sum-operator-display">∫</mo>
@@ -1288,7 +1296,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-subscript-btn" title="Integral with subscript">
+                        <button class="builder-btn integral-btn int-subscript-btn" title="Single integral with subscript">
                             <math displaystyle="true">
                                 <mrow>
                                     <msub>
@@ -1301,7 +1309,20 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Definite integral (Side limits)">
+                        <button class="builder-btn integral-btn int-lower-btn" title="Single integral with lower limit">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munder>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munder>
+                                    <mi class="sum-operand-display">□</mi>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Single integral (Side limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
@@ -1315,7 +1336,7 @@
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-limit-btn" title="Definite integral (Above/Below limits)">
+                        <button class="builder-btn integral-btn int-display-limit-btn" title="Single integral (Above/Below limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>

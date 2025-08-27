@@ -82,6 +82,10 @@ export class LatexConverter {
     { command: "\\derivfrac", length: 10, displayMode: "inline", isLongForm: false },
     { command: "\\derivldfrac", length: 12, displayMode: "display", isLongForm: true },
     { command: "\\derivlfrac", length: 11, displayMode: "inline", isLongForm: true },
+    { command: "\\pderivdfrac", length: 12, displayMode: "display", isLongForm: false },
+    { command: "\\pderivfrac", length: 11, displayMode: "inline", isLongForm: false },
+    { command: "\\pderivldfrac", length: 13, displayMode: "display", isLongForm: true },
+    { command: "\\pderivlfrac", length: 12, displayMode: "inline", isLongForm: true },
   ];
 
   setEquationBuilder(equationBuilder: EquationBuilder): void {
@@ -497,8 +501,7 @@ export class LatexConverter {
             if (hasOnlyLowerLimit) {
               // 3-parameter subscript/lower limit variants
               if (element.limitMode === "limits") {
-                // For single integral, there's no intilower/intdlower command, use standard format
-                integralCommand = useRomanD ? "\\intdlim" : "\\intilim";
+                integralCommand = useRomanD ? "\\intdlower" : "\\intilower";
               } else {
                 integralCommand = useRomanD ? "\\intdsub" : "\\intisub";
               }
@@ -554,12 +557,13 @@ export class LatexConverter {
           // Long form: \dv[n]{x}(\grande{f}) or \dv{x}(\grande{f}) for regular derivatives
           // Long form: \pdv[n]{x}(\grande{f}) or \pdv{x}(\grande{f}) for partial derivatives
           // The function part is wrapped with \grande and can have optional brackets
-          // For partial derivatives, ALWAYS use physics package since we need \pdv
-          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
+          // For regular derivatives, check if we should use physics package based on differential style
+          // For partial derivatives, use custom commands instead of physics package
+          const usePhysicsPackage = !isPartial && this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            // Use \pdv for partial derivatives, \dv for regular derivatives
-            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
+            // Use \dv for regular derivatives when physics package is preferred
+            const dvCommandBase = "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
@@ -626,34 +630,52 @@ export class LatexConverter {
             if (typeof element.order === "number") {
               if (element.order === 1) {
                 numerator = diffSymbol;
-                denominator = `${diffSymbol}${variableLatex || "x"}`;
+                denominator = `${diffSymbol} ${variableLatex || "x"}`;
               } else {
                 numerator = `${diffSymbol}^{${element.order}}`;
-                denominator = `${diffSymbol}${variableLatex || "x"}^{${element.order}}`;
+                // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+                if (isPartial) {
+                  denominator = `${diffSymbol} ${variableLatex || "x"}`;
+                } else {
+                  denominator = `${diffSymbol} ${variableLatex || "x"}^{${element.order}}`;
+                }
               }
             } else {
               // nth order with custom expression
               const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
               numerator = `${diffSymbol}^{${orderLatex || "n"}}`;
-              denominator = `${diffSymbol}${variableLatex || "x"}^{${orderLatex || "n"}}`;
+              // For regular derivatives, restore superscript; for partial derivatives, keep single variable
+              if (isPartial) {
+                denominator = `${diffSymbol} ${variableLatex || "x"}`;
+              } else {
+                denominator = `${diffSymbol} ${variableLatex || "x"}^{${orderLatex || "n"}}`;
+              }
             }
 
-            // Use custom long form commands for italic d
-            if (element.displayMode === "display") {
-              latex += `\\derivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+            // Use custom long form commands based on partial vs regular derivatives
+            if (isPartial) {
+              if (element.displayMode === "display") {
+                latex += `\\pderivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              } else {
+                latex += `\\pderivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              }
             } else {
-              latex += `\\derivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              if (element.displayMode === "display") {
+                latex += `\\derivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              } else {
+                latex += `\\derivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              }
             }
           }
         } else {
           // Standard form derivative handling
-          // For partial derivatives, ALWAYS use physics package (\pdv) regardless of differential style
           // For regular derivatives, check if we should use physics package based on differential style
-          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
+          // For partial derivatives, use custom commands instead of physics package
+          const usePhysicsPackage = !isPartial && this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            // Use physics package \dv or \pdv command (always renders with roman 'd' or '∂' based on italicdiff setting)
-            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
+            // Use physics package \dv command for regular derivatives when preferred
+            const dvCommandBase = "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
@@ -695,23 +717,41 @@ export class LatexConverter {
             if (typeof element.order === "number") {
               if (element.order === 1) {
                 numerator = `${diffSymbol}${functionLatex || " "}`;
-                denominator = `${diffSymbol}${variableLatex || " "}`;
+                denominator = `${diffSymbol} ${variableLatex || " "}`;
               } else {
                 numerator = `${diffSymbol}^{${element.order}}${functionLatex || " "}`;
-                denominator = `${diffSymbol}${variableLatex || " "}^{${element.order}}`;
+                // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+                if (isPartial) {
+                  denominator = `${diffSymbol} ${variableLatex || " "}`;
+                } else {
+                  denominator = `${diffSymbol} ${variableLatex || " "}^{${element.order}}`;
+                }
               }
             } else {
               // nth order with custom expression
               const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
               numerator = `${diffSymbol}^{${orderLatex || "n"}}${functionLatex || " "}`;
-              denominator = `${diffSymbol}${variableLatex || " "}^{${orderLatex || "n"}}`;
+              // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+              if (isPartial) {
+                denominator = `${diffSymbol} ${variableLatex || " "}`;
+              } else {
+                denominator = `${diffSymbol} ${variableLatex || " "}^{${orderLatex || "n"}}`;
+              }
             }
 
-            // Use custom \derivfrac or \derivdfrac command instead of \frac/\dfrac
-            if (element.displayMode === "display") {
-              latex += `\\derivdfrac{${numerator}}{${denominator}}`;
+            // Use custom derivative commands based on partial vs regular derivatives
+            if (isPartial) {
+              if (element.displayMode === "display") {
+                latex += `\\pderivdfrac{${numerator}}{${denominator}}`;
+              } else {
+                latex += `\\pderivfrac{${numerator}}{${denominator}}`;
+              }
             } else {
-              latex += `\\derivfrac{${numerator}}{${denominator}}`;
+              if (element.displayMode === "display") {
+                latex += `\\derivdfrac{${numerator}}{${denominator}}`;
+              } else {
+                latex += `\\derivfrac{${numerator}}{${denominator}}`;
+              }
             }
           }
         }
@@ -2473,6 +2513,18 @@ export class LatexConverter {
       commandLength = 9;
       isDefinite = true;
       limitMode = "nolimits";
+    } else if (latex.substr(i, 10) === "\\intilower") {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 10) === "\\intdlower") {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
     }
     // Check for indefinite integral commands (shorter commands)
     else if (latex.substr(i, 7) === "\\iiintd") {
@@ -2771,20 +2823,22 @@ export class LatexConverter {
   private parseDerivativeFraction(
     numeratorLatex: string,
     denominatorLatex: string,
-    displayMode: "inline" | "display"
+    displayMode: "inline" | "display",
+    isPartialCommand: boolean = false
   ): EquationElement | null {
     // Try to parse numerator and denominator to detect derivative pattern
-    // Pattern: numerator = d^n f, denominator = d x^n or dx^n
+    // Pattern: numerator = d^n f or ∂^n f, denominator = d x^n or dx^n or ∂x ∂y (new format)
 
-    // Improved pattern matching with better handling of function expressions
-    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?(.*)$/);
-    const denMatch = denominatorLatex.match(/^d\s*(.+?)(\^{(.+)})?$/);
+    // Handle both regular derivatives (d) and partial derivatives (∂)
+    const numMatch = numeratorLatex.match(/^(d|\\partial)(\^{(.+)})?(.*)$/);
+    const denMatch = denominatorLatex.match(/^(d|\\partial)\s*(.+?)(\^{(.+)})?$/);
 
     if (numMatch && denMatch) {
-      const orderFromNum = numMatch[2]; // From d^{n}
-      const orderFromDen = denMatch[3]; // From x^{n}
-      let functionPart = numMatch[3] || "";
-      const variablePart = denMatch[1] || "";
+      const isPartial = isPartialCommand || numMatch[1] === "\\partial";
+      const orderFromNum = numMatch[3]; // From d^{n} or ∂^{n}
+      const orderFromDen = denMatch[4]; // From x^{n} (but we'll ignore this now)
+      let functionPart = numMatch[4] || "";
+      const variablePart = denMatch[2] || "";
 
       // Clean up the function part - handle cases like "{ e }^{2x}"
       functionPart = functionPart.trim();
@@ -2799,7 +2853,7 @@ export class LatexConverter {
         }
       }
 
-      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      // Determine order (from numerator only, default to 1)
       let order: number | EquationElement[] = 1;
       if (orderFromNum) {
         const parsedOrder = parseInt(orderFromNum);
@@ -2808,13 +2862,6 @@ export class LatexConverter {
         } else {
           order = this.parseLatexToEquation(orderFromNum);
         }
-      } else if (orderFromDen) {
-        const parsedOrder = parseInt(orderFromDen);
-        if (!isNaN(parsedOrder)) {
-          order = parsedOrder;
-        } else {
-          order = this.parseLatexToEquation(orderFromDen);
-        }
       }
 
       return {
@@ -2822,6 +2869,7 @@ export class LatexConverter {
         type: "derivative",
         order: order,
         displayMode: displayMode,
+        isPartial: isPartial,
         function: this.parseLatexToEquation(functionPart),
         variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
       };
@@ -2834,20 +2882,22 @@ export class LatexConverter {
     numeratorLatex: string,
     denominatorLatex: string,
     functionLatex: string,
-    displayMode: "inline" | "display"
+    displayMode: "inline" | "display",
+    isPartialCommand: boolean = false
   ): EquationElement | null {
     // Parse long form derivative: \derivlfrac{d^n}{dx^n}{f} or \derivldfrac{d^n}{dx^n}{f}
-    // Pattern: numerator = d^n, denominator = dx^n, separate function part
+    // Pattern: numerator = d^n or ∂^n, denominator = dx^n or ∂x ∂y (new format), separate function part
 
-    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?$/);
-    const denMatch = denominatorLatex.match(/^d(.+?)(\^{(.+)})?$/);
+    const numMatch = numeratorLatex.match(/^(d|\\partial)(\^{(.+)})?$/);
+    const denMatch = denominatorLatex.match(/^(d|\\partial)(.+?)(\^{(.+)})?$/);
 
     if (numMatch && denMatch) {
-      const orderFromNum = numMatch[2]; // From d^{n}
-      const orderFromDen = denMatch[3]; // From x^{n}
-      const variablePart = denMatch[1] || "";
+      const isPartial = isPartialCommand || numMatch[1] === "\\partial";
+      const orderFromNum = numMatch[3]; // From d^{n} or ∂^{n}
+      const orderFromDen = denMatch[4]; // From x^{n} (but we'll ignore this now)
+      const variablePart = denMatch[2] || "";
 
-      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      // Determine order (from numerator only, default to 1)
       let order: number | EquationElement[] = 1;
       if (orderFromNum) {
         const parsedOrder = parseInt(orderFromNum);
@@ -2856,13 +2906,6 @@ export class LatexConverter {
         } else {
           order = this.parseLatexToEquation(orderFromNum);
         }
-      } else if (orderFromDen) {
-        const parsedOrder = parseInt(orderFromDen);
-        if (!isNaN(parsedOrder)) {
-          order = parsedOrder;
-        } else {
-          order = this.parseLatexToEquation(orderFromDen);
-        }
       }
 
       return {
@@ -2870,6 +2913,7 @@ export class LatexConverter {
         type: "derivative",
         order: order,
         displayMode: displayMode,
+        isPartial: isPartial,
         function: this.parseLatexToEquation(functionLatex),
         variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
         isLongForm: true,
@@ -2911,7 +2955,8 @@ export class LatexConverter {
             numerator.content,
             denominator.content,
             functionPart.content,
-            cmd.displayMode
+            cmd.displayMode,
+            cmd.command.startsWith("\\pderiv")
           );
           if (derivativeInfo) {
             result.push(derivativeInfo);
@@ -2930,7 +2975,8 @@ export class LatexConverter {
           const derivativeInfo = this.parseDerivativeFraction(
             numerator.content,
             denominator.content,
-            cmd.displayMode
+            cmd.displayMode,
+            cmd.command.startsWith("\\pderiv")
           );
           if (derivativeInfo) {
             result.push(derivativeInfo);

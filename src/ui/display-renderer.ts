@@ -520,10 +520,15 @@ export class DisplayRenderer {
           <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <mn>${element.order}</mn>
         </msup>${functionML}`;
-        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
-          ${variableML}
-          <mn>${element.order}</mn>
-        </msup>`;
+        // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+        if (element.isPartial) {
+          denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
+        } else {
+          denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+            ${variableML}
+            <mn>${element.order}</mn>
+          </msup>`;
+        }
       }
     } else {
       // nth order with custom expression
@@ -533,13 +538,15 @@ export class DisplayRenderer {
         <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
       </msup>${functionML}`;
 
-      // For denominator, create a read-only copy without editable context
-      const readOnlyOrderML = element.order && element.order.length > 0 ? 
-        element.order.map(el => el.value || '').join('') : '';
-      denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
-        ${variableML}
-        <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
-      </msup>`;
+      // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+      if (element.isPartial) {
+        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
+      } else {
+        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+          ${variableML}
+          <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+        </msup>`;
+      }
     }
 
     return `<mfrac ${displayStyle} ${classAttr} ${dataAttrs}>
@@ -583,20 +590,31 @@ export class DisplayRenderer {
           </mrow>
         </mfrac>`;
       } else {
-        // d^n/dx^n or ∂^n/∂x^n format
-        fractionContent = `<mfrac ${displayStyle}>
-          <msup>
-            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
-            <mn>${element.order}</mn>
-          </msup>
-          <mrow data-context-path="${elementPath}/variable">
-            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+        // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+        if (element.isPartial) {
+          fractionContent = `<mfrac ${displayStyle}>
             <msup>
-              ${variableML}
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>
               <mn>${element.order}</mn>
             </msup>
-          </mrow>
-        </mfrac>`;
+            <mrow data-context-path="${elementPath}/variable">
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+            </mrow>
+          </mfrac>`;
+        } else {
+          fractionContent = `<mfrac ${displayStyle}>
+            <msup>
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+              <mn>${element.order}</mn>
+            </msup>
+            <mrow data-context-path="${elementPath}/variable">
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+                ${variableML}
+                <mn>${element.order}</mn>
+              </msup>
+            </mrow>
+          </mfrac>`;
+        }
       }
     } else {
       // nth order with custom expression
@@ -606,19 +624,31 @@ export class DisplayRenderer {
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
 
-      fractionContent = `<mfrac ${displayStyle}>
-        <msup>
-          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
-          <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
-        </msup>
-        <mrow data-context-path="${elementPath}/variable">
-          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+      // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+      if (element.isPartial) {
+        fractionContent = `<mfrac ${displayStyle}>
           <msup>
-            ${variableML}
-            <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+            <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
           </msup>
-        </mrow>
-      </mfrac>`;
+          <mrow data-context-path="${elementPath}/variable">
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+          </mrow>
+        </mfrac>`;
+      } else {
+        fractionContent = `<mfrac ${displayStyle}>
+          <msup>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+            <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+          </msup>
+          <mrow data-context-path="${elementPath}/variable">
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+              ${variableML}
+              <mrow>${readOnlyOrderML}</mrow>
+            </msup>
+          </mrow>
+        </mfrac>`;
+      }
     }
 
     // Long form

@@ -726,6 +726,10 @@ export class InputHandler {
     this.insertIntegral("single", displayMode, true, "nolimits", "lower-only");
   }
 
+  insertSingleIntegralLower(displayMode: "inline" | "display" = "inline"): void {
+    this.insertIntegral("single", displayMode, true, "limits", "lower-only");
+  }
+
   insertDoubleIntegral(displayMode: "inline" | "display" = "inline"): void {
     this.insertIntegral("double", displayMode, false);
   }

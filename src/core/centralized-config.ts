@@ -496,6 +496,7 @@ export const INTEGRAL_COMMANDS = [
   "\\ointisub", "\\ointdsub",
   
   // Multiple integrals with lower limit (3 parameters)
+  "\\intilower", "\\intdlower",
   "\\iintilower", "\\iintdlower",
   "\\iiintilower", "\\iiintdlower",
   

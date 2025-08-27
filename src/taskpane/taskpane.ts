@@ -401,6 +401,8 @@ class MathAddinApp {
       this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-subscript-btn")) {
       this.inputHandler.insertSingleIntegralSubscript(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("int-lower-btn")) {
+      this.inputHandler.insertSingleIntegralLower(this.isInlineStyle ? "inline" : "display");
     
     // Double integral buttons
     } else if (button.classList.contains("double-int-indefinite-btn")) {
