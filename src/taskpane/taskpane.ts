@@ -446,6 +446,8 @@ class MathAddinApp {
     } else if (button.classList.contains("function-btn")) {
       const functionType = (button as HTMLElement).dataset.function || "";
       this.inputHandler.insertFunction(functionType);
+    } else if (button.classList.contains("differential-btn")) {
+      this.inputHandler.insertDifferential();
     }
   }
 

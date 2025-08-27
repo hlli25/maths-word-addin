@@ -706,12 +706,12 @@ export class InputHandler {
 
     this.contextManager.insertElementAtCursor(integralElement);
 
-    // Move context into the integrand (first input block)
-    const integrandPath = this.contextManager.getElementContextPath(
+    // Move context into the content area (single input block)
+    const contentPath = this.contextManager.getElementContextPath(
       integralElement.id,
-      "integrand"
+      "content"
     );
-    this.contextManager.enterContextPath(integrandPath, 0);
+    this.contextManager.enterContextPath(contentPath, 0);
 
     this.updateDisplay();
     this.focusHiddenInput();
@@ -778,6 +778,24 @@ export class InputHandler {
   insertIndefiniteIntegral(displayMode: "inline" | "display" = "inline"): void {
     // Use the new integral method
     this.insertSingleIntegral(displayMode);
+  }
+
+  // Insert differential d[variable] structure
+  insertDifferential(): void {
+    if (!this.contextManager.isActive()) {
+      this.contextManager.enterRootContext();
+    }
+
+    // Create differential element using the new element type
+    const differentialElement = this.equationBuilder.createDifferentialElement(this.differentialStyle);
+    this.contextManager.insertElementAtCursor(differentialElement);
+    
+    // Move context into the new differential's variable for immediate editing
+    const variablePath = this.contextManager.getElementContextPath(differentialElement.id, "variable");
+    this.contextManager.enterContextPath(variablePath, 0);
+    
+    this.updateDisplay();
+    this.focusHiddenInput();
   }
 
   private updateDisplay(): void {

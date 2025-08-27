@@ -125,6 +125,8 @@ export class DisplayRenderer {
         return this.derivativeToMathML(element, contextPath, isActive, position, isSelected);
       case "integral":
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
+      case "differential":
+        return this.differentialToMathML(element, contextPath, isActive, position, isSelected);
       case "matrix":
         return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
       case "stack":
@@ -675,9 +677,8 @@ export class DisplayRenderer {
     const isDifferentialItalic = element.integralStyle === "italic";
     const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
 
-    // Generate content for integrand and differential variable
-    const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
-    const differentialVariableML = this.generateMathMLContent(`${elementPath}/differentialVariable`, element.differentialVariable);
+    // Generate content for the single content field
+    const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
 
     let integralOperatorML = "";
 
@@ -742,13 +743,33 @@ export class DisplayRenderer {
       integralOperatorML = `<mo>${integralSymbol}</mo>`;
     }
 
-    // Combine all parts: integral symbol, integrand, space, d, variable
+    // Combine all parts: integral symbol and content
     return `<mrow ${displayStyle} ${classAttr} ${dataAttrs}>
       ${integralOperatorML}
-      <mrow data-context-path="${elementPath}/integrand">${integrandML}</mrow>
-      <mspace width="0.2em"/>
+      <mrow data-context-path="${elementPath}/content">${contentML}</mrow>
+    </mrow>`;
+  }
+
+  private differentialToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classes = [];
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Check differential style preference (italic vs roman)
+    const isDifferentialItalic = element.differentialStyle === "italic";
+    const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
+
+    // Generate content for the variable part
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+
+    const styleAttr = this.buildStructureStyle(element, isSelected);
+
+    // Combine "d" and variable as inline elements
+    return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
       <mi ${mathVariantAttr}>d</mi>
-      <mrow data-context-path="${elementPath}/differentialVariable">${differentialVariableML}</mrow>
+      <mrow data-context-path="${elementPath}/variable">${variableML}</mrow>
     </mrow>`;
   }
 

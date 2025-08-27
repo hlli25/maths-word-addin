@@ -424,9 +424,8 @@ export class LatexConverter {
           latex += `{\\textstyle ${finalLatex}}`;
         }
       } else if (element.type === "integral") {
-        // Custom integral format with integrand and differential variable blocks
-        const integrandLatex = this.toLatexRecursive(element.integrand!, maxDepth, inOperatorName);
-        const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth, inOperatorName);
+        // Custom integral format with single content field
+        const contentLatex = this.toLatexRecursive(element.content!, maxDepth, inOperatorName);
 
         // Determine the command based on integral type, style, and whether it has limits
         let integralCommand = "";
@@ -522,17 +521,17 @@ export class LatexConverter {
         
         // Handle different parameter counts based on integral command type
         if (integralCommand.includes("sub") || integralCommand.includes("lower")) {
-          // 3-parameter variants: \ointisub{integrand}{variable}{path} or \iintisub{integrand}{variable}{region}
+          // 2-parameter variants with limits: \ointisub{content}{path}
           const limitLatex = hasLowerLimit ? this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName) : " ";
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${limitLatex}}`;
+          finalLatex = `${integralCommand}{${contentLatex || " "}}{${limitLatex}}`;
         } else if (hasLowerLimit && hasUpperLimit) {
-          // 4-parameter definite integrals: \intinolim{integrand}{variable}{lower}{upper}
+          // 3-parameter definite integrals: \intinolim{content}{lower}{upper}
           const lowerLatex = this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName);
           const upperLatex = this.toLatexRecursive(element.upperLimit, maxDepth, inOperatorName);
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
+          finalLatex = `${integralCommand}{${contentLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
         } else {
-          // 2-parameter indefinite integrals: \inti{integrand}{variable}
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}`;
+          // 1-parameter indefinite integrals: \inti{content}
+          finalLatex = `${integralCommand}{${contentLatex || " "}}`;
         }
 
         // Apply appropriate styling based on display mode
@@ -754,6 +753,17 @@ export class LatexConverter {
               }
             }
           }
+        }
+      } else if (element.type === "differential") {
+        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth, inOperatorName);
+        
+        // Use differential style to determine if d should be roman or italic
+        const useRomanD = element.differentialStyle === "roman";
+        
+        if (useRomanD) {
+          latex += `\\mathrm{d}{${variableLatex || ""}}`;
+        } else {
+          latex += `d{${variableLatex || ""}}`;
         }
       } else if (element.type === "matrix") {
         const matrixLatex = this.matrixToLatex(element, maxDepth, inOperatorName);
@@ -1496,6 +1506,32 @@ export class LatexConverter {
             i++;
           }
         }
+      } else if (latex.substr(i, 11) === "\\mathrm{d}{" && latex.indexOf("}", i + 11) !== -1) {
+        // Handle roman differential \mathrm{d}{variable}
+        const endIndex = latex.indexOf("}", i + 11);
+        const variable = latex.substring(i + 11, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "differential",
+          differentialStyle: "roman",
+          variable: variableElements,
+        });
+        i = endIndex + 1;
+      } else if (latex[i] === "d" && i + 1 < latex.length && latex[i + 1] === "{" && latex.indexOf("}", i + 2) !== -1) {
+        // Handle italic differential d{variable}
+        const endIndex = latex.indexOf("}", i + 2);
+        const variable = latex.substring(i + 2, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "differential",
+          differentialStyle: "italic",
+          variable: variableElements,
+        });
+        i = endIndex + 1;
       } else {
         result.push({
           id: this.generateElementId(),
@@ -2574,38 +2610,29 @@ export class LatexConverter {
     let upperLimit: EquationElement[] = [];
 
     if (isDefinite) {
-      // Parse integrand {f(x)}
+      // Parse content {f(x) with embedded differential}
       if (i >= latex.length || latex[i] !== "{") return null;
-      const integrandGroup = this.parseLatexGroup(latex, i);
-      integrand = this.parseLatexToEquation(integrandGroup.content);
-      i = integrandGroup.endIndex;
+      const contentGroup = this.parseLatexGroup(latex, i);
+      integrand = this.parseLatexToEquation(contentGroup.content);
+      i = contentGroup.endIndex;
 
       // Skip whitespace
       while (i < latex.length && latex[i] === " ") i++;
 
-      // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const variableGroup = this.parseLatexGroup(latex, i);
-      differentialVariable = this.parseLatexToEquation(variableGroup.content);
-      i = variableGroup.endIndex;
-
-      // Skip whitespace
-      while (i < latex.length && latex[i] === " ") i++;
-
-      // Check if this is a 3-parameter command (subscript/lower limit only) or 4-parameter (lower+upper)
+      // Check if this is a 2-parameter command (subscript/lower limit only) or 3-parameter (lower+upper)
       const commandName = latex.substr(startIndex, commandLength);
-      const is3Parameter = commandName.includes("sub") || commandName.includes("lower");
+      const is2Parameter = commandName.includes("sub") || commandName.includes("lower");
 
-      if (is3Parameter) {
-        // For 3-parameter integrals: \iintisub{integrand}{variable}{region} or \iintilower{integrand}{variable}{region}
+      if (is2Parameter) {
+        // For 2-parameter integrals: \iintisub{content}{region} or \iintilower{content}{region}
         // Parse region/limit {R}
         if (i >= latex.length || latex[i] !== "{") return null;
         const regionGroup = this.parseLatexGroup(latex, i);
         lowerLimit = this.parseLatexToEquation(regionGroup.content);
         i = regionGroup.endIndex;
-        // upperLimit remains empty for 3-parameter commands
+        // upperLimit remains empty for 2-parameter commands
       } else {
-        // For 4-parameter integrals: \intinolim{integrand}{variable}{lower}{upper} or \intilim{integrand}{variable}{lower}{upper}
+        // For 3-parameter integrals: \intinolim{content}{lower}{upper} or \intilim{content}{lower}{upper}
         // Parse lower limit {a}
         if (i >= latex.length || latex[i] !== "{") return null;
         const lowerGroup = this.parseLatexGroup(latex, i);
@@ -2622,21 +2649,15 @@ export class LatexConverter {
         i = upperGroup.endIndex;
       }
     } else {
-      // For indefinite integrals: \inti{integrand}{variable}
-      // Parse integrand {f(x)}
+      // For indefinite integrals with new single content field: \inti{content}
+      // Parse the single content group
       if (i >= latex.length || latex[i] !== "{") return null;
-      const integrandGroup = this.parseLatexGroup(latex, i);
-      integrand = this.parseLatexToEquation(integrandGroup.content);
-      i = integrandGroup.endIndex;
+      const contentGroup = this.parseLatexGroup(latex, i);
+      const content = this.parseLatexToEquation(contentGroup.content);
+      i = contentGroup.endIndex;
 
-      // Skip whitespace
-      while (i < latex.length && latex[i] === " ") i++;
-
-      // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const variableGroup = this.parseLatexGroup(latex, i);
-      differentialVariable = this.parseLatexToEquation(variableGroup.content);
-      i = variableGroup.endIndex;
+      // Store in the content field for the new structure
+      integrand = content; // We'll reassign this to content field below
     }
 
     const element: EquationElement = {
@@ -2646,8 +2667,7 @@ export class LatexConverter {
       integralStyle: integralStyle,
       isDefinite: isDefinite,
       limitMode: limitMode,
-      integrand: integrand,
-      differentialVariable: differentialVariable,
+      content: integrand, // Use single content field for new structure
       displayMode: "inline", // Default to inline
     };
 

@@ -43,80 +43,80 @@
                     // Custom macro for marking the function in long form derivatives
                     grande: ['#1', 1],  // Simply passes through the content
                     
-                    // Custom integral commands with separate integrand and variable blocks
+                    // Custom integral commands with single content area for flexible differential placement
                     
-                    // === INDEFINITE INTEGRALS (2 parameters: integrand, variable) ===
+                    // === INDEFINITE INTEGRALS (1 parameter: content) ===
                     // Single integral
-                    inti: ['\\int {#1} \\, d{#2}', 2],
-                    intd: ['\\int {#1} \\, \\dd{#2}', 2],
+                    inti: ['\\int {#1}', 1],
+                    intd: ['\\int {#1}', 1],
                     
-                    // Single integral with subscript (3 parameters: subscript, integrand, variable)
-                    intisub: ['\\int_{#1} {#2} \\, d{#3}', 3],
-                    intdsub: ['\\int_{#1} {#2} \\, \\dd{#3}', 3],
+                    // Single integral with subscript (2 parameters: content, subscript)
+                    intisub: ['\\int_{#2} {#1}', 2],
+                    intdsub: ['\\int_{#2} {#1}', 2],
                     
                     // Single integral with lower limit
-                    intilower: ['\\int\\limits_{#3} {#1} \\, d{#2}', 3],
-                    intdlower: ['\\int\\limits_{#3} {#1} \\, \\dd{#2}', 3],
+                    intilower: ['\\int\\limits_{#2} {#1}', 2],
+                    intdlower: ['\\int\\limits_{#2} {#1}', 2],
                     
                     // Double integral
-                    iinti: ['\\iint {#1} \\, d{#2}', 2],
-                    iintd: ['\\iint {#1} \\, \\dd{#2}', 2],
+                    iinti: ['\\iint {#1}', 1],
+                    iintd: ['\\iint {#1}', 1],
 
                     // Double integral with subscript
-                    iintisub: ['\\iint_{#3} {#1} \\, d{#2}', 3],
-                    iintdsub: ['\\iint_{#3} {#1} \\, \\dd{#2}', 3],
+                    iintisub: ['\\iint_{#2} {#1}', 2],
+                    iintdsub: ['\\iint_{#2} {#1}', 2],
 
                     // Double integral with lower limit
-                    iintilower: ['\\iint\\limits_{#3} {#1} \\, d{#2}', 3],
-                    iintdlower: ['\\iint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
+                    iintilower: ['\\iint\\limits_{#2} {#1}', 2],
+                    iintdlower: ['\\iint\\limits_{#2} {#1}', 2],
                     
                     // Triple integral
-                    iiinti: ['\\iiint {#1} \\, d{#2}', 2],
-                    iiintd: ['\\iiint {#1} \\, \\dd{#2}', 2],
+                    iiinti: ['\\iiint {#1}', 1],
+                    iiintd: ['\\iiint {#1}', 1],
 
                     // Triple integral with subscript
-                    iiintisub: ['\\iiint_{#3} {#1} \\, d{#2}', 3],
-                    iiintdsub: ['\\iiint_{#3} {#1} \\, \\dd{#2}', 3],
+                    iiintisub: ['\\iiint_{#2} {#1}', 2],
+                    iiintdsub: ['\\iiint_{#2} {#1}', 2],
 
                     // Triple integral with lower limit
-                    iiintilower: ['\\iiint\\limits_{#3} {#1} \\, d{#2}', 3],
-                    iiintdlower: ['\\iiint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
+                    iiintilower: ['\\iiint\\limits_{#2} {#1}', 2],
+                    iiintdlower: ['\\iiint\\limits_{#2} {#1}', 2],
                     
                     // Contour integral
-                    ointi: ['\\oint {#1} \\, d{#2}', 2],
-                    ointd: ['\\oint {#1} \\, \\dd{#2}', 2],
+                    ointi: ['\\oint {#1}', 1],
+                    ointd: ['\\oint {#1}', 1],
                     
                     // Countour integral with subscript
-                    ointisub: ['\\oint_{#3} {#1} \\, d{#2}', 3],
-                    ointdsub: ['\\oint_{#3} {#1} \\, \\dd{#2}', 3],
+                    ointisub: ['\\oint_{#2} {#1}', 2],
+                    ointdsub: ['\\oint_{#2} {#1}', 2],
                     
                     // Single definite integral (subscript/superscript positioning)
-                    intinolim: ['\\int_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    intdnolim: ['\\int_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    intinolim: ['\\int_{#2}^{#3} {#1}', 3],
+                    intdnolim: ['\\int_{#2}^{#3} {#1}', 3],
                     
                     // Double definite integral (subscript/superscript positioning)
-                    iintinolim: ['\\iint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iintdnolim: ['\\iint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iintinolim: ['\\iint_{#2}^{#3} {#1}', 3],
+                    iintdnolim: ['\\iint_{#2}^{#3} {#1}', 3],
                     
                     // Triple definite integral (subscript/superscript positioning)
-                    iiintinolim: ['\\iiint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iiintdnolim: ['\\iiint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iiintinolim: ['\\iiint_{#2}^{#3} {#1}', 3],
+                    iiintdnolim: ['\\iiint_{#2}^{#3} {#1}', 3],
                     
                     // Contour integral with sub/superscript
-                    ointinolim: ['\\oint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    ointdnolim: ['\\oint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    ointinolim: ['\\oint_{#2}^{#3} {#1}', 3],
+                    ointdnolim: ['\\oint_{#2}^{#3} {#1}', 3],
                     
                     // Single definite integral (limits positioning)
-                    intilim: ['\\int\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    intdlim: ['\\int\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    intilim: ['\\int\\limits_{#2}^{#3} {#1}', 3],
+                    intdlim: ['\\int\\limits_{#2}^{#3} {#1}', 3],
                     
                     // Double definite integral (limits positioning)
-                    iintilim: ['\\iint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iintdlim: ['\\iint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iintilim: ['\\iint\\limits_{#2}^{#3} {#1}', 3],
+                    iintdlim: ['\\iint\\limits_{#2}^{#3} {#1}', 3],
                     
                     // Triple definite integral (limits positioning)
-                    iiintilim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iiintdlim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4]
+                    iiintilim: ['\\iiint\\limits_{#2}^{#3} {#1}', 3],
+                    iiintdlim: ['\\iiint\\limits_{#2}^{#3} {#1}', 3]
                 },
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
@@ -1119,18 +1119,12 @@
                     <div class="button-row differential-style-row">
                         <button class="differential-style-btn active" id="differential-style-italic" title="Italic d (default)">
                             <math>
-                                <mrow>
-                                    <mi>d</mi>
-                                    <mi>□</mi>
-                                </mrow>
+                                <mi>d</mi>
                             </math>
                         </button>
                         <button class="differential-style-btn" id="differential-style-roman" title="Roman d">
                             <math>
-                                <mrow>
-                                    <mtext>d</mtext>
-                                    <mi>□</mi>
-                                </mrow>
+                                <mtext>d</mtext>
                             </math>
                         </button>
                         <div class="vertical-separator"></div>
@@ -1145,9 +1139,21 @@
                         </button>
                         <div class="double-vertical-separator"></div>
                         <button class="builder-btn operator-btn partial-symbol-btn" data-operator="\partial" title="Partial Derivative Symbol">
-                            <math><mi>∂</mi></math>
+                            <math>
+                                <mi>∂</mi>
+                            </math>
+                        </button>
+                        <!-- Differential button -->
+                        <button class="builder-btn differential-btn" title="Differential d□">
+                            <math>
+                                <mrow>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
                         </button>
                     </div>
+                    
                     <!-- Derivative buttons -->
                     <div class="button-row">
                         <button class="builder-btn derivative-btn first-derivative-btn" title="First derivative">
@@ -1225,11 +1231,11 @@
                             <math>
                                 <mfrac>
                                     <mrow>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi class="differential-d">∂</mi>
                                         <mi>□</mi>
                                     </mrow>
                                     <mrow>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi class="differential-d">∂</mi>
                                         <mi>□</mi>
                                     </mrow>
                                 </mfrac>
@@ -1240,13 +1246,13 @@
                                 <mfrac>
                                     <mrow>
                                         <msup>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi class="differential-d">∂</mi>
                                             <mi>□</mi>
                                         </msup>
                                         <mi>□</mi>
                                     </mrow>
                                     <mrow>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi class="differential-d">∂</mi>
                                             <mi>□</mi>
                                     </mrow>
                                 </mfrac>
@@ -1256,9 +1262,9 @@
                             <math>
                                 <mrow>
                                     <mfrac>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi class="differential-d">∂</mi>
                                         <mrow>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi class="differential-d">∂</mi>
                                             <mi>□</mi>
                                         </mrow>
                                     </mfrac>
@@ -1271,11 +1277,11 @@
                                 <mrow>
                                     <mfrac>
                                         <msup>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi class="differential-d">∂</mi>
                                             <mi>□</mi>
                                         </msup>
                                         <mrow>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi class="differential-d">∂</mi>
                                                 <mi>□</mi>
                                         </mrow>
                                     </mfrac>
@@ -1291,8 +1297,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∫</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1304,8 +1308,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1317,8 +1319,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munder>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1331,8 +1331,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1345,8 +1343,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1358,8 +1354,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∬</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1371,8 +1365,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1384,8 +1376,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munder>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1398,8 +1388,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1412,8 +1400,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1425,8 +1411,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∭</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1438,8 +1422,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1451,8 +1433,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munder>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1465,8 +1445,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1479,8 +1457,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1492,8 +1468,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∮</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1505,8 +1479,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1519,8 +1491,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>

@@ -93,14 +93,20 @@ export class ContextManager {
 
     // Handle integral element containers
     if (element.type === "integral") {
-      if (containerName === "integrand") {
-        return { array: element.integrand || [], parent: element };
-      } else if (containerName === "differentialVariable") {
-        return { array: element.differentialVariable || [], parent: element };
+      if (containerName === "content") {
+        return { array: element.content || [], parent: element };
       } else if (containerName === "lowerLimit") {
         return { array: element.lowerLimit || [], parent: element };
       } else if (containerName === "upperLimit") {
         return { array: element.upperLimit || [], parent: element };
+      }
+      return null;
+    }
+
+    // Handle differential element containers
+    if (element.type === "differential") {
+      if (containerName === "variable") {
+        return { array: element.variable || [], parent: element };
       }
       return null;
     }
@@ -260,25 +266,19 @@ export class ContextManager {
         this.navigateOutOfContext(direction === "ArrowDown" ? "forward" : "backward");
       }
     } else if (parentElement.type === "integral") {
-      // Navigation for integral elements
+      // Navigation for integral elements with single content area
       if (direction === "ArrowDown") {
         if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "upperLimit") {
           this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
           this.cursorPosition = 0;
         } else if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "lowerLimit") {
-          this.activeContextPath = `${parentPath}/${elementId}/integrand`;
-          this.cursorPosition = 0;
-        } else if (currentPart === "integrand") {
-          this.activeContextPath = `${parentPath}/${elementId}/differentialVariable`;
+          this.activeContextPath = `${parentPath}/${elementId}/content`;
           this.cursorPosition = 0;
         } else {
           this.navigateOutOfContext("forward");
         }
       } else if (direction === "ArrowUp") {
-        if (currentPart === "differentialVariable") {
-          this.activeContextPath = `${parentPath}/${elementId}/integrand`;
-          this.cursorPosition = 0;
-        } else if (currentPart === "integrand" && "isDefinite" in parentElement && parentElement.isDefinite) {
+        if (currentPart === "content" && "isDefinite" in parentElement && parentElement.isDefinite) {
           this.activeContextPath = `${parentPath}/${elementId}/lowerLimit`;
           this.cursorPosition = 0;
         } else if ("isDefinite" in parentElement && parentElement.isDefinite && currentPart === "lowerLimit") {
