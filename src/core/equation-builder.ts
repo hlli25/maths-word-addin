@@ -14,6 +14,8 @@ export interface EquationElement {
     | "large-operator"
     | "derivative"
     | "integral"
+    | "differential"
+    | "partialDifferential"
     | "matrix"
     | "stack"
     | "cases"
@@ -37,7 +39,6 @@ export interface EquationElement {
   leftBracketSymbol?: string;
   rightBracketSymbol?: string;
   scaleFactor?: number;
-  nestingDepth?: number;
   // for large operators (sum, product, union, intersection, etc. & definite integral)
   operator?: string;
   displayMode?: "inline" | "display";
@@ -59,12 +60,12 @@ export interface EquationElement {
   variable?: EquationElement[]; // x in df/dx
   isLongForm?: boolean; // true for \dv{x}(\grande{f}) format
   isPartial?: boolean; // true for partial derivatives (∂f/∂x)
-  // for integral (custom format: ∫ f(x) dx)
-  integrand?: EquationElement[]; // f(x)
-  differentialVariable?: EquationElement[]; // x in dx
-  integralStyle?: "italic" | "roman"; // style for d
+  // for integral (flexible format with single content area)
+  integralStyle?: "italic" | "roman"; // style for d when exporting
   isDefinite?: boolean; // whether this is a definite integral
   integralType?: "single" | "double" | "triple" | "contour"; // type of integral (may extend in future)
+  // for differential (standalone d + variable like dx, dy, dt)
+  differentialStyle?: "italic" | "roman"; // style for d
   // for matrix
   matrixType?: "parentheses" | "brackets" | "braces" | "bars" | "double-bars" | "none";
   rows?: number;
@@ -223,7 +224,6 @@ export class EquationBuilder {
       leftBracketSymbol: leftSymbol,
       rightBracketSymbol: rightSymbol,
       content: [],
-      nestingDepth: 0,
     };
   }
 
@@ -241,7 +241,6 @@ export class EquationBuilder {
       content: [],
       superscript: [],
       subscript: [],
-      nestingDepth: 0,
     };
   }
 
@@ -317,10 +316,31 @@ export class EquationBuilder {
       integralStyle: integralStyle,
       isDefinite: isDefinite,
       limitMode: limitMode,
-      integrand: [],
-      differentialVariable: [],
+      content: [], // Single content area for flexible differential placement
       lowerLimit: lowerLimit,
       upperLimit: upperLimit,
+    };
+  }
+
+  createDifferentialElement(
+    differentialStyle: "italic" | "roman" = "italic"
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "differential",
+      differentialStyle: differentialStyle,
+      variable: [], // Empty array for user to type variable (x, y, t, etc.)
+    };
+  }
+
+  createPartialDifferentialElement(
+    differentialStyle: "italic" | "roman" = "italic"
+  ): EquationElement {
+    return {
+      id: this.generateElementId(),
+      type: "partialDifferential",
+      differentialStyle: differentialStyle,
+      variable: [], // Empty array for user to type variable (x, y, t, etc.)
     };
   }
 
@@ -439,10 +459,13 @@ export class EquationBuilder {
       }
       if (el.type === "integral") {
         const found =
-          this.findElementById(el.integrand || [], id) ||
-          this.findElementById(el.differentialVariable || [], id) ||
+          this.findElementById(el.content || [], id) ||
           this.findElementById(el.lowerLimit || [], id) ||
           this.findElementById(el.upperLimit || [], id);
+        if (found) return found;
+      }
+      if (el.type === "differential") {
+        const found = this.findElementById(el.variable || [], id);
         if (found) return found;
       }
       if (el.type === "matrix" || el.type === "stack" || el.type === "cases") {
@@ -648,14 +671,15 @@ export class EquationBuilder {
         if (el.upperLimit) this.updateParenthesesScalingRecursive(el.upperLimit);
         if (el.operand) this.updateParenthesesScalingRecursive(el.operand);
       } else if (el.type === "integral") {
-        if (el.integrand) this.updateParenthesesScalingRecursive(el.integrand);
-        if (el.differentialVariable) this.updateParenthesesScalingRecursive(el.differentialVariable);
+        if (el.content) this.updateParenthesesScalingRecursive(el.content);
         if (el.lowerLimit) this.updateParenthesesScalingRecursive(el.lowerLimit);
         if (el.upperLimit) this.updateParenthesesScalingRecursive(el.upperLimit);
       } else if (el.type === "derivative") {
         if (el.function) this.updateParenthesesScalingRecursive(el.function);
         if (el.variable) this.updateParenthesesScalingRecursive(el.variable);
         if (Array.isArray(el.order)) this.updateParenthesesScalingRecursive(el.order);
+      } else if (el.type === "differential") {
+        if (el.variable) this.updateParenthesesScalingRecursive(el.variable);
       } else if (el.type === "matrix" || el.type === "stack" || el.type === "cases") {
         // Cells object is defined as cells[`cell_${row}_${col}`]
         if (el.cells) {
@@ -727,7 +751,6 @@ export class EquationBuilder {
   private updateBracketNestingRecursive(elements: EquationElement[], currentDepth: number): void {
     elements.forEach((element) => {
       if (element.type === "bracket") {
-        element.nestingDepth = currentDepth;
         this.updateBracketNestingRecursive(element.content!, currentDepth + 1);
       } else if (element.type === "fraction" || element.type === "bevelled-fraction") {
         this.updateBracketNestingRecursive(element.numerator!, currentDepth);
@@ -749,15 +772,15 @@ export class EquationBuilder {
           this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
         if (element.operand) this.updateBracketNestingRecursive(element.operand, currentDepth);
       } else if (element.type === "integral") {
-        if (element.integrand) this.updateBracketNestingRecursive(element.integrand, currentDepth);
-        if (element.differentialVariable)
-          this.updateBracketNestingRecursive(element.differentialVariable, currentDepth);
+        if (element.content) this.updateBracketNestingRecursive(element.content, currentDepth);
         if (element.lowerLimit)
           this.updateBracketNestingRecursive(element.lowerLimit, currentDepth);
         if (element.upperLimit)
           this.updateBracketNestingRecursive(element.upperLimit, currentDepth);
       } else if (element.type === "derivative") {
         if (element.function) this.updateBracketNestingRecursive(element.function, currentDepth);
+        if (element.variable) this.updateBracketNestingRecursive(element.variable, currentDepth);
+      } else if (element.type === "differential") {
         if (element.variable) this.updateBracketNestingRecursive(element.variable, currentDepth);
         if (Array.isArray(element.order))
           this.updateBracketNestingRecursive(element.order, currentDepth);

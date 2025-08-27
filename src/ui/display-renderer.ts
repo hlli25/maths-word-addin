@@ -125,6 +125,10 @@ export class DisplayRenderer {
         return this.derivativeToMathML(element, contextPath, isActive, position, isSelected);
       case "integral":
         return this.integralToMathML(element, contextPath, isActive, position, isSelected);
+      case "differential":
+        return this.differentialToMathML(element, contextPath, isActive, position, isSelected);
+      case "partialDifferential":
+        return this.partialDifferentialToMathML(element, contextPath, isActive, position, isSelected);
       case "matrix":
         return this.matrixToMathML(element, contextPath, isActive, position, isSelected);
       case "stack":
@@ -156,7 +160,7 @@ export class DisplayRenderer {
       value = "&#160;"; // Non-breaking space
     }
     const isOperator = /[+\-−×÷=<>≤≥≠±∓·∗⋆∘•∼≃≈≡≅≇∝≮≯≰≱≺≻⪯⪰≪≫∩∪∖∈∋∉⊂⊃⊆⊇⊈⊉⊊⊋⊕⊖⊗⊘⊙◁▷≀∧∨⊢⊨⊤⊥⋈⋄≍≜∴∵]/.test(value);
-    const isVariable = /[a-zA-Z]/.test(value);
+    const isVariable = /[a-zA-Zα-ωΑ-Ω]/.test(value);
     const isNumber = /[0-9]/.test(value);
     const isSymbol = /[^\w\s]/.test(value);
 
@@ -370,25 +374,12 @@ export class DisplayRenderer {
   private bracketToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
     const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
 
-    // Apply MathML sizing based on nesting depth to match LaTeX bracket sizes
-    // Depth 0 = outermost (largest), higher depth = more nested (smaller)
-    const nestingDepth = element.nestingDepth || 0;
-
-    // Determine bracket size based on nesting depth
-    // Outermost brackets (depth 0) are largest, innermost are smallest
-    let bracketSize = "2em"; // Default large size for outermost
-    if (nestingDepth === 1) {
-      bracketSize = "1.6em";
-    } else if (nestingDepth === 2) {
-      bracketSize = "1.3em";
-    } else if (nestingDepth >= 3) {
-      bracketSize = "1em";
-    }
-
+    // Brackets will automatically size based on their content
+    // Using stretchy="true" allows brackets to stretch to match content height
     const leftBracket = element.leftBracketSymbol ? 
-      `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.leftBracketSymbol}</mo>` : '';
+      `<mo stretchy="true" symmetric="true">${element.leftBracketSymbol}</mo>` : '';
     const rightBracket = element.rightBracketSymbol ? 
-      `<mo stretchy="true" symmetric="true" minsize="${bracketSize}" maxsize="${bracketSize}">${element.rightBracketSymbol}</mo>` : '';
+      `<mo stretchy="true" symmetric="true">${element.rightBracketSymbol}</mo>` : '';
 
     const classes = [];
     if (isActive) classes.push("active-element");
@@ -533,10 +524,17 @@ export class DisplayRenderer {
           <mi ${mathVariantAttr}>${differentialSymbol}</mi>
           <mn>${element.order}</mn>
         </msup>${functionML}`;
-        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
-          ${variableML}
-          <mn>${element.order}</mn>
-        </msup>`;
+        // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+        if (element.isPartial && element.order === 1) {
+          denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}`;
+        } else if (element.isPartial) {
+          denominatorContent = variableML; // Just the variable content, no ∂
+        } else {
+          denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+            ${variableML}
+            <mn>${element.order}</mn>
+          </msup>`;
+        }
       }
     } else {
       // nth order with custom expression
@@ -546,13 +544,15 @@ export class DisplayRenderer {
         <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
       </msup>${functionML}`;
 
-      // For denominator, create a read-only copy without editable context
-      const readOnlyOrderML = element.order && element.order.length > 0 ? 
-        element.order.map(el => el.value || '').join('') : '';
-      denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
-        ${variableML}
-        <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
-      </msup>`;
+      // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+      if (element.isPartial) {
+        denominatorContent = variableML; // Just the variable content, no ∂ for nth-order
+      } else {
+        denominatorContent = `<mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+          ${variableML}
+          <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+        </msup>`;
+      }
     }
 
     return `<mfrac ${displayStyle} ${classAttr} ${dataAttrs}>
@@ -596,20 +596,31 @@ export class DisplayRenderer {
           </mrow>
         </mfrac>`;
       } else {
-        // d^n/dx^n or ∂^n/∂x^n format
-        fractionContent = `<mfrac ${displayStyle}>
-          <msup>
-            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
-            <mn>${element.order}</mn>
-          </msup>
-          <mrow data-context-path="${elementPath}/variable">
-            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+        // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+        if (element.isPartial) {
+          fractionContent = `<mfrac ${displayStyle}>
             <msup>
-              ${variableML}
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>
               <mn>${element.order}</mn>
             </msup>
-          </mrow>
-        </mfrac>`;
+            <mrow data-context-path="${elementPath}/variable">
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+            </mrow>
+          </mfrac>`;
+        } else {
+          fractionContent = `<mfrac ${displayStyle}>
+            <msup>
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+              <mn>${element.order}</mn>
+            </msup>
+            <mrow data-context-path="${elementPath}/variable">
+              <mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+                ${variableML}
+                <mn>${element.order}</mn>
+              </msup>
+            </mrow>
+          </mfrac>`;
+        }
       }
     } else {
       // nth order with custom expression
@@ -619,19 +630,31 @@ export class DisplayRenderer {
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
 
-      fractionContent = `<mfrac ${displayStyle}>
-        <msup>
-          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
-          <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
-        </msup>
-        <mrow data-context-path="${elementPath}/variable">
-          <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+      // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+      if (element.isPartial) {
+        fractionContent = `<mfrac ${displayStyle}>
           <msup>
-            ${variableML}
-            <mi>${readOnlyOrderML || "&#x25A1;"}</mi>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+            <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
           </msup>
-        </mrow>
-      </mfrac>`;
+          <mrow data-context-path="${elementPath}/variable">
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+          </mrow>
+        </mfrac>`;
+      } else {
+        fractionContent = `<mfrac ${displayStyle}>
+          <msup>
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi>
+            <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
+          </msup>
+          <mrow data-context-path="${elementPath}/variable">
+            <mi ${mathVariantAttr}>${differentialSymbol}</mi><msup>
+              ${variableML}
+              <mrow>${readOnlyOrderML}</mrow>
+            </msup>
+          </mrow>
+        </mfrac>`;
+      }
     }
 
     // Long form
@@ -658,9 +681,8 @@ export class DisplayRenderer {
     const isDifferentialItalic = element.integralStyle === "italic";
     const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
 
-    // Generate content for integrand and differential variable
-    const integrandML = this.generateMathMLContent(`${elementPath}/integrand`, element.integrand);
-    const differentialVariableML = this.generateMathMLContent(`${elementPath}/differentialVariable`, element.differentialVariable);
+    // Generate content for the single content field
+    const contentML = this.generateMathMLContent(`${elementPath}/content`, element.content);
 
     let integralOperatorML = "";
 
@@ -725,13 +747,52 @@ export class DisplayRenderer {
       integralOperatorML = `<mo>${integralSymbol}</mo>`;
     }
 
-    // Combine all parts: integral symbol, integrand, space, d, variable
+    // Combine all parts: integral symbol and content
     return `<mrow ${displayStyle} ${classAttr} ${dataAttrs}>
       ${integralOperatorML}
-      <mrow data-context-path="${elementPath}/integrand">${integrandML}</mrow>
-      <mspace width="0.2em"/>
+      <mrow data-context-path="${elementPath}/content">${contentML}</mrow>
+    </mrow>`;
+  }
+
+  private differentialToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classes = [];
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Check differential style preference (italic vs roman)
+    const isDifferentialItalic = element.differentialStyle === "italic";
+    const mathVariantAttr = isDifferentialItalic ? "" : 'mathvariant="normal"';
+
+    // Generate content for the variable part
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+
+    const styleAttr = this.buildStructureStyle(element, isSelected);
+
+    // Combine "d" and variable as inline elements
+    return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
       <mi ${mathVariantAttr}>d</mi>
-      <mrow data-context-path="${elementPath}/differentialVariable">${differentialVariableML}</mrow>
+      <mrow data-context-path="${elementPath}/variable">${variableML}</mrow>
+    </mrow>`;
+  }
+
+  private partialDifferentialToMathML(element: EquationElement, elementPath: string, isActive: boolean, position: number, isSelected: boolean = false): string {
+    const classes = [];
+    if (isActive) classes.push("active-element");
+    if (isSelected) classes.push("selected-structure");
+    const classAttr = classes.length > 0 ? `class="${classes.join(" ")}"` : "";
+    const dataAttrs = `data-context-path="${elementPath}" data-position="${position}" data-element-id="${element.id}"`;
+
+    // Generate content for the variable part
+    const variableML = this.generateMathMLContent(`${elementPath}/variable`, element.variable);
+
+    const styleAttr = this.buildStructureStyle(element, isSelected);
+
+    // Combine "∂" and variable as inline elements
+    return `<mrow ${classAttr} ${styleAttr} ${dataAttrs}>
+      <mi>∂</mi>
+      <mrow data-context-path="${elementPath}/variable">${variableML}</mrow>
     </mrow>`;
   }
 
@@ -1116,8 +1177,6 @@ export class DisplayRenderer {
       if (element.content) this.findElementsWithWrappers(element.content, callback);
       if (element.function) this.findElementsWithWrappers(element.function, callback);
       if (element.variable) this.findElementsWithWrappers(element.variable, callback);
-      if (element.integrand) this.findElementsWithWrappers(element.integrand, callback);
-      if (element.differentialVariable) this.findElementsWithWrappers(element.differentialVariable, callback);
       if (element.operand) this.findElementsWithWrappers(element.operand, callback);
       if (element.upperLimit) this.findElementsWithWrappers(element.upperLimit, callback);
       if (element.lowerLimit) this.findElementsWithWrappers(element.lowerLimit, callback);

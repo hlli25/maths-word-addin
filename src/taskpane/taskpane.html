@@ -34,75 +34,89 @@
                     // Custom long form derivative commands (italic d style)
                     derivlfrac: ['\\frac{#1}{#2} #3', 3],    // d/dx f (inline)
                     derivldfrac: ['\\dfrac{#1}{#2} #3', 3],  // d/dx f (display)
+                    // Custom partial derivative commands that render as fractions
+                    pderivfrac: ['\\frac{#1}{#2}', 2],
+                    pderivdfrac: ['\\dfrac{#1}{#2}', 2],
+                    // Custom long form partial derivative commands (italic ∂ style)
+                    pderivlfrac: ['\\frac{#1}{#2} #3', 3],    // ∂/∂x f (inline)
+                    pderivldfrac: ['\\dfrac{#1}{#2} #3', 3],  // ∂/∂x f (display)
                     // Custom macro for marking the function in long form derivatives
                     grande: ['#1', 1],  // Simply passes through the content
                     
-                    // Custom integral commands with separate integrand and variable blocks
+                    // Custom integral commands with single content area for flexible differential placement
                     
-                    // === INDEFINITE INTEGRALS (2 parameters: integrand, variable) ===
+                    // === INDEFINITE INTEGRALS (1 parameter: content) ===
                     // Single integral
-                    inti: ['\\int {#1} \\, d{#2}', 2],
-                    intd: ['\\int {#1} \\, \\dd{#2}', 2],
+                    inti: ['\\int {#1}', 1],
+                    intd: ['\\int {#1}', 1],
+                    
+                    // Single integral with subscript (2 parameters: content, subscript)
+                    intisub: ['\\int_{#2} {#1}', 2],
+                    intdsub: ['\\int_{#2} {#1}', 2],
+                    
+                    // Single integral with lower limit
+                    intilower: ['\\int\\limits_{#2} {#1}', 2],
+                    intdlower: ['\\int\\limits_{#2} {#1}', 2],
                     
                     // Double integral
-                    iinti: ['\\iint {#1} \\, d{#2}', 2],
-                    iintd: ['\\iint {#1} \\, \\dd{#2}', 2],
+                    iinti: ['\\iint {#1}', 1],
+                    iintd: ['\\iint {#1}', 1],
 
                     // Double integral with subscript
-                    iintisub: ['\\iint_{#3} {#1} \\, d{#2}', 3],
-                    iintdsub: ['\\iint_{#3} {#1} \\, \\dd{#2}', 3],
+                    iintisub: ['\\iint_{#2} {#1}', 2],
+                    iintdsub: ['\\iint_{#2} {#1}', 2],
 
                     // Double integral with lower limit
-                    iintilower: ['\\iint\\limits_{#3} {#1} \\, d{#2}', 3],
-                    iintdlower: ['\\iint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
+                    iintilower: ['\\iint\\limits_{#2} {#1}', 2],
+                    iintdlower: ['\\iint\\limits_{#2} {#1}', 2],
                     
                     // Triple integral
-                    iiinti: ['\\iiint {#1} \\, d{#2}', 2],
-                    iiintd: ['\\iiint {#1} \\, \\dd{#2}', 2],
+                    iiinti: ['\\iiint {#1}', 1],
+                    iiintd: ['\\iiint {#1}', 1],
 
                     // Triple integral with subscript
-                    iiintisub: ['\\iiint_{#3} {#1} \\, d{#2}', 3],
-                    iiintdsub: ['\\iiint_{#3} {#1} \\, \\dd{#2}', 3],
+                    iiintisub: ['\\iiint_{#2} {#1}', 2],
+                    iiintdsub: ['\\iiint_{#2} {#1}', 2],
 
                     // Triple integral with lower limit
-                    iiintilower: ['\\iiint\\limits_{#3} {#1} \\, d{#2}', 3],
-                    iiintdlower: ['\\iiint\\limits_{#3} {#1} \\, \\dd{#2}', 3],
+                    iiintilower: ['\\iiint\\limits_{#2} {#1}', 2],
+                    iiintdlower: ['\\iiint\\limits_{#2} {#1}', 2],
                     
                     // Contour integral
-                    ointi: ['\\oint {#1} \\, d{#2}', 2],
-                    ointd: ['\\oint {#1} \\, \\dd{#2}', 2],
+                    ointi: ['\\oint {#1}', 1],
+                    ointd: ['\\oint {#1}', 1],
                     
                     // Countour integral with subscript
-                    ointisub: ['\\oint_{#3} {#1} \\, d{#2}', 3],
-                    ointdsub: ['\\oint_{#3} {#1} \\, \\dd{#2}', 3],
+                    ointisub: ['\\oint_{#2} {#1}', 2],
+                    ointdsub: ['\\oint_{#2} {#1}', 2],
                     
                     // Single definite integral (subscript/superscript positioning)
-                    intinolim: ['\\int_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    intdnolim: ['\\int_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    intinolim: ['\\int_{#2}^{#3} {#1}', 3],
+                    intdnolim: ['\\int_{#2}^{#3} {#1}', 3],
                     
                     // Double definite integral (subscript/superscript positioning)
-                    iintinolim: ['\\iint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iintdnolim: ['\\iint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iintinolim: ['\\iint_{#2}^{#3} {#1}', 3],
+                    iintdnolim: ['\\iint_{#2}^{#3} {#1}', 3],
                     
                     // Triple definite integral (subscript/superscript positioning)
-                    iiintinolim: ['\\iiint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iiintdnolim: ['\\iiint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iiintinolim: ['\\iiint_{#2}^{#3} {#1}', 3],
+                    iiintdnolim: ['\\iiint_{#2}^{#3} {#1}', 3],
                     
                     // Contour integral with sub/superscript
-                    ointinolim: ['\\oint_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    ointdnolim: ['\\oint_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    ointinolim: ['\\oint_{#2}^{#3} {#1}', 3],
+                    ointdnolim: ['\\oint_{#2}^{#3} {#1}', 3],
                     
                     // Single definite integral (limits positioning)
-                    intilim: ['\\int\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    intdlim: ['\\int\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    intilim: ['\\int\\limits_{#2}^{#3} {#1}', 3],
+                    intdlim: ['\\int\\limits_{#2}^{#3} {#1}', 3],
                     
                     // Double definite integral (limits positioning)
-                    iintilim: ['\\iint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iintdlim: ['\\iint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4],
+                    iintilim: ['\\iint\\limits_{#2}^{#3} {#1}', 3],
+                    iintdlim: ['\\iint\\limits_{#2}^{#3} {#1}', 3],
                     
                     // Triple definite integral (limits positioning)
-                    iiintilim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, d{#2}', 4],
-                    iiintdlim: ['\\iiint\\limits_{#3}^{#4} {#1} \\, \\dd{#2}', 4]
+                    iiintilim: ['\\iiint\\limits_{#2}^{#3} {#1}', 3],
+                    iiintdlim: ['\\iiint\\limits_{#2}^{#3} {#1}', 3]
                 },
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
@@ -1105,18 +1119,12 @@
                     <div class="button-row differential-style-row">
                         <button class="differential-style-btn active" id="differential-style-italic" title="Italic d (default)">
                             <math>
-                                <mrow>
-                                    <mi>d</mi>
-                                    <mi>□</mi>
-                                </mrow>
+                                <mi>d</mi>
                             </math>
                         </button>
                         <button class="differential-style-btn" id="differential-style-roman" title="Roman d">
                             <math>
-                                <mrow>
-                                    <mtext>d</mtext>
-                                    <mi>□</mi>
-                                </mrow>
+                                <mtext>d</mtext>
                             </math>
                         </button>
                         <div class="vertical-separator"></div>
@@ -1129,7 +1137,27 @@
                                 </mrow>
                             </math>
                         </button>
+                        <div class="double-vertical-separator"></div>
+                        <!-- Differential button -->
+                        <button class="builder-btn differential-btn" title="Differential d□">
+                            <math>
+                                <mrow>
+                                    <mi class="derivative-d">d</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <!-- Partial Differential button -->
+                        <button class="builder-btn partial-differential-btn" title="Partial Differential ∂□">
+                            <math>
+                                <mrow>
+                                    <mi>∂</mi>
+                                    <mi>□</mi>
+                                </mrow>
+                            </math>
+                        </button>
                     </div>
+                    
                     <!-- Derivative buttons -->
                     <div class="button-row">
                         <button class="builder-btn derivative-btn first-derivative-btn" title="First derivative">
@@ -1207,11 +1235,11 @@
                             <math>
                                 <mfrac>
                                     <mrow>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi>∂</mi>
                                         <mi>□</mi>
                                     </mrow>
                                     <mrow>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi>∂</mi>
                                         <mi>□</mi>
                                     </mrow>
                                 </mfrac>
@@ -1222,18 +1250,12 @@
                                 <mfrac>
                                     <mrow>
                                         <msup>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi>∂</mi>
                                             <mi>□</mi>
                                         </msup>
                                         <mi>□</mi>
                                     </mrow>
-                                    <mrow>
-                                        <mi class="derivative-d">∂</mi>
-                                        <msup>
-                                            <mi>□</mi>
-                                            <mi>□</mi>
-                                        </msup>
-                                    </mrow>
+                                    <mi>□</mi>
                                 </mfrac>
                             </math>
                         </button>
@@ -1241,9 +1263,9 @@
                             <math>
                                 <mrow>
                                     <mfrac>
-                                        <mi class="derivative-d">∂</mi>
+                                        <mi>∂</mi>
                                         <mrow>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi>∂</mi>
                                             <mi>□</mi>
                                         </mrow>
                                     </mfrac>
@@ -1256,16 +1278,10 @@
                                 <mrow>
                                     <mfrac>
                                         <msup>
-                                            <mi class="derivative-d">∂</mi>
+                                            <mi>∂</mi>
                                             <mi>□</mi>
                                         </msup>
-                                        <mrow>
-                                            <mi class="derivative-d">∂</mi>
-                                            <msup>
-                                                <mi>□</mi>
-                                                <mi>□</mi>
-                                            </msup>
-                                        </mrow>
+                                        <mi>□</mi>
                                     </mfrac>
                                     <mi>□</mi>
                                 </mrow>
@@ -1274,17 +1290,37 @@
                     </div>
                     <!-- Integration buttons -->
                     <div class="button-row">
-                        <button class="builder-btn integral-btn int-indefinite-display-btn" title="Indefinite integral">
+                        <button class="builder-btn integral-btn int-indefinite-display-btn" title="Single integral">
                             <math displaystyle="true">
                                 <mrow>
                                     <mo class="sum-operator-display">∫</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Definite integral (Side limits)">
+                        <button class="builder-btn integral-btn int-subscript-btn" title="Single integral with subscript">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <msub>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </msub>
+                                    <mi class="sum-operand-display">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-lower-btn" title="Single integral with lower limit">
+                            <math displaystyle="true">
+                                <mrow>
+                                    <munder>
+                                        <mo class="sum-operator-display">∫</mo>
+                                        <mi class="sum-limit-display">□</mi>
+                                    </munder>
+                                    <mi class="sum-operand-display">□</mi>
+                                </mrow>
+                            </math>
+                        </button>
+                        <button class="builder-btn integral-btn int-display-nolimit-btn" title="Single integral (Side limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <msubsup>
@@ -1293,12 +1329,10 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
-                        <button class="builder-btn integral-btn int-display-limit-btn" title="Definite integral (Above/Below limits)">
+                        <button class="builder-btn integral-btn int-display-limit-btn" title="Single integral (Above/Below limits)">
                             <math displaystyle="true">
                                 <mrow>
                                     <munderover>
@@ -1307,8 +1341,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1320,8 +1352,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∬</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1333,8 +1363,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1346,8 +1374,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munder>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1360,8 +1386,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1374,8 +1398,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1387,8 +1409,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∭</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1400,8 +1420,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1413,8 +1431,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munder>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1427,8 +1443,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1441,8 +1455,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </munderover>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1454,8 +1466,6 @@
                                 <mrow>
                                     <mo class="sum-operator-display">∮</mo>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1467,8 +1477,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msub>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1481,8 +1489,6 @@
                                         <mi class="sum-limit-display">□</mi>
                                     </msubsup>
                                     <mi class="sum-operand-display">□</mi>
-                                    <mi class="derivative-d">d</mi>
-                                    <mi>□</mi>
                                 </mrow>
                             </math>
                         </button>
@@ -1681,16 +1687,32 @@
                     <hr class="horizontal-separator">
                     <!-- Capital Greek Letters -->
                     <div class="button-row">
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Α" title="Capital Alpha">Α</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Β" title="Capital Beta">Β</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Gamma" title="Capital Gamma">Γ</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Delta" title="Capital Delta">Δ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ε" title="Capital Epsilon">Ε</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ζ" title="Capital Zeta">Ζ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Η" title="Capital Eta">Η</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Theta" title="Capital Theta">Θ</button>
-                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Lambda" title="Capital Lambda">Λ</button>
-                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Pi" title="Capital Pi">Π</button>
-                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Sigma" title="Capital Sigma">Σ</button>
-                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Upsilon" title="Capital Upsilon">Υ</button>
-                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Phi" title="Capital Phi">Φ</button>
                     </div>
                     <div class="button-row">
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ι" title="Capital Iota">Ι</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Κ" title="Capital Kappa">Κ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Lambda" title="Capital Lambda">Λ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Μ" title="Capital Mu">Μ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ν" title="Capital Nu">Ν</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Xi" title="Capital Xi">Ξ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ο" title="Capital Omicron">Ο</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Pi" title="Capital Pi">Π</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Ρ" title="Capital Rho">Ρ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Sigma" title="Capital Sigma">Σ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Τ" title="Capital Tau">Τ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Upsilon" title="Capital Upsilon">Υ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="\Phi" title="Capital Phi">Φ</button>
+                        <button class="builder-btn greek-letter-capital-btn" data-greek="Χ" title="Capital Chi">Χ</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Psi" title="Capital Psi">Ψ</button>
                         <button class="builder-btn greek-letter-capital-btn" data-greek="\Omega" title="Capital Omega">Ω</button>
                     </div>

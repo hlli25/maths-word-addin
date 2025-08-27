@@ -1,0 +1,13 @@
+taskpane.html?_host_Info=Word$Win32$16.01$en-US$$$$0:1  Tracking Prevention blocked access to storage for https://appsforoffice.microsoft.com/lib/beta/hosted/office.js.
+taskpane.html?_host_Info=Word$Win32$16.01$en-US$$$$0:1  Tracking Prevention blocked access to storage for https://appsforoffice.microsoft.com/lib/beta/hosted/office.js.
+taskpane.html?_host_Info=Word$Win32$16.01$en-US$$$$0:1  Tracking Prevention blocked access to storage for https://appsforoffice.microsoft.com/lib/beta/hosted/office.js.
+taskpane.html?_host_Info=Word$Win32$16.01$en-US$$$$0:1  Tracking Prevention blocked access to storage for https://appsforoffice.microsoft.com/lib/beta/hosted/office.js.
+index.js:594 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+log.js:39 [HMR] Waiting for update signal from WDS...
+index.js:594 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+log.js:39 [HMR] Waiting for update signal from WDS...
+:3000/favicon.ico:1   Failed to load resource: the server responded with a status of 404 (Not Found)
+input-handler.ts:802  Uncaught TypeError: this.contextManager.findElementPath is not a function
+    at InputHandler.insertDifferential (input-handler.ts:802:49)
+    at MathAddinApp.handleBuilderButtonClick (taskpane.ts:450:25)
+    at HTMLDivElement.<anonymous> (taskpane.ts:204:63)

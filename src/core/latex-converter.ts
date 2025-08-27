@@ -82,6 +82,10 @@ export class LatexConverter {
     { command: "\\derivfrac", length: 10, displayMode: "inline", isLongForm: false },
     { command: "\\derivldfrac", length: 12, displayMode: "display", isLongForm: true },
     { command: "\\derivlfrac", length: 11, displayMode: "inline", isLongForm: true },
+    { command: "\\pderivdfrac", length: 12, displayMode: "display", isLongForm: false },
+    { command: "\\pderivfrac", length: 11, displayMode: "inline", isLongForm: false },
+    { command: "\\pderivldfrac", length: 13, displayMode: "display", isLongForm: true },
+    { command: "\\pderivlfrac", length: 12, displayMode: "inline", isLongForm: true },
   ];
 
   setEquationBuilder(equationBuilder: EquationBuilder): void {
@@ -163,7 +167,6 @@ export class LatexConverter {
 
       elements.forEach((element) => {
         if (element.type === "bracket") {
-          localMax = Math.max(localMax, element.nestingDepth || 0);
           localMax = Math.max(localMax, findMaxDepthRecursive(element.content || []));
         } else {
           // Recursively check all array properties of the element
@@ -367,9 +370,7 @@ export class LatexConverter {
         const content = this.toLatexRecursive(element.content!, maxDepth, inOperatorName);
         const { latexLeft, latexRight } = this.getBracketLatexSymbols(
           element.leftBracketSymbol!,
-          element.rightBracketSymbol!,
-          element.nestingDepth || 0,
-          maxDepth
+          element.rightBracketSymbol!
         );
         let bracketLatex = `${latexLeft}${content || " "}${latexRight}`;
         
@@ -422,9 +423,8 @@ export class LatexConverter {
           latex += `{\\textstyle ${finalLatex}}`;
         }
       } else if (element.type === "integral") {
-        // Custom integral format with integrand and differential variable blocks
-        const integrandLatex = this.toLatexRecursive(element.integrand!, maxDepth, inOperatorName);
-        const variableLatex = this.toLatexRecursive(element.differentialVariable!, maxDepth, inOperatorName);
+        // Custom integral format with single content field
+        const contentLatex = this.toLatexRecursive(element.content!, maxDepth, inOperatorName);
 
         // Determine the command based on integral type, style, and whether it has limits
         let integralCommand = "";
@@ -496,7 +496,14 @@ export class LatexConverter {
             break;
           case "single":
           default:
-            if (isDefinite) {
+            if (hasOnlyLowerLimit) {
+              // 3-parameter subscript/lower limit variants
+              if (element.limitMode === "limits") {
+                integralCommand = useRomanD ? "\\intdlower" : "\\intilower";
+              } else {
+                integralCommand = useRomanD ? "\\intdsub" : "\\intisub";
+              }
+            } else if (isDefinite) {
               if (element.limitMode === "limits") {
                 integralCommand = useRomanD ? "\\intdlim" : "\\intilim";
               } else {
@@ -513,17 +520,17 @@ export class LatexConverter {
         
         // Handle different parameter counts based on integral command type
         if (integralCommand.includes("sub") || integralCommand.includes("lower")) {
-          // 3-parameter variants: \ointisub{integrand}{variable}{path} or \iintisub{integrand}{variable}{region}
+          // 2-parameter variants with limits: \ointisub{content}{path}
           const limitLatex = hasLowerLimit ? this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName) : " ";
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${limitLatex}}`;
+          finalLatex = `${integralCommand}{${contentLatex || " "}}{${limitLatex}}`;
         } else if (hasLowerLimit && hasUpperLimit) {
-          // 4-parameter definite integrals: \intinolim{integrand}{variable}{lower}{upper}
+          // 3-parameter definite integrals: \intinolim{content}{lower}{upper}
           const lowerLatex = this.toLatexRecursive(element.lowerLimit, maxDepth, inOperatorName);
           const upperLatex = this.toLatexRecursive(element.upperLimit, maxDepth, inOperatorName);
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
+          finalLatex = `${integralCommand}{${contentLatex || " "}}{${lowerLatex || " "}}{${upperLatex || " "}}`;
         } else {
-          // 2-parameter indefinite integrals: \inti{integrand}{variable}
-          finalLatex = `${integralCommand}{${integrandLatex || " "}}{${variableLatex || " "}}`;
+          // 1-parameter indefinite integrals: \inti{content}
+          finalLatex = `${integralCommand}{${contentLatex || " "}}`;
         }
 
         // Apply appropriate styling based on display mode
@@ -548,12 +555,13 @@ export class LatexConverter {
           // Long form: \dv[n]{x}(\grande{f}) or \dv{x}(\grande{f}) for regular derivatives
           // Long form: \pdv[n]{x}(\grande{f}) or \pdv{x}(\grande{f}) for partial derivatives
           // The function part is wrapped with \grande and can have optional brackets
-          // For partial derivatives, ALWAYS use physics package since we need \pdv
-          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
+          // For regular derivatives, check if we should use physics package based on differential style
+          // For partial derivatives, use custom commands instead of physics package
+          const usePhysicsPackage = !isPartial && this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            // Use \pdv for partial derivatives, \dv for regular derivatives
-            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
+            // Use \dv for regular derivatives when physics package is preferred
+            const dvCommandBase = "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
@@ -620,34 +628,57 @@ export class LatexConverter {
             if (typeof element.order === "number") {
               if (element.order === 1) {
                 numerator = diffSymbol;
-                denominator = `${diffSymbol}${variableLatex || "x"}`;
+                denominator = `${diffSymbol} ${variableLatex || "x"}`;
               } else {
                 numerator = `${diffSymbol}^{${element.order}}`;
-                denominator = `${diffSymbol}${variableLatex || "x"}^{${element.order}}`;
+                // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+                if (isPartial) {
+                  if (element.order === 1) {
+                    denominator = `${diffSymbol} ${variableLatex || "x"}`;
+                  } else {
+                    denominator = variableLatex || "x";  // Just the variable content for higher-order
+                  }
+                } else {
+                  denominator = `${diffSymbol} ${variableLatex || "x"}^{${element.order}}`;
+                }
               }
             } else {
               // nth order with custom expression
               const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
               numerator = `${diffSymbol}^{${orderLatex || "n"}}`;
-              denominator = `${diffSymbol}${variableLatex || "x"}^{${orderLatex || "n"}}`;
+              // For regular derivatives, restore superscript; for partial derivatives, keep single variable
+              if (isPartial) {
+                // For nth-order, never add extra \partial (user types their own)
+                denominator = variableLatex || "x";
+              } else {
+                denominator = `${diffSymbol} ${variableLatex || "x"}^{${orderLatex || "n"}}`;
+              }
             }
 
-            // Use custom long form commands for italic d
-            if (element.displayMode === "display") {
-              latex += `\\derivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+            // Use custom long form commands based on partial vs regular derivatives
+            if (isPartial) {
+              if (element.displayMode === "display") {
+                latex += `\\pderivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              } else {
+                latex += `\\pderivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              }
             } else {
-              latex += `\\derivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              if (element.displayMode === "display") {
+                latex += `\\derivldfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              } else {
+                latex += `\\derivlfrac{${numerator}}{${denominator}}{${functionLatex || " "}}`;
+              }
             }
           }
         } else {
           // Standard form derivative handling
-          // For partial derivatives, ALWAYS use physics package (\pdv) regardless of differential style
           // For regular derivatives, check if we should use physics package based on differential style
-          const usePhysicsPackage = isPartial || this.shouldUsePhysicsPackageForDerivative();
+          // For partial derivatives, use custom commands instead of physics package
+          const usePhysicsPackage = !isPartial && this.shouldUsePhysicsPackageForDerivative();
 
           if (usePhysicsPackage) {
-            // Use physics package \dv or \pdv command (always renders with roman 'd' or '∂' based on italicdiff setting)
-            const dvCommandBase = isPartial ? "\\pdv" : "\\dv";
+            // Use physics package \dv command for regular derivatives when preferred
+            const dvCommandBase = "\\dv";
             let dvCommand = "";
             if (typeof element.order === "number") {
               if (element.order === 1) {
@@ -688,27 +719,67 @@ export class LatexConverter {
 
             if (typeof element.order === "number") {
               if (element.order === 1) {
-                numerator = `${diffSymbol}${functionLatex || " "}`;
-                denominator = `${diffSymbol}${variableLatex || " "}`;
+                numerator = isPartial ? `${diffSymbol} ${functionLatex || " "}` : `${diffSymbol}${functionLatex || " "}`;
+                denominator = `${diffSymbol} ${variableLatex || " "}`;
               } else {
-                numerator = `${diffSymbol}^{${element.order}}${functionLatex || " "}`;
-                denominator = `${diffSymbol}${variableLatex || " "}^{${element.order}}`;
+                numerator = isPartial ? `${diffSymbol}^{${element.order}} ${functionLatex || " "}` : `${diffSymbol}^{${element.order}}${functionLatex || " "}`;
+                // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+                if (isPartial) {
+                  if (element.order === 1) {
+                    denominator = `${diffSymbol} ${variableLatex || " "}`;
+                  } else {
+                    denominator = variableLatex || " ";  // Just the variable content for higher-order
+                  }
+                } else {
+                  denominator = `${diffSymbol} ${variableLatex || " "}^{${element.order}}`;
+                }
               }
             } else {
               // nth order with custom expression
               const orderLatex = this.toLatexRecursive(element.order!, maxDepth, inOperatorName);
-              numerator = `${diffSymbol}^{${orderLatex || "n"}}${functionLatex || " "}`;
-              denominator = `${diffSymbol}${variableLatex || " "}^{${orderLatex || "n"}}`;
+              numerator = isPartial ? `${diffSymbol}^{${orderLatex || "n"}} ${functionLatex || " "}` : `${diffSymbol}^{${orderLatex || "n"}}${functionLatex || " "}`;
+              // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+              if (isPartial) {
+                // For nth-order, never add extra \partial (user types their own)
+                denominator = variableLatex || " ";
+              } else {
+                denominator = `${diffSymbol} ${variableLatex || " "}^{${orderLatex || "n"}}`;
+              }
             }
 
-            // Use custom \derivfrac or \derivdfrac command instead of \frac/\dfrac
-            if (element.displayMode === "display") {
-              latex += `\\derivdfrac{${numerator}}{${denominator}}`;
+            // Use custom derivative commands based on partial vs regular derivatives
+            if (isPartial) {
+              if (element.displayMode === "display") {
+                latex += `\\pderivdfrac{${numerator}}{${denominator}}`;
+              } else {
+                latex += `\\pderivfrac{${numerator}}{${denominator}}`;
+              }
             } else {
-              latex += `\\derivfrac{${numerator}}{${denominator}}`;
+              if (element.displayMode === "display") {
+                latex += `\\derivdfrac{${numerator}}{${denominator}}`;
+              } else {
+                latex += `\\derivfrac{${numerator}}{${denominator}}`;
+              }
             }
           }
         }
+      } else if (element.type === "differential") {
+        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth, inOperatorName);
+        
+        // Use differential style to determine if d should be roman or italic
+        const useRomanD = element.differentialStyle === "roman";
+        
+        if (useRomanD) {
+          latex += `\\mathrm{d}{${variableLatex || ""}}`;
+        } else {
+          latex += `d{${variableLatex || ""}}`;
+        }
+      } else if (element.type === "partialDifferential") {
+        const variableLatex = this.toLatexRecursive(element.variable!, maxDepth, inOperatorName);
+        
+        // Partial symbol ∂ is always italic (mathematical convention)
+        // Ignore differentialStyle setting for partial differentials
+        latex += `\\partial{${variableLatex || ""}}`;
       } else if (element.type === "matrix") {
         const matrixLatex = this.matrixToLatex(element, maxDepth, inOperatorName);
         latex += matrixLatex;
@@ -1415,7 +1486,6 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
@@ -1435,7 +1505,6 @@ export class LatexConverter {
             leftBracketSymbol: bracketInfo.leftSymbol,
             rightBracketSymbol: bracketInfo.rightSymbol,
             content: this.parseLatexToEquation(bracketInfo.content),
-            nestingDepth: bracketInfo.nestingDepth,
           });
           i = bracketInfo.endIndex;
         } else {
@@ -1452,6 +1521,58 @@ export class LatexConverter {
             i++;
           }
         }
+      } else if (latex.substr(i, 11) === "\\mathrm{d}{" && latex.indexOf("}", i + 11) !== -1) {
+        // Handle roman differential \mathrm{d}{variable}
+        const endIndex = latex.indexOf("}", i + 11);
+        const variable = latex.substring(i + 11, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "differential",
+          differentialStyle: "roman",
+          variable: variableElements,
+        });
+        i = endIndex + 1;
+      } else if (latex[i] === "d" && i + 1 < latex.length && latex[i + 1] === "{" && latex.indexOf("}", i + 2) !== -1) {
+        // Handle italic differential d{variable}
+        const endIndex = latex.indexOf("}", i + 2);
+        const variable = latex.substring(i + 2, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "differential",
+          differentialStyle: "italic",
+          variable: variableElements,
+        });
+        i = endIndex + 1;
+      } else if (latex.substr(i, 17) === "\\mathrm{\\partial}{" && latex.indexOf("}", i + 17) !== -1) {
+        // Handle roman partial differential \mathrm{\partial}{variable}
+        const endIndex = latex.indexOf("}", i + 17);
+        const variable = latex.substring(i + 17, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "partialDifferential",
+          differentialStyle: "italic", // Always italic for partial symbols
+          variable: variableElements,
+        });
+        i = endIndex + 1;
+      } else if (latex.substr(i, 9) === "\\partial{" && latex.indexOf("}", i + 9) !== -1) {
+        // Handle italic partial differential \partial{variable}
+        const endIndex = latex.indexOf("}", i + 9);
+        const variable = latex.substring(i + 9, endIndex);
+        const variableElements = this.parseLatexToEquation(variable);
+        
+        result.push({
+          id: this.generateElementId(),
+          type: "partialDifferential",
+          differentialStyle: "italic",
+          variable: variableElements,
+        });
+        i = endIndex + 1;
       } else {
         result.push({
           id: this.generateElementId(),
@@ -1501,21 +1622,14 @@ export class LatexConverter {
   }
 
   private isBracketCommand(latex: string, index: number): boolean {
-    const bracketCommands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    const bracketCommands = ["\\left"];
     return bracketCommands.some((cmd) => latex.substr(index, cmd.length) === cmd);
   }
 
   private skipBracketCommand(latex: string, index: number): number {
     const bracketCommands = [
       "\\left",
-      "\\bigl",
-      "\\Bigl",
-      "\\biggl",
-      "\\Biggl",
-      "\\bigr",
-      "\\Bigr",
-      "\\biggr",
-      "\\Biggr",
+      "\\right",
     ];
     for (const cmd of bracketCommands) {
       if (latex.substr(index, cmd.length) === cmd) {
@@ -1533,17 +1647,14 @@ export class LatexConverter {
     rightSymbol: string;
     content: string;
     endIndex: number;
-    nestingDepth: number;
   } | null {
     // Extract the bracket command
     let leftCommand = "";
-    let nestingDepth = 0;
 
-    const commands = ["\\left", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
+    const commands = ["\\left"];
     for (let i = 0; i < commands.length; i++) {
       if (latex.substr(startIndex, commands[i].length) === commands[i]) {
         leftCommand = commands[i];
-        // Don't try to infer nesting depth from command size
         break;
       }
     }
@@ -1566,19 +1677,8 @@ export class LatexConverter {
 
     while (j < latex.length && depth > 0) {
       // Check for right bracket commands
-      if (
-        latex.substr(j, 6) === "\\right" ||
-        latex.substr(j, 5) === "\\bigr" ||
-        latex.substr(j, 5) === "\\Bigr" ||
-        latex.substr(j, 6) === "\\biggr" ||
-        latex.substr(j, 6) === "\\Biggr"
-      ) {
-        let rightCommandLength =
-          latex.substr(j, 6) === "\\right"
-            ? 6
-            : latex.substr(j, 6) === "\\biggr" || latex.substr(j, 6) === "\\Biggr"
-              ? 6
-              : 5;
+      if (latex.substr(j, 6) === "\\right") {
+        let rightCommandLength = 6;
 
         const rightBracketInfo = this.extractBracketSymbol(latex, j + rightCommandLength);
         if (rightBracketInfo) {
@@ -1590,7 +1690,6 @@ export class LatexConverter {
               rightSymbol: rightBracketInfo.symbol,
               content,
               endIndex: rightBracketInfo.endIndex,
-              nestingDepth,
             };
           }
           j = rightBracketInfo.endIndex;
@@ -1627,14 +1726,6 @@ export class LatexConverter {
       const bracketCommands = [
         "\\left",
         "\\right",
-        "\\bigl",
-        "\\bigr",
-        "\\Bigl",
-        "\\Bigr",
-        "\\biggl",
-        "\\biggr",
-        "\\Biggl",
-        "\\Biggr",
       ];
       for (const cmd of bracketCommands) {
         if (startIndex >= cmd.length && latex.substr(startIndex - cmd.length, cmd.length) === cmd) {
@@ -1659,86 +1750,54 @@ export class LatexConverter {
 
   private getBracketLatexSymbols(
     leftSymbol: string,
-    rightSymbol: string,
-    nestingDepth: number = 0,
-    maxDepth: number = 0
+    rightSymbol: string
   ): { latexLeft: string; latexRight: string } {
-    const sizeCommands = ["", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl"];
-    const sizeCommandsRight = ["", "\\bigr", "\\Bigr", "\\biggr", "\\Biggr"];
-
-    // nestingDepth 0 = outermost, maxDepth = innermost depth
-    // Only brackets at maxDepth should use \left/\right (smallest)
-    // All others use progressively larger sizes as they get more outer
-    let leftSize: string;
-    let rightSize: string;
-
-    if (nestingDepth === maxDepth) {
-      // Innermost brackets (at maxDepth) always use \left/\right
-      leftSize = "";
-      rightSize = "";
-    } else {
-      // Calculate size based on distance from innermost
-      // We want: outermost -> \Biggl, next -> \biggl, next -> \Bigl, next -> \bigl, innermost -> \left
-      const distanceFromInnermost = maxDepth - nestingDepth;
-
-      if (distanceFromInnermost <= 0) {
-        // Should not happen since innermost is handled above, but fallback
-        leftSize = "";
-        rightSize = "";
-      } else if (distanceFromInnermost >= sizeCommands.length) {
-        // Very outer brackets use largest size
-        leftSize = sizeCommands[sizeCommands.length - 1]; // \Biggl
-        rightSize = sizeCommandsRight[sizeCommandsRight.length - 1]; // \Biggr
-      } else {
-        // Map distance to size: distance 1 -> \bigl, distance 2 -> \Bigl, etc.
-        // sizeCommands[0] = "", sizeCommands[1] = \bigl, so we need distanceFromInnermost as index
-        leftSize = sizeCommands[distanceFromInnermost];
-        rightSize = sizeCommandsRight[distanceFromInnermost];
-      }
-    }
+    // Always use \left and \right for automatic sizing
+    let leftSize = "";
+    let rightSize = "";
 
     // Map symbols to LaTeX bracket commands
-    const getLatexBracket = (symbol: string, isLeft: boolean, sizeCommand: string): string => {
+    const getLatexBracket = (symbol: string, isLeft: boolean): string => {
       if (!symbol) return "";
 
       switch (symbol) {
         case "(":
-          return sizeCommand ? `${sizeCommand}(` : "\\left(";
+          return "\\left(";
         case ")":
-          return sizeCommand ? `${sizeCommand})` : "\\right)";
+          return "\\right)";
         case "[":
-          return sizeCommand ? `${sizeCommand}[` : "\\left[";
+          return "\\left[";
         case "]":
-          return sizeCommand ? `${sizeCommand}]` : "\\right]";
+          return "\\right]";
         case "{":
-          return sizeCommand ? `${sizeCommand}\\{` : "\\left\\{";
+          return "\\left\\{";
         case "}":
-          return sizeCommand ? `${sizeCommand}\\}` : "\\right\\}";
+          return "\\right\\}";
         case "⌊":
-          return sizeCommand ? `${sizeCommand}\\lfloor` : "\\left\\lfloor";
+          return "\\left\\lfloor";
         case "⌋":
-          return sizeCommand ? `${sizeCommand}\\rfloor` : "\\right\\rfloor";
+          return "\\right\\rfloor";
         case "⌈":
-          return sizeCommand ? `${sizeCommand}\\lceil` : "\\left\\lceil";
+          return "\\left\\lceil";
         case "⌉":
-          return sizeCommand ? `${sizeCommand}\\rceil` : "\\right\\rceil";
+          return "\\right\\rceil";
         case "|":
-          return sizeCommand ? `${sizeCommand}|` : isLeft ? "\\left|" : "\\right|";
+          return isLeft ? "\\left|" : "\\right|";
         case "‖":
-          return sizeCommand ? `${sizeCommand}\\|` : isLeft ? "\\left\\|" : "\\right\\|";
+          return isLeft ? "\\left\\|" : "\\right\\|";
         case "⟨":
-          return sizeCommand ? `${sizeCommand}\\langle` : "\\left\\langle";
+          return "\\left\\langle";
         case "⟩":
-          return sizeCommand ? `${sizeCommand}\\rangle` : "\\right\\rangle";
+          return "\\right\\rangle";
         case ".":
-          return sizeCommand ? `${sizeCommand}.` : isLeft ? "\\left." : "\\right.";
+          return isLeft ? "\\left." : "\\right.";
         default:
           return symbol; // fallback to the raw symbol
       }
     };
 
-    const latexLeft = getLatexBracket(leftSymbol, true, leftSize);
-    const latexRight = getLatexBracket(rightSymbol, false, rightSize);
+    const latexLeft = getLatexBracket(leftSymbol, true);
+    const latexRight = getLatexBracket(rightSymbol, false);
 
     return { latexLeft, latexRight };
   }
@@ -1860,8 +1919,6 @@ export class LatexConverter {
           element.lowerLimit,
           element.upperLimit,
           element.operand, // large-operator
-          element.integrand,
-          element.differentialVariable, // integral
           element.function,
           element.variable,
           element.order, // derivative
@@ -1905,8 +1962,6 @@ export class LatexConverter {
           element.lowerLimit,
           element.upperLimit,
           element.operand, // large-operator
-          element.integrand,
-          element.differentialVariable, // integral
           element.function,
           element.variable,
           element.order, // derivative
@@ -1970,8 +2025,6 @@ export class LatexConverter {
       "lowerLimit",
       "upperLimit",
       "operand", // large-operator
-      "integrand",
-      "differentialVariable", // integral
       "function",
       "variable",
       "order", // derivative
@@ -2456,6 +2509,20 @@ export class LatexConverter {
       isDefinite = true;
       limitMode = "limits";
     }
+    // Check for single integral with subscript (3-parameter)
+    else if (latex.substr(i, 8) === "\\intisub") {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 8;
+      isDefinite = true;
+      limitMode = "nolimits";
+    } else if (latex.substr(i, 8) === "\\intdsub") {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 8;
+      isDefinite = true;
+      limitMode = "nolimits";
+    }
     // Check for 3-parameter integral commands (subscript and lower limit variants)
     else if (latex.substr(i, 12) === "\\iiintilower") {
       integralType = "triple";
@@ -2517,6 +2584,18 @@ export class LatexConverter {
       commandLength = 9;
       isDefinite = true;
       limitMode = "nolimits";
+    } else if (latex.substr(i, 10) === "\\intilower") {
+      integralType = "single";
+      integralStyle = "italic";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
+    } else if (latex.substr(i, 10) === "\\intdlower") {
+      integralType = "single";
+      integralStyle = "roman";
+      commandLength = 10;
+      isDefinite = true;
+      limitMode = "limits";
     }
     // Check for indefinite integral commands (shorter commands)
     else if (latex.substr(i, 7) === "\\iiintd") {
@@ -2566,38 +2645,29 @@ export class LatexConverter {
     let upperLimit: EquationElement[] = [];
 
     if (isDefinite) {
-      // Parse integrand {f(x)}
+      // Parse content {f(x) with embedded differential}
       if (i >= latex.length || latex[i] !== "{") return null;
-      const integrandGroup = this.parseLatexGroup(latex, i);
-      integrand = this.parseLatexToEquation(integrandGroup.content);
-      i = integrandGroup.endIndex;
+      const contentGroup = this.parseLatexGroup(latex, i);
+      integrand = this.parseLatexToEquation(contentGroup.content);
+      i = contentGroup.endIndex;
 
       // Skip whitespace
       while (i < latex.length && latex[i] === " ") i++;
 
-      // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const variableGroup = this.parseLatexGroup(latex, i);
-      differentialVariable = this.parseLatexToEquation(variableGroup.content);
-      i = variableGroup.endIndex;
-
-      // Skip whitespace
-      while (i < latex.length && latex[i] === " ") i++;
-
-      // Check if this is a 3-parameter command (subscript/lower limit only) or 4-parameter (lower+upper)
+      // Check if this is a 2-parameter command (subscript/lower limit only) or 3-parameter (lower+upper)
       const commandName = latex.substr(startIndex, commandLength);
-      const is3Parameter = commandName.includes("sub") || commandName.includes("lower");
+      const is2Parameter = commandName.includes("sub") || commandName.includes("lower");
 
-      if (is3Parameter) {
-        // For 3-parameter integrals: \iintisub{integrand}{variable}{region} or \iintilower{integrand}{variable}{region}
+      if (is2Parameter) {
+        // For 2-parameter integrals: \iintisub{content}{region} or \iintilower{content}{region}
         // Parse region/limit {R}
         if (i >= latex.length || latex[i] !== "{") return null;
         const regionGroup = this.parseLatexGroup(latex, i);
         lowerLimit = this.parseLatexToEquation(regionGroup.content);
         i = regionGroup.endIndex;
-        // upperLimit remains empty for 3-parameter commands
+        // upperLimit remains empty for 2-parameter commands
       } else {
-        // For 4-parameter integrals: \intinolim{integrand}{variable}{lower}{upper} or \intilim{integrand}{variable}{lower}{upper}
+        // For 3-parameter integrals: \intinolim{content}{lower}{upper} or \intilim{content}{lower}{upper}
         // Parse lower limit {a}
         if (i >= latex.length || latex[i] !== "{") return null;
         const lowerGroup = this.parseLatexGroup(latex, i);
@@ -2614,21 +2684,15 @@ export class LatexConverter {
         i = upperGroup.endIndex;
       }
     } else {
-      // For indefinite integrals: \inti{integrand}{variable}
-      // Parse integrand {f(x)}
+      // For indefinite integrals with new single content field: \inti{content}
+      // Parse the single content group
       if (i >= latex.length || latex[i] !== "{") return null;
-      const integrandGroup = this.parseLatexGroup(latex, i);
-      integrand = this.parseLatexToEquation(integrandGroup.content);
-      i = integrandGroup.endIndex;
+      const contentGroup = this.parseLatexGroup(latex, i);
+      const content = this.parseLatexToEquation(contentGroup.content);
+      i = contentGroup.endIndex;
 
-      // Skip whitespace
-      while (i < latex.length && latex[i] === " ") i++;
-
-      // Parse differential variable {x}
-      if (i >= latex.length || latex[i] !== "{") return null;
-      const variableGroup = this.parseLatexGroup(latex, i);
-      differentialVariable = this.parseLatexToEquation(variableGroup.content);
-      i = variableGroup.endIndex;
+      // Store in the content field for the new structure
+      integrand = content; // We'll reassign this to content field below
     }
 
     const element: EquationElement = {
@@ -2638,8 +2702,7 @@ export class LatexConverter {
       integralStyle: integralStyle,
       isDefinite: isDefinite,
       limitMode: limitMode,
-      integrand: integrand,
-      differentialVariable: differentialVariable,
+      content: integrand, // Use single content field for new structure
       displayMode: "inline", // Default to inline
     };
 
@@ -2815,20 +2878,36 @@ export class LatexConverter {
   private parseDerivativeFraction(
     numeratorLatex: string,
     denominatorLatex: string,
-    displayMode: "inline" | "display"
+    displayMode: "inline" | "display",
+    isPartialCommand: boolean = false
   ): EquationElement | null {
     // Try to parse numerator and denominator to detect derivative pattern
-    // Pattern: numerator = d^n f, denominator = d x^n or dx^n
+    // Pattern: numerator = d^n f or ∂^n f, denominator = d x^n or dx^n or ∂x ∂y (new format)
 
-    // Improved pattern matching with better handling of function expressions
-    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?(.*)$/);
-    const denMatch = denominatorLatex.match(/^d\s*(.+?)(\^{(.+)})?$/);
+    // Handle both regular derivatives (d) and partial derivatives (∂)
+    const numMatch = numeratorLatex.match(/^(d|\\partial)(\^{(.+)})?(.*)$/);
+    const denMatch = denominatorLatex.match(/^(?:(d|\\partial)\s*)?(.+?)(\^{(.+)})?$/);
 
     if (numMatch && denMatch) {
-      const orderFromNum = numMatch[2]; // From d^{n}
-      const orderFromDen = denMatch[3]; // From x^{n}
-      let functionPart = numMatch[3] || "";
-      const variablePart = denMatch[1] || "";
+      const isPartial = isPartialCommand || numMatch[1] === "\\partial";
+      const orderFromNum = numMatch[3]; // From d^{n} or ∂^{n}
+      const orderFromDen = denMatch[4]; // From x^{n} (but we'll ignore this now)
+      let functionPart = numMatch[4] || "";
+      
+      // Handle denominators with or without leading differential symbol
+      // denMatch[1] is the leading differential symbol (optional)
+      // denMatch[2] is the variable content
+      let variablePart;
+      
+      // For partial derivatives with \partial{ patterns, preserve the full denominator
+      // to avoid losing the first \partial symbol
+      if (isPartialCommand && denominatorLatex.includes("\\partial{")) {
+        // New format with \partial{x}\partial{y} - use full denominator
+        variablePart = denominatorLatex;
+      } else {
+        // Old format or regular derivatives - use regex matched content
+        variablePart = denMatch[2] || "";
+      }
 
       // Clean up the function part - handle cases like "{ e }^{2x}"
       functionPart = functionPart.trim();
@@ -2843,7 +2922,7 @@ export class LatexConverter {
         }
       }
 
-      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      // Determine order (from numerator only, default to 1)
       let order: number | EquationElement[] = 1;
       if (orderFromNum) {
         const parsedOrder = parseInt(orderFromNum);
@@ -2852,13 +2931,18 @@ export class LatexConverter {
         } else {
           order = this.parseLatexToEquation(orderFromNum);
         }
-      } else if (orderFromDen) {
-        const parsedOrder = parseInt(orderFromDen);
-        if (!isNaN(parsedOrder)) {
-          order = parsedOrder;
-        } else {
-          order = this.parseLatexToEquation(orderFromDen);
-        }
+      }
+
+      // Handle variable parsing based on whether it's partial or regular derivative
+      const cleanVariablePart = variablePart.replace(/\^{.+}$/, ""); // Remove any trailing exponent
+      let variableElements;
+      
+      // For partial derivatives with \partial patterns in denominator, use specialized parsing
+      if (isPartial && cleanVariablePart.includes("\\partial")) {
+        variableElements = this.parsePartialVariables(cleanVariablePart);
+      } else {
+        // Regular parsing for non-partial or simple variables
+        variableElements = this.parseLatexToEquation(cleanVariablePart);
       }
 
       return {
@@ -2866,32 +2950,98 @@ export class LatexConverter {
         type: "derivative",
         order: order,
         displayMode: displayMode,
+        isPartial: isPartial,
         function: this.parseLatexToEquation(functionPart),
-        variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
+        variable: variableElements,
       };
     }
 
     return null; // Not a recognizable derivative pattern
   }
 
+  // Parse partial differential variables specifically for derivative denominators
+  private parsePartialVariables(latex: string): EquationElement[] {
+    const result: EquationElement[] = [];
+    let i = 0;
+    
+    while (i < latex.length) {
+      // Check for \partial{variable} pattern
+      // Note: In LaTeX strings, backslash might be single or double
+      let matched = false;
+      let skipLength = 0;
+      
+      if (latex.substr(i, 10) === "\\\\partial{") {
+        // Double backslash case (unlikely but check first)
+        matched = true;
+        skipLength = 10;
+      } else if (latex.substr(i, 9) === "\\partial{") {
+        // Single escaped backslash (most common in our context)
+        matched = true;
+        skipLength = 9;
+      }
+      
+      if (matched) {
+        const endIndex = latex.indexOf("}", i + skipLength);
+        if (endIndex !== -1) {
+          const variable = latex.substring(i + skipLength, endIndex);
+          result.push({
+            id: this.generateElementId(),
+            type: "partialDifferential",
+            differentialStyle: "italic",
+            variable: this.parseLatexToEquation(variable),
+          });
+          i = endIndex + 1;
+        } else {
+          // Malformed \partial{ without closing }
+          result.push({
+            id: this.generateElementId(),
+            type: "text",
+            value: "∂",
+          });
+          i += skipLength;
+        }
+      } else if (latex.substr(i, 8) === "\\partial") {
+        // Handle \partial without braces (just the symbol)
+        result.push({
+          id: this.generateElementId(),
+          type: "text",
+          value: "∂",
+        });
+        i += 8;
+      } else {
+        // Regular character
+        result.push({
+          id: this.generateElementId(),
+          type: "text",
+          value: latex[i],
+        });
+        i++;
+      }
+    }
+    
+    return result;
+  }
+
   private parseLongFormDerivative(
     numeratorLatex: string,
     denominatorLatex: string,
     functionLatex: string,
-    displayMode: "inline" | "display"
+    displayMode: "inline" | "display",
+    isPartialCommand: boolean = false
   ): EquationElement | null {
     // Parse long form derivative: \derivlfrac{d^n}{dx^n}{f} or \derivldfrac{d^n}{dx^n}{f}
-    // Pattern: numerator = d^n, denominator = dx^n, separate function part
+    // Pattern: numerator = d^n or ∂^n, denominator = dx^n or ∂x ∂y (new format), separate function part
 
-    const numMatch = numeratorLatex.match(/^d(\^{(.+)})?$/);
-    const denMatch = denominatorLatex.match(/^d(.+?)(\^{(.+)})?$/);
+    const numMatch = numeratorLatex.match(/^(d|\\partial)(\^{(.+)})?$/);
+    const denMatch = denominatorLatex.match(/^(d|\\partial)(.+?)(\^{(.+)})?$/);
 
     if (numMatch && denMatch) {
-      const orderFromNum = numMatch[2]; // From d^{n}
-      const orderFromDen = denMatch[3]; // From x^{n}
-      const variablePart = denMatch[1] || "";
+      const isPartial = isPartialCommand || numMatch[1] === "\\partial";
+      const orderFromNum = numMatch[3]; // From d^{n} or ∂^{n}
+      const orderFromDen = denMatch[4]; // From x^{n} (but we'll ignore this now)
+      const variablePart = denMatch[2] || "";
 
-      // Determine order (prefer from numerator, fallback to denominator, default to 1)
+      // Determine order (from numerator only, default to 1)
       let order: number | EquationElement[] = 1;
       if (orderFromNum) {
         const parsedOrder = parseInt(orderFromNum);
@@ -2900,13 +3050,6 @@ export class LatexConverter {
         } else {
           order = this.parseLatexToEquation(orderFromNum);
         }
-      } else if (orderFromDen) {
-        const parsedOrder = parseInt(orderFromDen);
-        if (!isNaN(parsedOrder)) {
-          order = parsedOrder;
-        } else {
-          order = this.parseLatexToEquation(orderFromDen);
-        }
       }
 
       return {
@@ -2914,6 +3057,7 @@ export class LatexConverter {
         type: "derivative",
         order: order,
         displayMode: displayMode,
+        isPartial: isPartial,
         function: this.parseLatexToEquation(functionLatex),
         variable: this.parseLatexToEquation(variablePart.replace(/\^{.+}$/, "")), // Remove any trailing exponent
         isLongForm: true,
@@ -2955,7 +3099,8 @@ export class LatexConverter {
             numerator.content,
             denominator.content,
             functionPart.content,
-            cmd.displayMode
+            cmd.displayMode,
+            cmd.command.startsWith("\\pderiv")
           );
           if (derivativeInfo) {
             result.push(derivativeInfo);
@@ -2974,7 +3119,8 @@ export class LatexConverter {
           const derivativeInfo = this.parseDerivativeFraction(
             numerator.content,
             denominator.content,
-            cmd.displayMode
+            cmd.displayMode,
+            cmd.command.startsWith("\\pderiv")
           );
           if (derivativeInfo) {
             result.push(derivativeInfo);
@@ -3318,8 +3464,6 @@ export class LatexConverter {
     if (element.operand) this.applyStyleModeToElements(element.operand, styleType);
     if (element.lowerLimit) this.applyStyleModeToElements(element.lowerLimit, styleType);
     if (element.upperLimit) this.applyStyleModeToElements(element.upperLimit, styleType);
-    if (element.integrand) this.applyStyleModeToElements(element.integrand, styleType);
-    if (element.differentialVariable) this.applyStyleModeToElements(element.differentialVariable, styleType);
     if (element.function) this.applyStyleModeToElements(element.function, styleType);
     if (element.variable) this.applyStyleModeToElements(element.variable, styleType);
     if (element.base) this.applyStyleModeToElements(element.base, styleType);

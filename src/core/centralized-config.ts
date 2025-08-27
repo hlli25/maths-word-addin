@@ -102,18 +102,34 @@ export const SYMBOL_CONFIG: { [key: string]: SymbolInfo } = {
   "\\psi": { unicode: "ψ", defaultItalic: true },
   "\\omega": { unicode: "ω", defaultItalic: true },
 
-  // Greek uppercase letters (upright by default)
+  // Greek uppercase letters 
+  // Letters with LaTeX commands
   "\\Gamma": { unicode: "Γ", defaultItalic: false },
   "\\Delta": { unicode: "Δ", defaultItalic: false },
   "\\Theta": { unicode: "Θ", defaultItalic: false },
   "\\Lambda": { unicode: "Λ", defaultItalic: false },
+  "\\Xi": { unicode: "Ξ", defaultItalic: false },
   "\\Pi": { unicode: "Π", defaultItalic: false },
   "\\Sigma": { unicode: "Σ", defaultItalic: false },
   "\\Upsilon": { unicode: "Υ", defaultItalic: false },
   "\\Phi": { unicode: "Φ", defaultItalic: false },
-  "\\Chi": { unicode: "Χ", defaultItalic: false },
   "\\Psi": { unicode: "Ψ", defaultItalic: false },
   "\\Omega": { unicode: "Ω", defaultItalic: false },
+  
+  // Letters without LaTeX commands (use Unicode as keys for direct insertion)
+  "Α": { unicode: "Α", defaultItalic: false },
+  "Β": { unicode: "Β", defaultItalic: false },
+  "Ε": { unicode: "Ε", defaultItalic: false },
+  "Ζ": { unicode: "Ζ", defaultItalic: false },
+  "Η": { unicode: "Η", defaultItalic: false },
+  "Ι": { unicode: "Ι", defaultItalic: false },
+  "Κ": { unicode: "Κ", defaultItalic: false },
+  "Μ": { unicode: "Μ", defaultItalic: false },
+  "Ν": { unicode: "Ν", defaultItalic: false },
+  "Ο": { unicode: "Ο", defaultItalic: false },
+  "Ρ": { unicode: "Ρ", defaultItalic: false },
+  "Τ": { unicode: "Τ", defaultItalic: false },
+  "Χ": { unicode: "Χ", defaultItalic: false },
 
   // Calculus symbols
   "\\partial": { unicode: "∂", defaultItalic: true },
@@ -474,11 +490,13 @@ export const INTEGRAL_COMMANDS = [
   "\\ointi", "\\ointd",
   
   // Multiple integrals with subscript (3 parameters)
+  "\\intisub", "\\intdsub",
   "\\iintisub", "\\iintdsub",
   "\\iiintisub", "\\iiintdsub",
   "\\ointisub", "\\ointdsub",
   
   // Multiple integrals with lower limit (3 parameters)
+  "\\intilower", "\\intdlower",
   "\\iintilower", "\\iintdlower",
   "\\iiintilower", "\\iiintdlower",
   

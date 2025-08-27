@@ -1462,45 +1462,6 @@ mi.math-cancel::after, mo.math-cancel::after, mn.math-cancel::after, mrow.math-c
   align-self: center;
 }
 
-/* Double vertical separator in differential style row */
-.differential-style-row .double-vertical-separator {
-  width: auto;
-  height: 28px;
-  margin: 0 4px;
-  align-self: center;
-  display: flex;
-  align-items: center;
-  color: #c8c8c8;
-  font-size: 22px;
-  font-weight: bold;
-}
-
-.differential-style-row .double-vertical-separator::after {
-  content: "||";
-}
-
-/* Differential structure buttons in differential style row */
-.differential-style-row .differential-btn
-.differential-style-row .partial-differential-btn {
-  padding: 2px 4px;
-  border: 1px solid #c8c8c8;
-  background-color: #fff;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-}
-
-.differential-style-row .differential-btn:hover
-.differential-style-row .partial-differential-btn:hover {
-  background-color: #f3f2f1;
-  border-color: #a0a0a0;
-}
-
 /* Derivative element styling */
 .derivative-fraction {
   display: inline-block;

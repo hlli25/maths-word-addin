@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(npx:*)",
+      "Bash(powershell:*)",
+      "Bash(cmd /c:*)",
+      "Bash(certutil:*)",
+      "Bash(reg add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

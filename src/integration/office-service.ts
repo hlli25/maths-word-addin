@@ -97,59 +97,55 @@ export class OfficeService {
           const pngSizeKB = (pngBase64.length * 3) / 4 / 1024; // Base64 overhead ~33%
           console.log(`PNG conversion successful, size: ${pngSizeKB.toFixed(1)}KB`);
 
-          if (pngSizeKB < 50) { // Try PNG insertion if under 50KB
-            console.log("Attempting PNG insertion via insertInlinePictureFromBase64...");
+          console.log("Attempting PNG insertion via insertInlinePictureFromBase64...");
 
-            // Try different data URL formats
-            const formats = [
-              `data:image/png;base64,${pngBase64}`,
-              pngBase64, // Try without data: prefix
-            ];
+          // Try different data URL formats
+          const formats = [
+            `data:image/png;base64,${pngBase64}`,
+            pngBase64, // Try without data: prefix
+          ];
 
-            let insertionSucceeded = false;
+          let insertionSucceeded = false;
 
-            for (let i = 0; i < formats.length && !insertionSucceeded; i++) {
-              try {
-                console.log(`Trying PNG format ${i + 1}:`, formats[i].substring(0, 50) + "...");
-                
-                const inlinePicture = selection.insertInlinePictureFromBase64(formats[i], Word.InsertLocation.replace);
-                
-                // Set size using point-based dimensions (convert from pixels)
-                const widthPt = width * (72 / 96); // Convert pixels to points
-                const heightPt = height * (72 / 96);
-                inlinePicture.width = widthPt;
-                inlinePicture.height = heightPt;
+          for (let i = 0; i < formats.length && !insertionSucceeded; i++) {
+            try {
+              console.log(`Trying PNG format ${i + 1}:`, formats[i].substring(0, 50) + "...");
+              
+              const inlinePicture = selection.insertInlinePictureFromBase64(formats[i], Word.InsertLocation.replace);
+              
+              // Set size using point-based dimensions (convert from pixels)
+              const widthPt = width * (72 / 96); // Convert pixels to points
+              const heightPt = height * (72 / 96);
+              inlinePicture.width = widthPt;
+              inlinePicture.height = heightPt;
 
-                await context.sync();
+              await context.sync();
 
-                // Apply baseline positioning using preview API
-                if (baselineOffsetPt !== 0) {
-                  const range = inlinePicture.getRange();
-                  range.font.position = baselineOffsetPt;
-                  console.log(`Applied baseline offset: ${baselineOffsetPt}pt`);
-                }
-
-                // Set alt text after successful insertion
-                inlinePicture.altTextDescription = prefixedLatex;
-                await context.sync();
-
-                console.log("PNG insertion with alt text and baseline positioning successful");
-                insertionSucceeded = true;
-              } catch (formatError) {
-                console.log(`PNG format ${i + 1} failed:`, formatError);
+              // Apply baseline positioning using preview API
+              if (baselineOffsetPt !== 0) {
+                const range = inlinePicture.getRange();
+                range.font.position = baselineOffsetPt;
+                console.log(`Applied baseline offset: ${baselineOffsetPt}pt`);
               }
-            }
 
-            if (!insertionSucceeded) {
-              throw new Error("All PNG formats failed");
+              // Set alt text after successful insertion
+              inlinePicture.altTextDescription = prefixedLatex;
+              await context.sync();
+
+              console.log("PNG insertion with alt text and baseline positioning successful");
+              insertionSucceeded = true;
+            } catch (formatError) {
+              console.log(`PNG format ${i + 1} failed:`, formatError);
             }
-          } else {
-            throw new Error("PNG too large, falling back to text");
+          }
+
+          if (!insertionSucceeded) {
+            throw new Error("All PNG formats failed");
           }
         } catch (pngError) {
           console.log("PNG conversion/insertion failed:", pngError);
 
-          // Final fallback: text only
+          // Phase 3: Fallback to plain text
           console.log("All image insertion methods failed, using text fallback");
           selection.insertText(`[EQUATION: ${latex}]`, Word.InsertLocation.replace);
           await context.sync();

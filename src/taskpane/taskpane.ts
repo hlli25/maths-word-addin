@@ -399,6 +399,10 @@ class MathAddinApp {
       this.inputHandler.insertPartialDerivativeLongForm("nth", this.isInlineStyle ? "inline" : "display");
     } else if (button.classList.contains("int-indefinite-display-btn")) {
       this.inputHandler.insertSingleIntegral(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("int-subscript-btn")) {
+      this.inputHandler.insertSingleIntegralSubscript(this.isInlineStyle ? "inline" : "display");
+    } else if (button.classList.contains("int-lower-btn")) {
+      this.inputHandler.insertSingleIntegralLower(this.isInlineStyle ? "inline" : "display");
     
     // Double integral buttons
     } else if (button.classList.contains("double-int-indefinite-btn")) {
@@ -442,6 +446,10 @@ class MathAddinApp {
     } else if (button.classList.contains("function-btn")) {
       const functionType = (button as HTMLElement).dataset.function || "";
       this.inputHandler.insertFunction(functionType);
+    } else if (button.classList.contains("differential-btn")) {
+      this.inputHandler.insertDifferential();
+    } else if (button.classList.contains("partial-differential-btn")) {
+      this.inputHandler.insertPartialDifferential();
     }
   }
 
