@@ -596,7 +596,7 @@ export class DisplayRenderer {
           </mrow>
         </mfrac>`;
       } else {
-        // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+        // For regular derivatives, restore superscript in denominator; for partial derivatives, show just variable with superscript
         if (element.isPartial) {
           fractionContent = `<mfrac ${displayStyle}>
             <msup>
@@ -604,7 +604,10 @@ export class DisplayRenderer {
               <mn>${element.order}</mn>
             </msup>
             <mrow data-context-path="${elementPath}/variable">
-              <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+              <msup>
+                ${variableML}
+                <mn>${element.order}</mn>
+              </msup>
             </mrow>
           </mfrac>`;
         } else {
@@ -630,7 +633,7 @@ export class DisplayRenderer {
       const readOnlyOrderML = element.order && element.order.length > 0 ? 
         element.order.map(el => el.value || '').join('') : '';
 
-      // For regular derivatives, restore superscript in denominator; for partial derivatives, keep single variable
+      // For regular derivatives, restore superscript in denominator; for partial derivatives, show just variable with superscript
       if (element.isPartial) {
         fractionContent = `<mfrac ${displayStyle}>
           <msup>
@@ -638,7 +641,10 @@ export class DisplayRenderer {
             <mrow data-context-path="${elementPath}/order">${orderML}</mrow>
           </msup>
           <mrow data-context-path="${elementPath}/variable">
-            <mi ${mathVariantAttr}>${differentialSymbol}</mi>${variableML}
+            <msup>
+              ${variableML}
+              <mrow>${readOnlyOrderML}</mrow>
+            </msup>
           </mrow>
         </mfrac>`;
       } else {

@@ -995,12 +995,12 @@ export class LatexConverter {
       
       if (functionType === "functionlim") {
         const constraintLatex = this.toLatexRecursive(element.functionConstraint || [], maxDepth, inOperatorName);
-        return `{\\displaystyle \\operatorname*{${nameLatex}}_{${constraintLatex}} ${argumentLatex}}`;
+        return `{\\displaystyle \\operatorname*{${nameLatex}}_{${constraintLatex}} {${argumentLatex}}}`;
       } else if (functionType === "functionsub") {
         const baseLatex = this.toLatexRecursive(element.functionBase || [], maxDepth, inOperatorName);
-        return `\\operatorname{${nameLatex}}_{${baseLatex}} ${argumentLatex}`;
+        return `\\operatorname{${nameLatex}}_{${baseLatex}} {${argumentLatex}}`;
       } else {
-        return `\\operatorname{${nameLatex}} ${argumentLatex}`;
+        return `\\operatorname{${nameLatex}} {${argumentLatex}}`;
       }
     }
     
@@ -1009,24 +1009,24 @@ export class LatexConverter {
       const constraintLatex = this.toLatexRecursive(element.functionConstraint || [], maxDepth, inOperatorName);
       const operatorName = functionType === "argmax" ? "argmax" : 
                            functionType === "argmin" ? "argmin" : functionType;
-      return `{\\displaystyle \\operatorname*{${operatorName}}_{${constraintLatex}} ${argumentLatex}}`;
+      return `{\\displaystyle \\operatorname*{${operatorName}}_{${constraintLatex}} {${argumentLatex}}}`;
     }
     
     // Base-n logarithm
     if (functionType === "logn") {
       const baseLatex = this.toLatexRecursive(element.functionBase || [], maxDepth, inOperatorName);
-      return `\\log_{${baseLatex}} ${argumentLatex}`;
+      return `\\log_{${baseLatex}} {${argumentLatex}}`;
     }
     
     // Inverse trig/hyperbolic functions
     if (["asin", "acos", "atan", "asinh", "acosh", "atanh"].includes(functionType)) {
       const baseNames = { asin: "sin", acos: "cos", atan: "tan", asinh: "sinh", acosh: "cosh", atanh: "tanh" };
       const baseName = baseNames[functionType as keyof typeof baseNames];
-      return `\\operatorname{${baseName}^{-1}} ${argumentLatex}`;
+      return `\\operatorname{${baseName}^{-1}} {${argumentLatex}}`;
     }
     
     // Standard built-in functions
-    return `\\${functionType} ${argumentLatex}`;
+    return `\\${functionType} {${argumentLatex}}`;
   }
 
   private shouldUsePhysicsPackageForDerivative(): boolean {
@@ -3700,33 +3700,18 @@ export class LatexConverter {
 
       return { element, endIndex: i };
     } else {
-      // Regular function - parse argument after space (no parentheses)
+      // Regular function - parse argument after space (requires braces)
       while (i < latex.length && latex[i] === " ") i++; // Skip spaces
 
-      // Parse the argument (could be a group or expression)
+      // Parse the argument - must be in braces
       if (i < latex.length && latex[i] === "{") {
         const argGroup = this.parseLatexGroup(latex, i);
         if (argGroup) {
           i = argGroup.endIndex;
           argumentElements = this.parseLatexToEquation(argGroup.content);
         }
-      } else {
-        // Parse until next space, command, or delimiter
-        let argStart = i;
-        while (
-          i < latex.length &&
-          latex[i] !== " " &&
-          latex[i] !== "\\" &&
-          latex[i] !== "{" &&
-          latex[i] !== "}" &&
-          latex[i] !== "$"
-        ) {
-          i++;
-        }
-        if (i > argStart) {
-          argumentElements = this.parseLatexToEquation(latex.substring(argStart, i));
-        }
       }
+      // If no braces found, argumentElements remains empty
 
       // Create appropriate user-defined function
       const functionType = hasSubscript ? "functionsub" : "function";
